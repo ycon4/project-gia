@@ -1,12 +1,13 @@
 import express from 'express';
 import cors from 'cors';
 import fetch from 'node-fetch';
+import 'dotenv/config';
 
 const app = express();
-const PORT = 3001;
+const HF_API_TOKEN = process.env.HF_API_TOKEN;
+const PORT = process.env.PORT || 3001;
 
 // Hugging Face API configuration - NEW OpenAI-compatible endpoint
-const HF_API_TOKEN = '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';
 const API_URL = 'https://router.huggingface.co/v1/chat/completions';
 const MODEL = 'meta-llama/Llama-3.2-3B-Instruct';
 
