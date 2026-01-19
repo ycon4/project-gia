@@ -47,7 +47,7 @@ export default async function handler(req, res) {
 
     console.log('🤖 Processing message:', message);
 
-    // Prepare messages in OpenAI format (same as server.js)
+    // Prepare messages in OpenAI format
     const messages = [
       { role: 'system', content: SYSTEM_PROMPT },
       { role: 'user', content: message }
@@ -55,7 +55,7 @@ export default async function handler(req, res) {
 
     console.log('📡 Calling Hugging Face Router API...');
 
-    // Call Hugging Face API using OpenAI-compatible format (same as server.js)
+    // Call Hugging Face API using OpenAI-compatible format
     const response = await fetch(API_URL, {
       method: 'POST',
       headers: {
@@ -74,23 +74,32 @@ export default async function handler(req, res) {
     console.log('📊 API Response status:', response.status);
 
     if (!response.ok) {
-      const errorText = await response.text();
+      let errorText;
+      try {
+        errorText = await response.text();
+      } catch (e) {
+        errorText = 'Unable to parse error response';
+      }
+      
       console.error('❌ Hugging Face API error:', errorText);
       
       // Check if model is loading
       if (response.status === 503) {
-        return res.json({ 
+        return res.status(200).json({ 
           reply: "I'm currently warming up! The AI model is loading. Please try again in about 20-30 seconds." 
         });
       }
       
-      throw new Error(`API error: ${response.status} - ${errorText}`);
+      return res.status(500).json({ 
+        error: `API error: ${response.status}`,
+        details: errorText 
+      });
     }
 
     const data = await response.json();
     console.log('📥 Received data from API');
     
-    // Extract the message from OpenAI-compatible response (same as server.js)
+    // Extract the message from OpenAI-compatible response
     const reply = data.choices?.[0]?.message?.content || 
                   "I apologize, but I couldn't generate a proper response. Please try again.";
 
