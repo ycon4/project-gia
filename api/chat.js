@@ -1,5 +1,3 @@
-import fetch from 'node-fetch';
-
 const HF_API_TOKEN = process.env.HF_API_TOKEN;
 const API_URL = 'https://router.huggingface.co/v1/chat/completions';
 const MODEL = 'meta-llama/Llama-3.2-3B-Instruct';
@@ -19,15 +17,16 @@ You support outputs such as tables, charts, and data visualizations when relevan
 You maintain accuracy, data privacy, and responsible interpretation at all times, without offering personal opinions or unsupported recommendations.`;
 
 export default async function handler(req, res) {
-  // Enable CORS
-  res.setHeader('Access-Control-Allow-Credentials', true);
+  // Enable CORS for all origins
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version');
 
   // Handle preflight request
   if (req.method === 'OPTIONS') {
-    return res.status(200).end();
+    res.status(200).end();
+    return;
   }
 
   // Only allow POST
@@ -55,7 +54,7 @@ export default async function handler(req, res) {
 
     console.log('📡 Calling Hugging Face Router API...');
 
-    // Call Hugging Face API using OpenAI-compatible format
+    // Call Hugging Face API (using built-in fetch, no import needed!)
     const response = await fetch(API_URL, {
       method: 'POST',
       headers: {
@@ -75,7 +74,7 @@ export default async function handler(req, res) {
 
     // Get response text first
     const responseText = await response.text();
-    console.log('📄 Response text:', responseText.substring(0, 200));
+    console.log('📄 Response text (first 200 chars):', responseText.substring(0, 200));
 
     if (!response.ok) {
       console.error('❌ Hugging Face API error:', responseText);
@@ -89,7 +88,7 @@ export default async function handler(req, res) {
       
       return res.status(500).json({ 
         error: `API error: ${response.status}`,
-        details: responseText 
+        details: responseText.substring(0, 500)
       });
     }
 
