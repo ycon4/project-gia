@@ -1,9 +1,18 @@
-import { Send } from 'lucide-react';
+import { Send, Database, RefreshCw } from 'lucide-react';
 import { useEffect, useRef } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
-export default function ChatPage({ messages, inputMessage, setInputMessage, handleSendMessage }) {
+export default function ChatPage({ 
+  messages, 
+  inputMessage, 
+  setInputMessage, 
+  handleSendMessage,
+  dbData = {},
+  isLoadingData = false,
+  dataLoaded = false,
+  onRefreshData
+}) {
   const messagesEndRef = useRef(null);
   
   const scrollToBottom = () => {
@@ -19,9 +28,47 @@ export default function ChatPage({ messages, inputMessage, setInputMessage, hand
     scrollbarColor: '#a78bfa #e5e7eb'
   };
 
+  const totalRecords = Object.values(dbData).reduce((sum, docs) => sum + docs.length, 0);
+
   return (
     <div className="space-y-4 max-w-7xl mx-auto px-8">
-      <h1 className="text-4xl font-bold text-gray-800 mb-4">Chat with GIA</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-4xl font-bold text-gray-800 mb-4">Chat with GIA</h1>
+        
+        {/* Database Status */}
+        <div className="flex items-center space-x-3">
+          {isLoadingData ? (
+            <div className="flex items-center space-x-2 bg-blue-100 text-blue-700 px-4 py-2 rounded-lg">
+              <RefreshCw size={16} className="animate-spin" />
+              <span className="text-sm font-medium">Loading database...</span>
+            </div>
+          ) : dataLoaded ? (
+            <div className="flex items-center space-x-2 bg-green-100 text-green-700 px-4 py-2 rounded-lg">
+              <Database size={16} />
+              <span className="text-sm font-medium">
+                {totalRecords} records loaded
+              </span>
+            </div>
+          ) : (
+            <div className="flex items-center space-x-2 bg-yellow-100 text-yellow-700 px-4 py-2 rounded-lg">
+              <Database size={16} />
+              <span className="text-sm font-medium">Database not loaded</span>
+            </div>
+          )}
+          
+          {onRefreshData && (
+            <button
+              onClick={onRefreshData}
+              disabled={isLoadingData}
+              className="flex items-center space-x-2 bg-purple-100 text-purple-700 px-4 py-2 rounded-lg hover:bg-purple-200 transition disabled:opacity-50"
+            >
+              <RefreshCw size={16} className={isLoadingData ? 'animate-spin' : ''} />
+              <span className="text-sm font-medium">Refresh</span>
+            </button>
+          )}
+        </div>
+      </div>
+
       <div className="bg-white rounded-2xl shadow-lg border border-purple-100 overflow-hidden flex flex-col" style={{ height: '75vh' }}>
         {/* Messages */}
         <div 
