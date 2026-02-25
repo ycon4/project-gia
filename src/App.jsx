@@ -39,47 +39,24 @@ function App() {
   }, []);
 
   const loadDatabaseData = async () => {
-    setIsLoadingData(true);
-    try {
-      // Update this array with your actual collection names
-      const collections = ['students'];
-      const data = {};
-      
-      console.log('📊 Loading database collections...');
-      
-      for (const collectionName of collections) {
-        try {
-          const docs = await getAllDocuments(collectionName);
-          data[collectionName] = docs;
-          console.log(`✅ Loaded ${docs.length} documents from ${collectionName}`);
-        } catch (error) {
-          console.warn(`⚠️ Could not load collection ${collectionName}:`, error);
-          data[collectionName] = [];
-        }
-      }
-      
-      setDbData(data);
-      setDataLoaded(true);
-      
-      const totalRecords = Object.values(data).reduce((sum, docs) => sum + docs.length, 0);
-      console.log(`✅ Database loaded: ${totalRecords} total records`);
-      
-      // Update welcome message with data info
-      setMessages([{
-        role: 'assistant',
-        content: `Hello! I am GIA, the Gender and Development Center Information Assistant. I've loaded **${totalRecords} records** from your database. I can now help you analyze:\n\n${Object.entries(data).map(([col, docs]) => `- **${col}**: ${docs.length} records`).join('\n')}\n\nWhat would you like to know?`
-      }]);
-      
-    } catch (error) {
-      console.error('❌ Error loading database data:', error);
-      setMessages([{
-        role: 'assistant',
-        content: 'Hello! I am GIA. I encountered an issue loading the database. I can still chat with you, but I won\'t have access to data analysis features.'
-      }]);
-    } finally {
-      setIsLoadingData(false);
+  setIsLoadingData(true);
+  try {
+    // These match your Excel sheet names exactly
+    const collections = ['master_list', 'student_engagement', 'employee_specific', 'student_graduate'];
+    const data = {};
+    
+    for (const collectionName of collections) {
+      const docs = await getAllDocuments(collectionName);
+      data[collectionName] = docs;
     }
-  };
+    
+    setDbData(data);
+    setDataLoaded(true);
+    // ... rest of your existing logic
+  } catch (error) {
+    console.error("Error loading multi-collection data:", error);
+  }
+};
 
   const handleSendMessage = async (e) => {
     e.preventDefault();
@@ -180,57 +157,61 @@ Please analyze the data above and answer the user's question. Use tables, lists,
     }
   };
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 relative">
-      {/* Navigation */}
-      <nav className="bg-white shadow-md border-b border-purple-100">
-        <div className="px-6 py-4">
-          <div className="flex items-center justify-between w-full">
-            <div className="flex items-center space-x-3">
-              <div className="w-12 h-12 bg-gradient-to-br from-purple-600 to-purple-800 rounded-lg flex items-center justify-center shadow-lg">
-                <span className="text-white font-bold text-xl">GIA</span>
-              </div>
-              <div>
-                <div className="text-gray-800 font-bold text-lg">GIA</div>
-                <div className="text-gray-600 text-sm">Gender and Development Center Information Assistant</div>
+return (
+  <div className="min-h-screen bg-slate-50 relative overflow-x-hidden">
+    {/* Decorative Background Orbs */}
+    <div className="fixed inset-0 overflow-hidden pointer-events-none -z-10">
+      <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-purple-100/50 rounded-full blur-[120px]" />
+      <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-blue-100/50 rounded-full blur-[120px]" />
+    </div>
+
+    {/* Navigation */}
+    <nav className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-slate-200/60">
+      <div className="max-w-7xl mx-auto px-6 py-3">
+        <div className="flex items-center justify-between">
+          
+          {/* Brand Identity */}
+          <div className="flex items-center gap-4">
+            <div className="relative group cursor-pointer" onClick={() => setActiveSection('home')}>
+              <div className="absolute -inset-1 bg-gradient-to-r from-purple-600 to-blue-600 rounded-2xl blur opacity-25 group-hover:opacity-50 transition duration-300"></div>
+              <div className="relative w-11 h-11 bg-slate-900 rounded-xl flex items-center justify-center shadow-xl">
+                <span className="text-white font-black text-xs tracking-tighter">GIA</span>
               </div>
             </div>
-            
-            <div className="flex items-center space-x-2">
-              <button 
-                onClick={() => setActiveSection('home')}
-                className={`flex items-center space-x-2 px-5 py-2.5 rounded-lg transition font-medium ${
-                  activeSection === 'home' ? 'bg-purple-700 text-white shadow-md' : 'text-gray-700 hover:bg-purple-50'
-                }`}
-              >
-                <HomeIcon size={18} />
-                <span>Home</span>
-              </button>
-              <button 
-                onClick={() => setActiveSection('data')}
-                className={`flex items-center space-x-2 px-5 py-2.5 rounded-lg transition font-medium ${
-                  activeSection === 'data' ? 'bg-purple-700 text-white shadow-md' : 'text-gray-700 hover:bg-purple-50'
-                }`}
-              >
-                <BarChart3 size={18} />
-                <span>Dashboard</span>
-              </button>
-              <button 
-                onClick={() => setActiveSection('chat')}
-                className={`flex items-center space-x-2 px-5 py-2.5 rounded-lg transition font-medium ${
-                  activeSection === 'chat' ? 'bg-purple-700 text-white shadow-md' : 'text-gray-700 hover:bg-purple-50'
-                }`}
-              >
-                <MessageCircle size={18} />
-                <span>Chat with GIA</span>
-              </button>
+            <div className="hidden sm:block">
+              <div className="text-slate-900 font-black text-sm uppercase tracking-tighter leading-none">MSU-IIT GADC</div>
+              <div className="text-slate-500 text-[10px] font-bold uppercase tracking-widest mt-1">Information Assistant</div>
             </div>
           </div>
+          
+          {/* Navigation Links */}
+          <div className="flex items-center p-1 bg-slate-100/50 rounded-2xl border border-slate-200/50">
+            <NavButton 
+              active={activeSection === 'home'} 
+              onClick={() => setActiveSection('home')}
+              icon={<HomeIcon size={16} />}
+              label="Home"
+            />
+            <NavButton 
+              active={activeSection === 'data'} 
+              onClick={() => setActiveSection('data')}
+              icon={<BarChart3 size={16} />}
+              label="Dashboard"
+            />
+            <NavButton 
+              active={activeSection === 'chat'} 
+              onClick={() => setActiveSection('chat')}
+              icon={<MessageCircle size={16} />}
+              label="Chat AI"
+            />
+          </div>
         </div>
-      </nav>
+      </div>
+    </nav>
 
-      {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-6 py-12">
+    {/* Main Content */}
+    <main className="max-w-7xl mx-auto px-6 py-8">
+      <div className="transition-all duration-500 ease-in-out">
         {activeSection === 'home' && <HomePage />}
         {activeSection === 'data' && <DashboardPage />}
         {activeSection === 'chat' && (
@@ -246,14 +227,32 @@ Please analyze the data above and answer the user's question. Use tables, lists,
           />
         )}
       </div>
+    </main>
 
-      {/* Floating Chat Button */}
-      <FloatingChatButton 
-        onClick={() => setActiveSection('chat')}
-        isOnChatPage={activeSection === 'chat'}
-      />
-    </div>
+    {/* Floating Chat Button */}
+    <FloatingChatButton 
+      onClick={() => setActiveSection('chat')}
+      isOnChatPage={activeSection === 'chat'}
+    />
+  </div>
+);
+
+// Internal Helper for Navigation Buttons
+function NavButton({ active, onClick, icon, label }) {
+  return (
+    <button 
+      onClick={onClick}
+      className={`flex items-center gap-2 px-6 py-2.5 rounded-xl transition-all duration-300 font-black text-[10px] uppercase tracking-widest ${
+        active 
+          ? 'bg-white text-purple-600 shadow-sm ring-1 ring-slate-200' 
+          : 'text-slate-500 hover:text-slate-900'
+      }`}
+    >
+      {icon}
+      <span>{label}</span>
+    </button>
   );
+}
 }
 
 export default App;

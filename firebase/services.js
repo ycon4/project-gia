@@ -12,7 +12,8 @@ import {
   orderBy, 
   limit,
   setDoc,
-  onSnapshot
+  onSnapshot,
+  writeBatch
 } from 'firebase/firestore';
 import { db } from './config';
 
@@ -185,6 +186,16 @@ export const deleteDocument = async (collectionName, documentId) => {
     console.error('Error deleting document:', error);
     throw error;
   }
+};
+
+export const deleteAYData = async (sector, academicYear) => {
+  const q = query(collection(db, sector), where("academicYear", "==", academicYear));
+  const querySnapshot = await getDocs(q);
+  const batch = writeBatch(db);
+  querySnapshot.forEach((docSnap) => {
+    batch.delete(doc(db, sector, docSnap.id));
+  });
+  return await batch.commit();
 };
 
 // ==================== REAL-TIME LISTENERS ====================
