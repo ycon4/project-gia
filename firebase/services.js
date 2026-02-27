@@ -13,6 +13,7 @@ import {
   limit,
   setDoc,
   onSnapshot,
+  serverTimestamp,
   writeBatch
 } from 'firebase/firestore';
 import { db } from './config';
@@ -92,17 +93,13 @@ export const getDocument = async (collectionName, documentId) => {
  * @returns {Promise<Array>} - Array of documents
  */
 export const getAllDocuments = async (collectionName) => {
-  try {
-    const querySnapshot = await getDocs(collection(db, collectionName));
-    const documents = [];
-    querySnapshot.forEach((doc) => {
-      documents.push({ id: doc.id, ...doc.data() });
-    });
-    return documents;
-  } catch (error) {
-    console.error('Error getting documents:', error);
-    throw error;
-  }
+  const colRef = collection(db, collectionName);
+  const q = query(colRef); 
+  const querySnapshot = await getDocs(q);
+  return querySnapshot.docs.map(doc => ({
+    id: doc.id,
+    ...doc.data()
+  }));
 };
 
 /**
@@ -117,18 +114,15 @@ export const queryDocuments = async (collectionName, conditions = [], orderByFie
   try {
     let q = collection(db, collectionName);
     
-    // Apply where conditions
     const constraints = [];
     conditions.forEach(([field, operator, value]) => {
       constraints.push(where(field, operator, value));
     });
     
-    // Apply orderBy
     if (orderByField) {
       constraints.push(orderBy(orderByField));
     }
     
-    // Apply limit
     if (limitCount) {
       constraints.push(limit(limitCount));
     }
@@ -251,4 +245,46 @@ export const listenToCollection = (collectionName, callback, conditions = []) =>
   });
   
   return unsubscribe;
+};
+
+// Save a new event to Firestore
+export const saveEvent = async (eventData) => {
+  try {
+    const docRef = await addDoc(collection(db, 'events'), {
+      ...eventData,
+      createdAt: serverTimestamp()
+    });
+    return { id: docRef.id, ...eventData };
+  } catch (error) {
+    console.error("Error adding event: ", error);
+    throw error;
+  }
+};
+
+// Delete an event AND its associated attendance records from Firestore
+export const removeEvent = async (eventId) => {
+  try {
+    const batch = writeBatch(db);
+
+    // 1. Reference the event document and add to batch delete
+    const eventRef = doc(db, 'events', eventId);
+    batch.delete(eventRef);
+
+    // 2. Find all attendance records linked to this event
+    const attendanceRef = collection(db, 'attendance');
+    const q = query(attendanceRef, where("eventId", "==", eventId));
+    const querySnapshot = await getDocs(q);
+
+    // 3. Add each attendance record to the batch delete
+    querySnapshot.forEach((docSnap) => {
+      batch.delete(docSnap.ref);
+    });
+
+    // 4. Commit all deletions at once
+    await batch.commit();
+    console.log(`Event ${eventId} and associated attendance records deleted.`);
+  } catch (error) {
+    console.error("Error deleting event and records: ", error);
+    throw error;
+  }
 };
