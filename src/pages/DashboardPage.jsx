@@ -30,7 +30,7 @@ const SECTORS = {
     color: "blue",
     headers: [
       "employee_id", "sex", "employee_type", "administrative_officials", 
-      "plantilla_position", "income", "ethnicity", "religion", 
+      "plantilla_position", "income_order", "ethnicity", "religion", 
       "place_of_birth", "special_needs"
     ]
   },
@@ -38,7 +38,7 @@ const SECTORS = {
     label: "Student Engagement",
     icon: <Zap size={18} />,
     color: "amber",
-    headers: ["student_id", "sex", "scholarship_status", "student_council", "organizations", "publication"]
+    headers: ["student_id", "sex", "scholarship_status", "academic_standing", "student_council", "organizations", "publication"]
   }
 };
 

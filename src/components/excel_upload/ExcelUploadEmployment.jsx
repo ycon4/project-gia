@@ -48,7 +48,7 @@ export default function ExcelUploadEmployee({ activeTab, onUploadSuccess }) {
         // 1. Define Expected Headers
         const expected = [
           "employee_id", "sex", "employee_type", "administrative_officials", 
-          "plantilla_position", "income", "ethnicity", "religion", 
+          "plantilla_position", "income", "income_order", "ethnicity", "religion", 
           "place_of_birth", "special_needs"
         ];
 
@@ -68,7 +68,7 @@ export default function ExcelUploadEmployee({ activeTab, onUploadSuccess }) {
             employee_type: row.employee_type,
             administrative_officials: row.administrative_officials,
             plantilla_position: row.plantilla_position,
-            income: row.income,
+            income_order: row.income_order,
             ethnicity: row.ethnicity,
             religion: row.religion,
             place_of_birth: row.place_of_birth,
@@ -100,7 +100,7 @@ export default function ExcelUploadEmployee({ activeTab, onUploadSuccess }) {
         alert(
           `UPLOAD FAILED\n\n${error.message}\n\n` +
           `Please ensure your Excel uses these EXACT headers (lowercase):\n` +
-          `employee_id, sex, employee_type, administrative_officials, plantilla_position, income, ethnicity, religion, place_of_birth, special_needs`
+          `employee_id, sex, employee_type, administrative_officials, plantilla_position, income, income_order, ethnicity, religion, place_of_birth, special_needs`
         );
       } finally {
         setIsUploading(false);

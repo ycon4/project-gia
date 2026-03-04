@@ -76,6 +76,7 @@ export default function ExcelUploadEngagement({ activeTab, onUploadSuccess }) {
           ...baseData,
           // Using the new helper to keep your actual text inputs!
           scholarship_status: row.scholarship_status || row['Scholarship'],
+          academic_standing: normalizeEngagementValue(row.academic_standing || row['Academic Standing']),
           publication: normalizeEngagementValue(row.student_publication || row['Publication']),
           student_council: normalizeEngagementValue(row.student_council || row['Student Council']),
           organizations: normalizeEngagementValue(row.student_organization || row['Organizations']),
