@@ -8,19 +8,26 @@ const COLLECTION_KEYWORDS = {
   employee_information: ['employee', 'staff', 'faculty', 'teacher', 'instructor', 'professor', 'worker', 'personnel', 'hire', 'hired'],
   events: ['event', 'activity', 'activities', 'program', 'seminar', 'workshop', 'conference', 'celebration'],
   student_engagement: ['engagement', 'engaged', 'participation', 'participate', 'involved', 'involvement', 'club', 'org', 'standing', 'academic', 'lister', 'scholarship', 'organization', 'publication'],
-  student_enrollment: ['enrollment', 'enrolled', 'enroll', 'admission', 'admitted', 'registered', 'registration', 'student count', 'student population'],
+  student_enrollment: ['enrollment', 'enrolled', 'enroll', 'admission', 'admitted', 'registered', 'registration', 'student count', 'student population', 'college', 'program', 'year level', 'ip', 'pwd', 'solo parent', '4ps', 'ofw', 'working student'],
 };
 
-// Fields to cross-tabulate with 'sex' per collection
+// Fields to cross-tabulate with sex per collection
 const CROSS_TAB_FIELDS = {
-  student_engagement: ['academic_standing', 'scholarship_status', 'organizations', 'publication', 'student_council', 'academicYear'],
-  student_enrollment: ['course', 'year_level', 'college'],
+  student_engagement: ['academic_standing', 'scholarship_status', 'organizations', 'publication', 'student_council'],
+  student_enrollment: ['college', 'program', 'year_level', '_4ps_beneficiary', '_pwd', '_solo_parent', '_ip_member', '_ofw_dependent', '_working_student', '_first_generation', '_international_student'],
   employee_information: ['department', 'position', 'employment_type'],
   attendance: ['event', 'status'],
 };
 
+// Which collections should be grouped by academic year before cross-tabbing
+const ACADEMIC_YEAR_FIELD = {
+  student_enrollment: 'academicYear',
+  student_engagement: 'academicYear',
+  employee_information: 'academicYear',
+};
+
 /**
- * Generate a cross-tabulation of sex vs another field
+ * Generate a cross-tabulation of sex vs a field for a given set of documents
  */
 const generateCrossTab = (documents, groupField, sexField = 'sex') => {
   const sexValues = [...new Set(documents.map(d => d[sexField]).filter(Boolean))].sort();
@@ -28,11 +35,10 @@ const generateCrossTab = (documents, groupField, sexField = 'sex') => {
 
   if (groupValues.length === 0 || sexValues.length === 0) return '';
 
-  // Build counts
   const counts = {};
   groupValues.forEach(g => {
     counts[g] = {};
-    sexValues.forEach(s => counts[g][s] = 0);
+    sexValues.forEach(s => (counts[g][s] = 0));
     counts[g]['Total'] = 0;
   });
 
@@ -45,10 +51,8 @@ const generateCrossTab = (documents, groupField, sexField = 'sex') => {
     }
   });
 
-  // Build markdown table
   const headers = [groupField, ...sexValues, 'Total'];
-  let table = `\n**Breakdown by ${groupField}:**\n`;
-  table += '| ' + headers.join(' | ') + ' |\n';
+  let table = '| ' + headers.join(' | ') + ' |\n';
   table += '| ' + headers.map(() => '---').join(' | ') + ' |\n';
 
   groupValues.forEach(g => {
@@ -56,7 +60,6 @@ const generateCrossTab = (documents, groupField, sexField = 'sex') => {
     table += '| ' + row.join(' | ') + ' |\n';
   });
 
-  // Totals row
   const totals = sexValues.map(s =>
     groupValues.reduce((sum, g) => sum + (counts[g][s] || 0), 0)
   );
@@ -67,9 +70,43 @@ const generateCrossTab = (documents, groupField, sexField = 'sex') => {
 };
 
 /**
+ * Generate cross-tabs grouped by academic year
+ * For each academic year, generates a breakdown table per cross-tab field
+ */
+const generateYearlyBreakdowns = (documents, crossTabFields, sexField, yearField) => {
+  let output = '';
+
+  // Get all academic years sorted
+  const years = [...new Set(documents.map(d => d[yearField]).filter(Boolean))].sort();
+
+  years.forEach(year => {
+    const yearDocs = documents.filter(d => d[yearField] === year);
+    output += `\n--- Academic Year: ${year} (${yearDocs.length} records) ---\n`;
+
+    crossTabFields.forEach(field => {
+      const fieldExists = yearDocs.some(d => d[field] !== undefined && d[field] !== null && d[field] !== '');
+      if (fieldExists) {
+        output += `\n**Breakdown by ${field} (${year}):**\n`;
+        output += generateCrossTab(yearDocs, field, sexField);
+      }
+    });
+  });
+
+  // Also add an ALL-YEARS combined summary
+  output += `\n--- All Academic Years Combined (${documents.length} total records) ---\n`;
+  crossTabFields.forEach(field => {
+    const fieldExists = documents.some(d => d[field] !== undefined && d[field] !== null && d[field] !== '');
+    if (fieldExists) {
+      output += `\n**Overall Breakdown by ${field} (All Years):**\n`;
+      output += generateCrossTab(documents, field, sexField);
+    }
+  });
+
+  return output;
+};
+
+/**
  * Prepares database data for AI analysis
- * @param {Object} dbData - Database data organized by collection
- * @returns {string} - Formatted context for AI
  */
 export const prepareDataContext = (dbData) => {
   let context = "=== DATABASE OVERVIEW ===\n\n";
@@ -89,17 +126,27 @@ export const prepareDataContext = (dbData) => {
       const stats = generateStats(documents, fields);
       if (stats) context += stats;
 
-      // Cross-tabulations with sex field
-      const sexField = fields.includes('sex') ? 'sex' : fields.includes('gender') ? 'gender' : null;
-      const crossTabFields = CROSS_TAB_FIELDS[col] || [];
+      // Determine sex field
+      const sexField = fields.includes('sex') ? 'sex'
+        : fields.includes('gender') ? 'gender'
+        : null;
+
+      const crossTabFields = (CROSS_TAB_FIELDS[col] || []).filter(f => fields.includes(f));
+      const yearField = ACADEMIC_YEAR_FIELD[col];
 
       if (sexField && crossTabFields.length > 0) {
-        context += `\n   === SEX DISTRIBUTION BREAKDOWNS ===`;
-        crossTabFields.forEach(field => {
-          if (fields.includes(field)) {
+        context += `\n   === SEX DISTRIBUTION BREAKDOWNS ===\n`;
+
+        if (yearField && fields.includes(yearField)) {
+          // Group by academic year for more accurate breakdowns
+          context += generateYearlyBreakdowns(documents, crossTabFields, sexField, yearField);
+        } else {
+          // No year field — just do flat cross-tabs
+          crossTabFields.forEach(field => {
+            context += `\n**Breakdown by ${field}:**\n`;
             context += generateCrossTab(documents, field, sexField);
-          }
-        });
+          });
+        }
       }
 
       context += '\n';
@@ -117,7 +164,6 @@ const generateStats = (documents, fields) => {
 
   fields.forEach(field => {
     const values = documents.map(doc => doc[field]).filter(v => v !== undefined && v !== null && v !== '');
-
     if (values.length === 0) return;
 
     const numericValues = values.filter(v => typeof v === 'number');
@@ -131,9 +177,7 @@ const generateStats = (documents, fields) => {
       const uniqueValues = [...new Set(values)];
       if (uniqueValues.length <= 15) {
         const valueCounts = {};
-        values.forEach(v => {
-          valueCounts[v] = (valueCounts[v] || 0) + 1;
-        });
+        values.forEach(v => { valueCounts[v] = (valueCounts[v] || 0) + 1; });
         const sorted = Object.entries(valueCounts).sort((a, b) => b[1] - a[1]);
         stats += `   • ${field}: ${sorted.map(([val, count]) => `${val}(${count})`).join(', ')}\n`;
       } else {
@@ -157,9 +201,9 @@ export const analyzeWithAI = async (userMessage, dbData) => {
 === USER QUESTION ===
 ${userMessage}
 
-Please analyze the data above and answer the user's question accurately using the EXACT numbers from the breakdown tables provided above. Do not estimate or guess. Use tables, lists, and proper markdown formatting in your response.`;
+Please analyze the data above and answer the user's question accurately using the EXACT numbers from the breakdown tables provided. Do not estimate or guess. If the user asks about a specific academic year, use only that year's table. If no year is specified, use the combined all-years table. Use proper markdown formatting in your response.`;
 
-    console.log('📤 Sending to AI:', enrichedMessage.substring(0, 200) + '...');
+    console.log('📤 Sending to AI:', enrichedMessage.substring(0, 300) + '...');
 
     const response = await fetch(API_URL, {
       method: 'POST',
@@ -215,8 +259,7 @@ export const generateMarkdownTable = (data, fields) => {
   let table = '| ' + fields.join(' | ') + ' |\n';
   table += '| ' + fields.map(() => '---').join(' | ') + ' |\n';
 
-  const limitedData = data.slice(0, 10);
-  limitedData.forEach(row => {
+  data.slice(0, 10).forEach(row => {
     const values = fields.map(field => {
       const value = row[field];
       if (value === undefined || value === null) return '-';
@@ -226,9 +269,7 @@ export const generateMarkdownTable = (data, fields) => {
     table += '| ' + values.join(' | ') + ' |\n';
   });
 
-  if (data.length > 10) {
-    table += `\n*Showing 10 of ${data.length} records*\n`;
-  }
+  if (data.length > 10) table += `\n*Showing 10 of ${data.length} records*\n`;
 
   return table;
 };
