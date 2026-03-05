@@ -7,8 +7,26 @@ const COLLECTION_KEYWORDS = {
   attendance: ['attendance', 'absent', 'present', 'attended', 'missing', 'show up', 'class attendance'],
   employee_information: ['employee', 'staff', 'faculty', 'teacher', 'instructor', 'professor', 'worker', 'personnel', 'hire', 'hired'],
   events: ['event', 'activity', 'activities', 'program', 'seminar', 'workshop', 'conference', 'celebration'],
-  student_engagement: ['engagement', 'engaged', 'participation', 'participate', 'involved', 'involvement', 'club', 'org', 'standing', 'academic', 'lister', 'scholarship', 'organization', 'publication'],
+  student_engagement: ['engagement', 'engaged', 'participation', 'participate', 'involved', 'involvement', 'club', 'org', 'standing', 'academic standing', 'lister', 'scholarship', 'organization', 'publication', 'student council'],
   student_enrollment: ['enrollment', 'enrolled', 'enroll', 'admission', 'admitted', 'registered', 'registration', 'student count', 'student population', 'college', 'program', 'year level', 'ip', 'pwd', 'solo parent', '4ps', 'ofw', 'working student'],
+};
+
+// Human-readable display names for each collection
+const COLLECTION_DISPLAY_NAMES = {
+  student_enrollment: 'Student Enrollment',
+  student_engagement: 'Student Engagement',
+  employee_information: 'Employee Information',
+  attendance: 'Attendance',
+  events: 'Events',
+};
+
+// Exact fields that belong to each collection — AI must ONLY use these for that collection
+const COLLECTION_FIELDS_DESCRIPTION = {
+  student_enrollment: 'college, program, year_level, sex, academicYear, _4ps_beneficiary, _pwd, _solo_parent, _ip_member, _ofw_dependent, _working_student, _first_generation, _international_student, ethnicity, religion, income_PSA_category, place_of_origin, occupation_of_household_head',
+  student_engagement: 'academic_standing, scholarship_status, organizations, publication, student_council, sex, academicYear',
+  employee_information: 'department, position, employment_type, sex, academicYear',
+  attendance: 'event, status, sex',
+  events: 'title, date, description',
 };
 
 // Fields to cross-tabulate with sex per collection
@@ -71,33 +89,31 @@ const generateCrossTab = (documents, groupField, sexField = 'sex') => {
 
 /**
  * Generate cross-tabs grouped by academic year
- * For each academic year, generates a breakdown table per cross-tab field
  */
 const generateYearlyBreakdowns = (documents, crossTabFields, sexField, yearField) => {
   let output = '';
 
-  // Get all academic years sorted
   const years = [...new Set(documents.map(d => d[yearField]).filter(Boolean))].sort();
 
   years.forEach(year => {
     const yearDocs = documents.filter(d => d[yearField] === year);
-    output += `\n--- Academic Year: ${year} (${yearDocs.length} records) ---\n`;
+    output += `\n[Academic Year: ${year} — ${yearDocs.length} records]\n`;
 
     crossTabFields.forEach(field => {
       const fieldExists = yearDocs.some(d => d[field] !== undefined && d[field] !== null && d[field] !== '');
       if (fieldExists) {
-        output += `\n**Breakdown by ${field} (${year}):**\n`;
+        output += `\nBreakdown by ${field} for ${year}:\n`;
         output += generateCrossTab(yearDocs, field, sexField);
       }
     });
   });
 
-  // Also add an ALL-YEARS combined summary
-  output += `\n--- All Academic Years Combined (${documents.length} total records) ---\n`;
+  // Combined all-years summary
+  output += `\n[All Academic Years Combined — ${documents.length} total records]\n`;
   crossTabFields.forEach(field => {
     const fieldExists = documents.some(d => d[field] !== undefined && d[field] !== null && d[field] !== '');
     if (fieldExists) {
-      output += `\n**Overall Breakdown by ${field} (All Years):**\n`;
+      output += `\nOverall Breakdown by ${field} (All Years Combined):\n`;
       output += generateCrossTab(documents, field, sexField);
     }
   });
@@ -107,24 +123,37 @@ const generateYearlyBreakdowns = (documents, crossTabFields, sexField, yearField
 
 /**
  * Prepares database data for AI analysis
+ * Each collection is strictly separated with clear boundaries and field declarations
  */
 export const prepareDataContext = (dbData) => {
-  let context = "=== DATABASE OVERVIEW ===\n\n";
+  let context = '';
+  context += '╔══════════════════════════════════════════════════════════════╗\n';
+  context += '║                    MSU-IIT GADC DATABASE                     ║\n';
+  context += '╚══════════════════════════════════════════════════════════════╝\n\n';
+  context += 'IMPORTANT INSTRUCTION FOR AI: Each section below is a completely separate and independent dataset. ';
+  context += 'Data from one section MUST NOT be used, referenced, or combined with data from another section. ';
+  context += 'Only use the data from the section that is relevant to the user\'s question.\n\n';
 
   for (const [col, documents] of Object.entries(dbData)) {
-    context += `📊 Collection: ${col}\n`;
-    context += `   Total Records: ${documents.length}\n`;
+    const displayName = COLLECTION_DISPLAY_NAMES[col] || col;
+    const fieldsDesc = COLLECTION_FIELDS_DESCRIPTION[col] || 'unknown';
+
+    context += `${'═'.repeat(64)}\n`;
+    context += `DATASET: ${displayName}\n`;
+    context += `${'═'.repeat(64)}\n`;
+    context += `Total Records: ${documents.length}\n`;
+    context += `Available Fields in this dataset ONLY: ${fieldsDesc}\n`;
+    context += `NOTE: This dataset does NOT contain fields from any other dataset above or below.\n`;
 
     if (documents.length > 0) {
       const sampleDoc = documents[0];
       const fields = Object.keys(sampleDoc).filter(key =>
         !['id', 'createdAt', 'updatedAt', 'uploadTimestamp', 'sourceFile'].includes(key)
       );
-      context += `   Fields: ${fields.join(', ')}\n`;
 
       // Basic stats
       const stats = generateStats(documents, fields);
-      if (stats) context += stats;
+      if (stats) context += '\nField Value Summary:\n' + stats;
 
       // Determine sex field
       const sexField = fields.includes('sex') ? 'sex'
@@ -135,22 +164,22 @@ export const prepareDataContext = (dbData) => {
       const yearField = ACADEMIC_YEAR_FIELD[col];
 
       if (sexField && crossTabFields.length > 0) {
-        context += `\n   === SEX DISTRIBUTION BREAKDOWNS ===\n`;
+        context += `\nSEX-DISAGGREGATED DATA (SDD) FOR ${displayName.toUpperCase()}:\n`;
+        context += `(These numbers apply ONLY to the ${displayName} dataset)\n`;
 
         if (yearField && fields.includes(yearField)) {
-          // Group by academic year for more accurate breakdowns
           context += generateYearlyBreakdowns(documents, crossTabFields, sexField, yearField);
         } else {
-          // No year field — just do flat cross-tabs
           crossTabFields.forEach(field => {
-            context += `\n**Breakdown by ${field}:**\n`;
+            context += `\nBreakdown by ${field}:\n`;
             context += generateCrossTab(documents, field, sexField);
           });
         }
       }
-
-      context += '\n';
     }
+
+    context += `\nEND OF ${displayName.toUpperCase()} DATASET\n`;
+    context += `${'═'.repeat(64)}\n\n`;
   }
 
   return context;
@@ -172,16 +201,16 @@ const generateStats = (documents, fields) => {
       const avg = sum / numericValues.length;
       const min = Math.min(...numericValues);
       const max = Math.max(...numericValues);
-      stats += `   • ${field}: avg=${avg.toFixed(2)}, min=${min}, max=${max}\n`;
+      stats += `  • ${field}: avg=${avg.toFixed(2)}, min=${min}, max=${max}\n`;
     } else {
       const uniqueValues = [...new Set(values)];
       if (uniqueValues.length <= 15) {
         const valueCounts = {};
         values.forEach(v => { valueCounts[v] = (valueCounts[v] || 0) + 1; });
         const sorted = Object.entries(valueCounts).sort((a, b) => b[1] - a[1]);
-        stats += `   • ${field}: ${sorted.map(([val, count]) => `${val}(${count})`).join(', ')}\n`;
+        stats += `  • ${field}: ${sorted.map(([val, count]) => `${val}(${count})`).join(', ')}\n`;
       } else {
-        stats += `   • ${field}: ${uniqueValues.length} unique values\n`;
+        stats += `  • ${field}: ${uniqueValues.length} unique values\n`;
       }
     }
   });
@@ -198,10 +227,23 @@ export const analyzeWithAI = async (userMessage, dbData) => {
 
     const enrichedMessage = `${dataContext}
 
-=== USER QUESTION ===
+════════════════════════════════════════════════════════════════
+USER QUESTION
+════════════════════════════════════════════════════════════════
 ${userMessage}
 
-Please analyze the data above and answer the user's question accurately using the EXACT numbers from the breakdown tables provided. Do not estimate or guess. If the user asks about a specific academic year, use only that year's table. If no year is specified, use the combined all-years table. Use proper markdown formatting in your response.`;
+════════════════════════════════════════════════════════════════
+STRICT INSTRUCTIONS FOR ANSWERING
+════════════════════════════════════════════════════════════════
+1. Identify which single dataset is relevant to this question.
+2. Use ONLY the data from that dataset. Never mix data from different datasets.
+3. Report ONLY the exact numbers from the pre-computed tables above. Do not calculate, estimate, or derive any figures.
+4. If the user asks about a specific academic year, use only that year's table.
+5. If no academic year is specified, use the combined all-years table.
+6. If the requested breakdown does not exist in the data, say: "That specific breakdown is not available in the current data."
+7. Use proper markdown formatting in your response.
+8. Never mention internal collection names — use their display names (e.g. "Student Enrollment" not "student_enrollment").
+`;
 
     console.log('📤 Sending to AI:', enrichedMessage.substring(0, 300) + '...');
 
