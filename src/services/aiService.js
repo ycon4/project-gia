@@ -1,6 +1,70 @@
 // src/services/aiService.js
 
-const API_URL = 'http://localhost:3001/api/chat';
+const API_URL = '/api/chat';
+
+// Map of keywords that relate to each collection
+const COLLECTION_KEYWORDS = {
+  attendance: ['attendance', 'absent', 'present', 'attended', 'missing', 'show up', 'class attendance'],
+  employee_information: ['employee', 'staff', 'faculty', 'teacher', 'instructor', 'professor', 'worker', 'personnel', 'hire', 'hired'],
+  events: ['event', 'activity', 'activities', 'program', 'seminar', 'workshop', 'conference', 'celebration'],
+  student_engagement: ['engagement', 'engaged', 'participation', 'participate', 'involved', 'involvement', 'club', 'org', 'standing', 'academic', 'lister', 'scholarship', 'organization', 'publication'],
+  student_enrollment: ['enrollment', 'enrolled', 'enroll', 'admission', 'admitted', 'registered', 'registration', 'student count', 'student population'],
+};
+
+// Fields to cross-tabulate with 'sex' per collection
+const CROSS_TAB_FIELDS = {
+  student_engagement: ['academic_standing', 'scholarship_status', 'organizations', 'publication', 'student_council', 'academicYear'],
+  student_enrollment: ['course', 'year_level', 'college'],
+  employee_information: ['department', 'position', 'employment_type'],
+  attendance: ['event', 'status'],
+};
+
+/**
+ * Generate a cross-tabulation of sex vs another field
+ */
+const generateCrossTab = (documents, groupField, sexField = 'sex') => {
+  const sexValues = [...new Set(documents.map(d => d[sexField]).filter(Boolean))].sort();
+  const groupValues = [...new Set(documents.map(d => d[groupField]).filter(Boolean))].sort();
+
+  if (groupValues.length === 0 || sexValues.length === 0) return '';
+
+  // Build counts
+  const counts = {};
+  groupValues.forEach(g => {
+    counts[g] = {};
+    sexValues.forEach(s => counts[g][s] = 0);
+    counts[g]['Total'] = 0;
+  });
+
+  documents.forEach(doc => {
+    const group = doc[groupField];
+    const sex = doc[sexField];
+    if (group && sex && counts[group]) {
+      counts[group][sex] = (counts[group][sex] || 0) + 1;
+      counts[group]['Total']++;
+    }
+  });
+
+  // Build markdown table
+  const headers = [groupField, ...sexValues, 'Total'];
+  let table = `\n**Breakdown by ${groupField}:**\n`;
+  table += '| ' + headers.join(' | ') + ' |\n';
+  table += '| ' + headers.map(() => '---').join(' | ') + ' |\n';
+
+  groupValues.forEach(g => {
+    const row = [g, ...sexValues.map(s => counts[g][s] || 0), counts[g]['Total']];
+    table += '| ' + row.join(' | ') + ' |\n';
+  });
+
+  // Totals row
+  const totals = sexValues.map(s =>
+    groupValues.reduce((sum, g) => sum + (counts[g][s] || 0), 0)
+  );
+  const grandTotal = totals.reduce((a, b) => a + b, 0);
+  table += '| **Total** | ' + totals.join(' | ') + ' | ' + grandTotal + ' |\n';
+
+  return table;
+};
 
 /**
  * Prepares database data for AI analysis
@@ -9,26 +73,39 @@ const API_URL = 'http://localhost:3001/api/chat';
  */
 export const prepareDataContext = (dbData) => {
   let context = "=== DATABASE OVERVIEW ===\n\n";
-  
-  for (const [collection, documents] of Object.entries(dbData)) {
-    context += `📊 Collection: ${collection}\n`;
-    context += `   Records: ${documents.length}\n`;
-    
+
+  for (const [col, documents] of Object.entries(dbData)) {
+    context += `📊 Collection: ${col}\n`;
+    context += `   Total Records: ${documents.length}\n`;
+
     if (documents.length > 0) {
-      // Get sample fields from first document
       const sampleDoc = documents[0];
-      const fields = Object.keys(sampleDoc).filter(key => key !== 'id');
+      const fields = Object.keys(sampleDoc).filter(key =>
+        !['id', 'createdAt', 'updatedAt', 'uploadTimestamp', 'sourceFile'].includes(key)
+      );
       context += `   Fields: ${fields.join(', ')}\n`;
-      
-      // Add statistics
+
+      // Basic stats
       const stats = generateStats(documents, fields);
-      if (stats) {
-        context += stats;
+      if (stats) context += stats;
+
+      // Cross-tabulations with sex field
+      const sexField = fields.includes('sex') ? 'sex' : fields.includes('gender') ? 'gender' : null;
+      const crossTabFields = CROSS_TAB_FIELDS[col] || [];
+
+      if (sexField && crossTabFields.length > 0) {
+        context += `\n   === SEX DISTRIBUTION BREAKDOWNS ===`;
+        crossTabFields.forEach(field => {
+          if (fields.includes(field)) {
+            context += generateCrossTab(documents, field, sexField);
+          }
+        });
       }
+
       context += '\n';
     }
   }
-  
+
   return context;
 };
 
@@ -37,13 +114,12 @@ export const prepareDataContext = (dbData) => {
  */
 const generateStats = (documents, fields) => {
   let stats = '';
-  
+
   fields.forEach(field => {
-    const values = documents.map(doc => doc[field]).filter(v => v !== undefined && v !== null);
-    
+    const values = documents.map(doc => doc[field]).filter(v => v !== undefined && v !== null && v !== '');
+
     if (values.length === 0) return;
-    
-    // Check if numeric
+
     const numericValues = values.filter(v => typeof v === 'number');
     if (numericValues.length > values.length * 0.5) {
       const sum = numericValues.reduce((a, b) => a + b, 0);
@@ -52,74 +128,56 @@ const generateStats = (documents, fields) => {
       const max = Math.max(...numericValues);
       stats += `   • ${field}: avg=${avg.toFixed(2)}, min=${min}, max=${max}\n`;
     } else {
-      // Categorical data
       const uniqueValues = [...new Set(values)];
-      if (uniqueValues.length <= 10) {
+      if (uniqueValues.length <= 15) {
         const valueCounts = {};
         values.forEach(v => {
           valueCounts[v] = (valueCounts[v] || 0) + 1;
         });
+        const sorted = Object.entries(valueCounts).sort((a, b) => b[1] - a[1]);
+        stats += `   • ${field}: ${sorted.map(([val, count]) => `${val}(${count})`).join(', ')}\n`;
+      } else {
         stats += `   • ${field}: ${uniqueValues.length} unique values\n`;
-        
-        // Show top 3 most common
-        const sorted = Object.entries(valueCounts)
-          .sort((a, b) => b[1] - a[1])
-          .slice(0, 3);
-        if (sorted.length > 0) {
-          stats += `     Top: ${sorted.map(([val, count]) => `${val}(${count})`).join(', ')}\n`;
-        }
       }
     }
   });
-  
+
   return stats;
 };
 
 /**
  * Call your backend API with database context
- * @param {string} userMessage - User's question
- * @param {Object} dbData - Database data
- * @returns {Promise<string>} - AI response
  */
 export const analyzeWithAI = async (userMessage, dbData) => {
   try {
-    // Prepare data context
     const dataContext = prepareDataContext(dbData);
-    
-    // Combine user message with data context
+
     const enrichedMessage = `${dataContext}
 
 === USER QUESTION ===
 ${userMessage}
 
-Please analyze the data above and answer the user's question. Use tables, lists, and proper markdown formatting in your response.`;
+Please analyze the data above and answer the user's question accurately using the EXACT numbers from the breakdown tables provided above. Do not estimate or guess. Use tables, lists, and proper markdown formatting in your response.`;
 
     console.log('📤 Sending to AI:', enrichedMessage.substring(0, 200) + '...');
 
-    // Call your backend API
     const response = await fetch(API_URL, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        message: enrichedMessage
-      })
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: enrichedMessage })
     });
 
-    if (!response.ok) {
-      throw new Error(`API error: ${response.status}`);
-    }
+    if (!response.ok) throw new Error(`API error: ${response.status}`);
 
     const data = await response.json();
-    
+
     if (data.reply) {
       console.log('📥 Received AI response');
       return data.reply;
     } else {
       throw new Error('No reply in response');
     }
-    
+
   } catch (error) {
     console.error('❌ Error calling AI service:', error);
     throw error;
@@ -127,44 +185,36 @@ Please analyze the data above and answer the user's question. Use tables, lists,
 };
 
 /**
- * Query specific data based on user intent
- * @param {string} userMessage - User's question
- * @param {Object} dbData - Database data
- * @returns {Object} - Relevant filtered data
+ * Query specific data based on user intent using keyword matching
  */
 export const extractRelevantData = (userMessage, dbData) => {
   const lowerMessage = userMessage.toLowerCase();
   const relevantData = {};
-  
-  // Check which collections are mentioned
+
   Object.keys(dbData).forEach(collection => {
-    if (lowerMessage.includes(collection.toLowerCase())) {
-      relevantData[collection] = dbData[collection];
-    }
+    const keywords = COLLECTION_KEYWORDS[collection] || [collection.toLowerCase()];
+    const isRelevant = keywords.some(keyword => lowerMessage.includes(keyword));
+    if (isRelevant) relevantData[collection] = dbData[collection];
   });
-  
-  // If no specific collection mentioned, include all
+
   if (Object.keys(relevantData).length === 0) {
+    console.log('📂 No specific collection matched — returning all collections');
     return dbData;
   }
-  
+
+  console.log('📂 Matched collections:', Object.keys(relevantData).join(', '));
   return relevantData;
 };
 
 /**
  * Generate a summary table from data
- * @param {Array} data - Array of documents
- * @param {Array} fields - Fields to include
- * @returns {string} - Markdown table
  */
 export const generateMarkdownTable = (data, fields) => {
   if (!data || data.length === 0) return '';
-  
-  // Header
+
   let table = '| ' + fields.join(' | ') + ' |\n';
   table += '| ' + fields.map(() => '---').join(' | ') + ' |\n';
-  
-  // Rows (limit to first 10 for readability)
+
   const limitedData = data.slice(0, 10);
   limitedData.forEach(row => {
     const values = fields.map(field => {
@@ -175,39 +225,31 @@ export const generateMarkdownTable = (data, fields) => {
     });
     table += '| ' + values.join(' | ') + ' |\n';
   });
-  
+
   if (data.length > 10) {
     table += `\n*Showing 10 of ${data.length} records*\n`;
   }
-  
+
   return table;
 };
 
 /**
  * Perform aggregation on data
- * @param {Array} data - Array of documents
- * @param {string} groupByField - Field to group by
- * @param {string} aggregateField - Field to aggregate (optional for count)
- * @param {string} operation - 'count', 'sum', 'avg', 'min', 'max'
- * @returns {Object} - Aggregated results
  */
 export const aggregateData = (data, groupByField, aggregateField = null, operation = 'count') => {
   const groups = {};
-  
+
   data.forEach(doc => {
     const groupValue = doc[groupByField] || 'Unknown';
-    if (!groups[groupValue]) {
-      groups[groupValue] = [];
-    }
+    if (!groups[groupValue]) groups[groupValue] = [];
     groups[groupValue].push(doc);
   });
-  
+
   const results = {};
-  
+
   Object.keys(groups).forEach(key => {
     const group = groups[key];
-    
-    switch(operation) {
+    switch (operation) {
       case 'count':
         results[key] = group.length;
         break;
@@ -226,25 +268,21 @@ export const aggregateData = (data, groupByField, aggregateField = null, operati
         break;
     }
   });
-  
+
   return results;
 };
 
 /**
  * Format aggregated data as a markdown table
- * @param {Object} aggregatedData - Results from aggregateData
- * @param {string} keyLabel - Label for the grouping column
- * @param {string} valueLabel - Label for the value column
- * @returns {string} - Markdown table
  */
 export const formatAggregationTable = (aggregatedData, keyLabel = 'Category', valueLabel = 'Value') => {
   let table = `| ${keyLabel} | ${valueLabel} |\n`;
   table += '|---|---|\n';
-  
+
   Object.entries(aggregatedData).forEach(([key, value]) => {
     const formattedValue = typeof value === 'number' ? value.toFixed(2) : value;
     table += `| ${key} | ${formattedValue} |\n`;
   });
-  
+
   return table;
 };

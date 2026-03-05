@@ -4,7 +4,7 @@ import HomePage from './pages/HomePage';
 import DashboardPage from './pages/DashboardPage';
 import ChatPage from './pages/ChatPage';
 import EventsPage from './pages/EventsPage';
-import RegistrationForm from './components/RegistrationForm'; // Added Import
+import RegistrationForm from './components/RegistrationForm';
 import FloatingChatButton from './components/FloatingChatButton';
 import { getAllDocuments, saveEvent, removeEvent } from '../firebase/services';
 import { prepareDataContext } from './services/aiService';
@@ -47,20 +47,17 @@ function App() {
   const loadDatabaseData = async () => {
     setIsLoadingData(true);
     try {
-      // Analytics Data
-      const collections = ['master_list', 'student_engagement', 'employee_specific', 'student_graduate'];
+      // ✅ Fixed: use actual collection names from Firebase
+      const collections = ['attendance', 'employee_information', 'events', 'student_engagement', 'student_enrollment'];
       const data = {};
       for (const col of collections) {
         data[col] = await getAllDocuments(col);
       }
       setDbData(data);
 
-      // Event & Attendance Data
-      const fetchedEvents = await getAllDocuments('events');
-      const fetchedAttendance = await getAllDocuments('attendance');
-      
-      setEvents(fetchedEvents);
-      setAttendance(fetchedAttendance);
+      // Event & Attendance Data (reuse already-fetched data)
+      setEvents(data['events'] || []);
+      setAttendance(data['attendance'] || []);
       setDataLoaded(true);
     } catch (error) {
       console.error("Error loading data:", error);
@@ -119,11 +116,9 @@ function App() {
       const hostname = window.location.hostname;
       const apiUrl = hostname === 'localhost' ? 'http://localhost:3001/api/chat' : '/api/chat';
       
+      // ✅ Fixed: always send data context when data is loaded
       let messageToSend = userMessage;
-      const dataKeywords = ['analyze', 'analysis', 'data', 'count', 'total', 'students', 'gender', 'stats'];
-      const isDataQuery = dataKeywords.some(keyword => userMessage.toLowerCase().includes(keyword));
-      
-      if (dataLoaded && isDataQuery) {
+      if (dataLoaded && Object.keys(dbData).length > 0) {
         const dataContext = prepareDataContext(dbData);
         messageToSend = `${dataContext}\n\n=== USER QUESTION ===\n${userMessage}`;
       }
