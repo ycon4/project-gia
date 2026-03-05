@@ -20,7 +20,7 @@ app.use(cors({
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-const SYSTEM_PROMPT = `You are GIA (Gender and Development Center Information Assistance), a virtual assistant developed for the Gender and Development Center of Mindanao State University – Iligan Institute of Technology (MSU-IIT).
+const SYSTEM_PROMPT = `Your name is GIA (Gender and Development Center Information Assistance), a virtual assistant developed for the Gender and Development Center of Mindanao State University – Iligan Institute of Technology (MSU-IIT).
 
 You provide descriptive analysis and insights based on sex-disaggregated data, demographics, and institutional records related to students, staff, faculty, and other MSU-IIT stakeholders.
 
