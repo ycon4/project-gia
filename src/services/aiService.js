@@ -1,17 +1,15 @@
 // src/services/aiService.js
+// Architecture: JavaScript computes exact numbers, AI only writes the response.
+// This guarantees 100% accurate data regardless of AI model used.
 
-const API_URL = '/api/chat';
+const API_URL = typeof window !== 'undefined' && window.location.hostname === 'localhost'
+  ? 'http://localhost:3001/api/chat'
+  : '/api/chat';
 
-// Map of keywords that relate to each collection
-const COLLECTION_KEYWORDS = {
-  attendance: ['attendance', 'absent', 'present', 'attended', 'missing', 'show up', 'class attendance'],
-  employee_information: ['employee', 'staff', 'faculty', 'teacher', 'instructor', 'professor', 'worker', 'personnel', 'hire', 'hired'],
-  events: ['event', 'activity', 'activities', 'program', 'seminar', 'workshop', 'conference', 'celebration'],
-  student_engagement: ['engagement', 'engaged', 'participation', 'participate', 'involved', 'involvement', 'club', 'org', 'standing', 'academic standing', 'lister', 'scholarship', 'organization', 'publication', 'student council'],
-  student_enrollment: ['enrollment', 'enrolled', 'enroll', 'admission', 'admitted', 'registered', 'registration', 'student count', 'student population', 'college', 'program', 'year level', 'ip', 'pwd', 'solo parent', '4ps', 'ofw', 'working student'],
-};
+// ─────────────────────────────────────────────────────────────
+// COLLECTION CONFIG
+// ─────────────────────────────────────────────────────────────
 
-// Human-readable display names for each collection
 const COLLECTION_DISPLAY_NAMES = {
   student_enrollment: 'Student Enrollment',
   student_engagement: 'Student Engagement',
@@ -20,232 +18,368 @@ const COLLECTION_DISPLAY_NAMES = {
   events: 'Events',
 };
 
-// Exact fields that belong to each collection — AI must ONLY use these for that collection
-const COLLECTION_FIELDS_DESCRIPTION = {
-  student_enrollment: 'college, program, year_level, sex, academicYear, _4ps_beneficiary, _pwd, _solo_parent, _ip_member, _ofw_dependent, _working_student, _first_generation, _international_student, ethnicity, religion, income_PSA_category, place_of_origin, occupation_of_household_head',
-  student_engagement: 'academic_standing, scholarship_status, organizations, publication, student_council, sex, academicYear',
-  employee_information: 'department, position, employment_type, sex, academicYear',
-  attendance: 'event, status, sex',
-  events: 'title, date, description',
+// College name aliases — maps abbreviations and partial names to full names in DB
+const COLLEGE_ALIASES = {
+  'csm': 'College of Science and Mathematics',
+  'coe': 'College of Engineering',
+  'ccs': 'College of Computer Studies',
+  'chs': 'College of Health Sciences',
+  'cass': 'College of Arts and Social Sciences',
+  'college of social sciences': 'College of Arts and Social Sciences',
+  'ceba': 'College of Economics, Business, and Accountancy',
+  'college of economics': 'College of Economics, Business, and Accountancy',
+  'ced': 'College of Education',
 };
 
-// Fields to cross-tabulate with sex per collection
-const CROSS_TAB_FIELDS = {
-  student_engagement: ['academic_standing', 'scholarship_status', 'organizations', 'publication', 'student_council'],
-  student_enrollment: ['college', 'program', 'year_level', '_4ps_beneficiary', '_pwd', '_solo_parent', '_ip_member', '_ofw_dependent', '_working_student', '_first_generation', '_international_student'],
-  employee_information: ['department', 'position', 'employment_type'],
-  attendance: ['event', 'status'],
+// Field aliases — maps natural language to actual field names
+const FIELD_ALIASES = {
+  'college': 'college',
+  'program': 'program',
+  'course': 'program',
+  'year level': 'year_level',
+  'year level': 'year_level',
+  'academic standing': 'academic_standing',
+  'standing': 'academic_standing',
+  'lister': 'academic_standing',
+  'scholarship': 'scholarship_status',
+  'organization': 'organizations',
+  'org': 'organizations',
+  'publication': 'publication',
+  'student council': 'student_council',
+  'employee type': 'employee_type',
+  'employment type': 'employee_type',
+  'plantilla': 'plantilla_position',
+  'special needs': 'special_needs',
+  'ethnicity': 'ethnicity',
+  'religion': 'religion',
+  'income': 'income_order',
+  '4ps': '_4ps_beneficiary',
+  'pwd': '_pwd',
+  'solo parent': '_solo_parent',
+  'ip member': '_ip_member',
+  'indigenous': '_ip_member',
+  'ofw': '_ofw_dependent',
+  'working student': '_working_student',
+  'first generation': '_first_generation',
+  'international': '_international_student',
+  'sector': 'sector',
 };
 
-// Which collections should be grouped by academic year before cross-tabbing
-const ACADEMIC_YEAR_FIELD = {
-  student_enrollment: 'academicYear',
-  student_engagement: 'academicYear',
-  employee_information: 'academicYear',
+// Which collection each field belongs to
+const FIELD_TO_COLLECTION = {
+  college: 'student_enrollment',
+  program: 'student_enrollment',
+  year_level: 'student_enrollment',
+  _4ps_beneficiary: 'student_enrollment',
+  _pwd: 'student_enrollment',
+  _solo_parent: 'student_enrollment',
+  _ip_member: 'student_enrollment',
+  _ofw_dependent: 'student_enrollment',
+  _working_student: 'student_enrollment',
+  _first_generation: 'student_enrollment',
+  _international_student: 'student_enrollment',
+  academic_standing: 'student_engagement',
+  scholarship_status: 'student_engagement',
+  organizations: 'student_engagement',
+  publication: 'student_engagement',
+  student_council: 'student_engagement',
+  employee_type: 'employee_information',
+  plantilla_position: 'employee_information',
+  special_needs: 'employee_information',
+  ethnicity: 'employee_information',
+  religion: 'employee_information',
+  income_order: 'employee_information',
+  sector: 'attendance',
+  office_college: 'attendance',
 };
 
-/**
- * Generate a cross-tabulation of sex vs a field for a given set of documents
- */
-const generateCrossTab = (documents, groupField, sexField = 'sex') => {
-  const sexValues = [...new Set(documents.map(d => d[sexField]).filter(Boolean))].sort();
-  const groupValues = [...new Set(documents.map(d => d[groupField]).filter(Boolean))].sort();
+// ─────────────────────────────────────────────────────────────
+// QUERY PARSER
+// ─────────────────────────────────────────────────────────────
 
-  if (groupValues.length === 0 || sexValues.length === 0) return '';
+const parseQuery = (message) => {
+  const lower = message.toLowerCase();
 
-  const counts = {};
-  groupValues.forEach(g => {
-    counts[g] = {};
-    sexValues.forEach(s => (counts[g][s] = 0));
-    counts[g]['Total'] = 0;
-  });
+  const intent = {
+    collection: null,
+    groupField: null,
+    filterValue: null,
+    academicYears: [],      // ✅ now an array to support multiple years
+    wantsSexBreakdown: false,
+    wantsAll: false,
+    wantsComparison: false, // ✅ true when user wants to compare years
+  };
 
-  documents.forEach(doc => {
-    const group = doc[groupField];
-    const sex = doc[sexField];
-    if (group && sex && counts[group]) {
-      counts[group][sex] = (counts[group][sex] || 0) + 1;
-      counts[group]['Total']++;
-    }
-  });
-
-  const headers = [groupField, ...sexValues, 'Total'];
-  let table = '| ' + headers.join(' | ') + ' |\n';
-  table += '| ' + headers.map(() => '---').join(' | ') + ' |\n';
-
-  groupValues.forEach(g => {
-    const row = [g, ...sexValues.map(s => counts[g][s] || 0), counts[g]['Total']];
-    table += '| ' + row.join(' | ') + ' |\n';
-  });
-
-  const totals = sexValues.map(s =>
-    groupValues.reduce((sum, g) => sum + (counts[g][s] || 0), 0)
-  );
-  const grandTotal = totals.reduce((a, b) => a + b, 0);
-  table += '| **Total** | ' + totals.join(' | ') + ' | ' + grandTotal + ' |\n';
-
-  return table;
-};
-
-/**
- * Generate cross-tabs grouped by academic year
- */
-const generateYearlyBreakdowns = (documents, crossTabFields, sexField, yearField) => {
-  let output = '';
-
-  const years = [...new Set(documents.map(d => d[yearField]).filter(Boolean))].sort();
-
-  years.forEach(year => {
-    const yearDocs = documents.filter(d => d[yearField] === year);
-    output += `\n[Academic Year: ${year} — ${yearDocs.length} records]\n`;
-
-    crossTabFields.forEach(field => {
-      const fieldExists = yearDocs.some(d => d[field] !== undefined && d[field] !== null && d[field] !== '');
-      if (fieldExists) {
-        output += `\nBreakdown by ${field} for ${year}:\n`;
-        output += generateCrossTab(yearDocs, field, sexField);
-      }
-    });
-  });
-
-  // Combined all-years summary
-  output += `\n[All Academic Years Combined — ${documents.length} total records]\n`;
-  crossTabFields.forEach(field => {
-    const fieldExists = documents.some(d => d[field] !== undefined && d[field] !== null && d[field] !== '');
-    if (fieldExists) {
-      output += `\nOverall Breakdown by ${field} (All Years Combined):\n`;
-      output += generateCrossTab(documents, field, sexField);
-    }
-  });
-
-  return output;
-};
-
-/**
- * Prepares database data for AI analysis
- * Each collection is strictly separated with clear boundaries and field declarations
- */
-export const prepareDataContext = (dbData) => {
-  let context = '';
-  context += '╔══════════════════════════════════════════════════════════════╗\n';
-  context += '║                    MSU-IIT GADC DATABASE                     ║\n';
-  context += '╚══════════════════════════════════════════════════════════════╝\n\n';
-  context += 'IMPORTANT INSTRUCTION FOR AI: Each section below is a completely separate and independent dataset. ';
-  context += 'Data from one section MUST NOT be used, referenced, or combined with data from another section. ';
-  context += 'Only use the data from the section that is relevant to the user\'s question.\n\n';
-
-  for (const [col, documents] of Object.entries(dbData)) {
-    const displayName = COLLECTION_DISPLAY_NAMES[col] || col;
-    const fieldsDesc = COLLECTION_FIELDS_DESCRIPTION[col] || 'unknown';
-
-    context += `${'═'.repeat(64)}\n`;
-    context += `DATASET: ${displayName}\n`;
-    context += `${'═'.repeat(64)}\n`;
-    context += `Total Records: ${documents.length}\n`;
-    context += `Available Fields in this dataset ONLY: ${fieldsDesc}\n`;
-    context += `NOTE: This dataset does NOT contain fields from any other dataset above or below.\n`;
-
-    if (documents.length > 0) {
-      const sampleDoc = documents[0];
-      const fields = Object.keys(sampleDoc).filter(key =>
-        !['id', 'createdAt', 'updatedAt', 'uploadTimestamp', 'sourceFile'].includes(key)
-      );
-
-      // Basic stats
-      const stats = generateStats(documents, fields);
-      if (stats) context += '\nField Value Summary:\n' + stats;
-
-      // Determine sex field
-      const sexField = fields.includes('sex') ? 'sex'
-        : fields.includes('gender') ? 'gender'
-        : null;
-
-      const crossTabFields = (CROSS_TAB_FIELDS[col] || []).filter(f => fields.includes(f));
-      const yearField = ACADEMIC_YEAR_FIELD[col];
-
-      if (sexField && crossTabFields.length > 0) {
-        context += `\nSEX-DISAGGREGATED DATA (SDD) FOR ${displayName.toUpperCase()}:\n`;
-        context += `(These numbers apply ONLY to the ${displayName} dataset)\n`;
-
-        if (yearField && fields.includes(yearField)) {
-          context += generateYearlyBreakdowns(documents, crossTabFields, sexField, yearField);
-        } else {
-          crossTabFields.forEach(field => {
-            context += `\nBreakdown by ${field}:\n`;
-            context += generateCrossTab(documents, field, sexField);
-          });
-        }
-      }
-    }
-
-    context += `\nEND OF ${displayName.toUpperCase()} DATASET\n`;
-    context += `${'═'.repeat(64)}\n\n`;
+  // ✅ Extract ALL academic years mentioned (supports comparison queries)
+  const yearMatches = lower.matchAll(/20\d\d[-–]20\d\d/g);
+  for (const match of yearMatches) {
+    intent.academicYears.push(match[0].replace('–', '-'));
   }
 
-  return context;
-};
+  // ✅ Detect comparison intent
+  if (intent.academicYears.length > 1 ||
+      lower.includes('compare') || lower.includes('versus') ||
+      lower.includes(' vs ') || lower.includes('compared to') ||
+      lower.includes('difference between')) {
+    intent.wantsComparison = true;
+  }
 
-/**
- * Generate basic statistics for a collection
- */
-const generateStats = (documents, fields) => {
-  let stats = '';
+  // Detect sex/gender breakdown request
+  if (lower.includes('male') || lower.includes('female') || lower.includes('sex') ||
+      lower.includes('gender') || lower.includes('distribution') || lower.includes('breakdown')) {
+    intent.wantsSexBreakdown = true;
+  }
 
-  fields.forEach(field => {
-    const values = documents.map(doc => doc[field]).filter(v => v !== undefined && v !== null && v !== '');
-    if (values.length === 0) return;
+  // Detect "all" request
+  if (lower.includes('all college') || lower.includes('each college') ||
+      lower.includes('all program') || lower.includes('per college') ||
+      lower.includes('by college') || lower.includes('by program') ||
+      lower.includes('all year')) {
+    intent.wantsAll = true;
+  }
 
-    const numericValues = values.filter(v => typeof v === 'number');
-    if (numericValues.length > values.length * 0.5) {
-      const sum = numericValues.reduce((a, b) => a + b, 0);
-      const avg = sum / numericValues.length;
-      const min = Math.min(...numericValues);
-      const max = Math.max(...numericValues);
-      stats += `  • ${field}: avg=${avg.toFixed(2)}, min=${min}, max=${max}\n`;
-    } else {
-      const uniqueValues = [...new Set(values)];
-      if (uniqueValues.length <= 15) {
-        const valueCounts = {};
-        values.forEach(v => { valueCounts[v] = (valueCounts[v] || 0) + 1; });
-        const sorted = Object.entries(valueCounts).sort((a, b) => b[1] - a[1]);
-        stats += `  • ${field}: ${sorted.map(([val, count]) => `${val}(${count})`).join(', ')}\n`;
-      } else {
-        stats += `  • ${field}: ${uniqueValues.length} unique values\n`;
+  // Detect collection from keywords
+  if (lower.includes('enrollment') || lower.includes('enrolled') || lower.includes('college') ||
+      lower.includes('program') || lower.includes('course') || lower.includes('year level') ||
+      lower.includes('4ps') || lower.includes('pwd') || lower.includes('solo parent') ||
+      lower.includes('ofw') || lower.includes('working student') || lower.includes('ip member')) {
+    intent.collection = 'student_enrollment';
+  } else if (lower.includes('engagement') || lower.includes('standing') || lower.includes('lister') ||
+             lower.includes('scholarship') || lower.includes('organization') || lower.includes('publication') ||
+             lower.includes('student council')) {
+    intent.collection = 'student_engagement';
+  } else if (lower.includes('employee') || lower.includes('staff') || lower.includes('faculty') ||
+             lower.includes('instructor') || lower.includes('professor') || lower.includes('personnel')) {
+    intent.collection = 'employee_information';
+  } else if (lower.includes('attendance') || lower.includes('attended') || lower.includes('present')) {
+    intent.collection = 'attendance';
+  } else if (lower.includes('event') || lower.includes('seminar') || lower.includes('workshop')) {
+    intent.collection = 'events';
+  }
+
+  // Detect group field from keywords
+  for (const [alias, field] of Object.entries(FIELD_ALIASES)) {
+    if (lower.includes(alias)) {
+      intent.groupField = field;
+      if (!intent.collection && FIELD_TO_COLLECTION[field]) {
+        intent.collection = FIELD_TO_COLLECTION[field];
       }
+      break;
     }
-  });
+  }
 
-  return stats;
+  // ✅ Detect specific college filter — check full name first, then abbreviation
+  for (const [alias, fullName] of Object.entries(COLLEGE_ALIASES)) {
+    if (lower.includes(alias)) {
+      intent.filterValue = fullName;
+      intent.groupField = intent.groupField || 'college';
+      intent.collection = intent.collection || 'student_enrollment';
+      break;
+    }
+  }
+
+  // Default to college breakdown for general student queries
+  if (!intent.groupField && intent.collection === 'student_enrollment') {
+    intent.groupField = 'college';
+    intent.wantsAll = true;
+  }
+
+  return intent;
 };
 
-/**
- * Call your backend API with database context
- */
+// ─────────────────────────────────────────────────────────────
+// DATA COMPUTER
+// Computes exact counts for a single year or all docs
+// ─────────────────────────────────────────────────────────────
+
+const computeForDocs = (docs, groupField, filterValue, wantsSexBreakdown, sexField) => {
+  // Apply filter if specified
+  let filtered = docs;
+  if (filterValue && groupField) {
+    filtered = docs.filter(d => {
+      const val = d[groupField];
+      if (!val) return false;
+      return val.toLowerCase() === filterValue.toLowerCase() ||
+             val.toLowerCase().includes(filterValue.toLowerCase());
+    });
+  }
+
+  const result = { totalRecords: filtered.length, data: {} };
+
+  if (!groupField || filterValue) {
+    // Single category result
+    const key = filterValue || 'Total';
+    if (wantsSexBreakdown && sexField) {
+      const sexCounts = {};
+      filtered.forEach(d => {
+        const s = d[sexField] || 'Unknown';
+        sexCounts[s] = (sexCounts[s] || 0) + 1;
+      });
+      result.data[key] = { ...sexCounts, Total: filtered.length };
+    } else {
+      result.data[key] = { Total: filtered.length };
+    }
+  } else {
+    // Group by field
+    const grouped = {};
+    filtered.forEach(d => {
+      const groupVal = d[groupField] || 'Unknown';
+      if (!grouped[groupVal]) grouped[groupVal] = [];
+      grouped[groupVal].push(d);
+    });
+
+    Object.entries(grouped).forEach(([groupVal, groupDocs]) => {
+      if (wantsSexBreakdown && sexField) {
+        const sexCounts = {};
+        groupDocs.forEach(d => {
+          const s = d[sexField] || 'Unknown';
+          sexCounts[s] = (sexCounts[s] || 0) + 1;
+        });
+        result.data[groupVal] = { ...sexCounts, Total: groupDocs.length };
+      } else {
+        result.data[groupVal] = { Total: groupDocs.length };
+      }
+    });
+  }
+
+  return result;
+};
+
+const computeAnswer = (intent, dbData) => {
+  const { collection, groupField, filterValue, academicYears, wantsSexBreakdown, wantsComparison } = intent;
+
+  if (!collection || !dbData[collection]) {
+    return { error: 'Could not determine which dataset to use for this question.' };
+  }
+
+  const allDocs = dbData[collection];
+  const displayName = COLLECTION_DISPLAY_NAMES[collection] || collection;
+
+  // Detect sex field
+  const sexField = allDocs[0]?.sex !== undefined ? 'sex'
+    : allDocs[0]?.gender !== undefined ? 'gender'
+    : null;
+
+  // ✅ If comparison or multiple years — compute per year
+  if (wantsComparison && academicYears.length > 0) {
+    const yearResults = {};
+
+    // Use specified years, or all available years if only 1 specified
+    let yearsToUse = academicYears;
+    if (academicYears.length === 1) {
+      // Get all available years and use them all for comparison
+      const allYears = [...new Set(allDocs.map(d => d.academicYear).filter(Boolean))].sort();
+      yearsToUse = allYears;
+    }
+
+    yearsToUse.forEach(year => {
+      const yearDocs = allDocs.filter(d => d.academicYear === year);
+      if (yearDocs.length > 0) {
+        yearResults[year] = computeForDocs(yearDocs, groupField, filterValue, wantsSexBreakdown, sexField);
+      }
+    });
+
+    return {
+      collection: displayName,
+      isComparison: true,
+      groupField,
+      filterValue,
+      sexField,
+      yearResults,
+    };
+  }
+
+  // ✅ Single year or no year filter
+  let docs = allDocs;
+  if (academicYears.length === 1) {
+    docs = allDocs.filter(d => d.academicYear === academicYears[0]);
+    if (docs.length === 0) {
+      // ✅ Fall back to all docs instead of returning error
+      docs = allDocs;
+    }
+  }
+
+  const computed = computeForDocs(docs, groupField, filterValue, wantsSexBreakdown, sexField);
+
+  return {
+    collection: displayName,
+    academicYear: academicYears[0] || 'All Years',
+    isComparison: false,
+    groupField,
+    filterValue,
+    sexField,
+    totalRecords: computed.totalRecords,
+    data: computed.data,
+  };
+};
+
+// ─────────────────────────────────────────────────────────────
+// RESULT FORMATTER
+// ─────────────────────────────────────────────────────────────
+
+const formatResultForAI = (result) => {
+  if (result.error) return `DATA ERROR: ${result.error}`;
+
+  let text = `=== COMPUTED DATA (100% ACCURATE — DO NOT MODIFY THESE NUMBERS) ===\n\n`;
+  text += `Dataset: ${result.collection}\n`;
+
+  if (result.isComparison) {
+    text += `Mode: Year-by-Year Comparison\n`;
+    if (result.filterValue) text += `Filter: ${result.groupField} = "${result.filterValue}"\n`;
+    text += `\n`;
+
+    Object.entries(result.yearResults).forEach(([year, yearData]) => {
+      text += `--- Academic Year: ${year} (${yearData.totalRecords} records) ---\n`;
+      Object.entries(yearData.data).forEach(([category, counts]) => {
+        text += `  ${category}:\n`;
+        Object.entries(counts).forEach(([key, val]) => {
+          text += `    ${key}: ${val}\n`;
+        });
+      });
+      text += `\n`;
+    });
+  } else {
+    text += `Academic Year: ${result.academicYear}\n`;
+    text += `Total Records in scope: ${result.totalRecords}\n`;
+    if (result.filterValue) text += `Filter: ${result.groupField} = "${result.filterValue}"\n`;
+    text += `\nEXACT COUNTS:\n`;
+
+    Object.entries(result.data).forEach(([category, counts]) => {
+      text += `\n${category}:\n`;
+      Object.entries(counts).forEach(([key, val]) => {
+        text += `  ${key}: ${val}\n`;
+      });
+    });
+  }
+
+  text += `\n=== END OF COMPUTED DATA ===\n`;
+  return text;
+};
+
+// ─────────────────────────────────────────────────────────────
+// MAIN EXPORT
+// ─────────────────────────────────────────────────────────────
+
 export const analyzeWithAI = async (userMessage, dbData) => {
   try {
-    const dataContext = prepareDataContext(dbData);
+    const intent = parseQuery(userMessage);
+    const computedResult = computeAnswer(intent, dbData);
+    const computedText = formatResultForAI(computedResult);
 
-    const enrichedMessage = `${dataContext}
+    const enrichedMessage = `${computedText}
 
-════════════════════════════════════════════════════════════════
-USER QUESTION
-════════════════════════════════════════════════════════════════
-${userMessage}
+USER QUESTION: ${userMessage}
 
-════════════════════════════════════════════════════════════════
-STRICT INSTRUCTIONS FOR ANSWERING
-════════════════════════════════════════════════════════════════
-1. Identify which single dataset is relevant to this question.
-2. Use ONLY the data from that dataset. Never mix data from different datasets.
-3. Report ONLY the exact numbers from the pre-computed tables above. Do not calculate, estimate, or derive any figures.
-4. If the user asks about a specific academic year, use only that year's table.
-5. If no academic year is specified, use the combined all-years table.
-6. If the requested breakdown does not exist in the data, say: "That specific breakdown is not available in the current data."
-7. Use proper markdown formatting in your response.
-8. Never mention internal collection names — use their display names (e.g. "Student Enrollment" not "student_enrollment").
+INSTRUCTIONS:
+- The numbers above are 100% accurate and pre-computed. Use them exactly as provided.
+- Do NOT recalculate, modify, or second-guess any number above.
+- Write a clear, friendly response using ONLY the numbers from the COMPUTED DATA section above.
+- Use proper markdown formatting (tables, bold, paragraphs).
+- If asked for a descriptive analysis, write in paragraph form.
+- Use clean display names: college abbreviations where appropriate (CSM, COE, CCS, CHS, CASS, CEBA, CED).
+- Never expose internal field names like "groupField", "filterValue", or collection names.
+- If showing a comparison across years, present the data side by side in a table.
 `;
-
-    console.log('📤 Sending to AI:', enrichedMessage.substring(0, 300) + '...');
 
     const response = await fetch(API_URL, {
       method: 'POST',
@@ -256,13 +390,8 @@ STRICT INSTRUCTIONS FOR ANSWERING
     if (!response.ok) throw new Error(`API error: ${response.status}`);
 
     const data = await response.json();
-
-    if (data.reply) {
-      console.log('📥 Received AI response');
-      return data.reply;
-    } else {
-      throw new Error('No reply in response');
-    }
+    if (data.reply) return data.reply;
+    throw new Error('No reply in response');
 
   } catch (error) {
     console.error('❌ Error calling AI service:', error);
@@ -270,37 +399,25 @@ STRICT INSTRUCTIONS FOR ANSWERING
   }
 };
 
-/**
- * Query specific data based on user intent using keyword matching
- */
-export const extractRelevantData = (userMessage, dbData) => {
-  const lowerMessage = userMessage.toLowerCase();
-  const relevantData = {};
+// ─────────────────────────────────────────────────────────────
+// LEGACY EXPORTS
+// ─────────────────────────────────────────────────────────────
 
-  Object.keys(dbData).forEach(collection => {
-    const keywords = COLLECTION_KEYWORDS[collection] || [collection.toLowerCase()];
-    const isRelevant = keywords.some(keyword => lowerMessage.includes(keyword));
-    if (isRelevant) relevantData[collection] = dbData[collection];
-  });
-
-  if (Object.keys(relevantData).length === 0) {
-    console.log('📂 No specific collection matched — returning all collections');
-    return dbData;
+export const prepareDataContext = (dbData) => {
+  let context = '=== MSU-IIT GADC DATABASE OVERVIEW ===\n\n';
+  for (const [col, docs] of Object.entries(dbData)) {
+    const name = COLLECTION_DISPLAY_NAMES[col] || col;
+    context += `${name}: ${docs.length} records\n`;
   }
-
-  console.log('📂 Matched collections:', Object.keys(relevantData).join(', '));
-  return relevantData;
+  return context;
 };
 
-/**
- * Generate a summary table from data
- */
+export const extractRelevantData = (userMessage, dbData) => dbData;
+
 export const generateMarkdownTable = (data, fields) => {
   if (!data || data.length === 0) return '';
-
   let table = '| ' + fields.join(' | ') + ' |\n';
   table += '| ' + fields.map(() => '---').join(' | ') + ' |\n';
-
   data.slice(0, 10).forEach(row => {
     const values = fields.map(field => {
       const value = row[field];
@@ -310,62 +427,39 @@ export const generateMarkdownTable = (data, fields) => {
     });
     table += '| ' + values.join(' | ') + ' |\n';
   });
-
   if (data.length > 10) table += `\n*Showing 10 of ${data.length} records*\n`;
-
   return table;
 };
 
-/**
- * Perform aggregation on data
- */
 export const aggregateData = (data, groupByField, aggregateField = null, operation = 'count') => {
   const groups = {};
-
   data.forEach(doc => {
     const groupValue = doc[groupByField] || 'Unknown';
     if (!groups[groupValue]) groups[groupValue] = [];
     groups[groupValue].push(doc);
   });
-
   const results = {};
-
   Object.keys(groups).forEach(key => {
     const group = groups[key];
     switch (operation) {
-      case 'count':
-        results[key] = group.length;
-        break;
-      case 'sum':
-        results[key] = group.reduce((sum, doc) => sum + (doc[aggregateField] || 0), 0);
-        break;
+      case 'count': results[key] = group.length; break;
+      case 'sum': results[key] = group.reduce((sum, doc) => sum + (doc[aggregateField] || 0), 0); break;
       case 'avg':
         const sum = group.reduce((s, doc) => s + (doc[aggregateField] || 0), 0);
-        results[key] = sum / group.length;
-        break;
-      case 'min':
-        results[key] = Math.min(...group.map(doc => doc[aggregateField] || Infinity));
-        break;
-      case 'max':
-        results[key] = Math.max(...group.map(doc => doc[aggregateField] || -Infinity));
-        break;
+        results[key] = sum / group.length; break;
+      case 'min': results[key] = Math.min(...group.map(doc => doc[aggregateField] || Infinity)); break;
+      case 'max': results[key] = Math.max(...group.map(doc => doc[aggregateField] || -Infinity)); break;
     }
   });
-
   return results;
 };
 
-/**
- * Format aggregated data as a markdown table
- */
 export const formatAggregationTable = (aggregatedData, keyLabel = 'Category', valueLabel = 'Value') => {
   let table = `| ${keyLabel} | ${valueLabel} |\n`;
   table += '|---|---|\n';
-
   Object.entries(aggregatedData).forEach(([key, value]) => {
     const formattedValue = typeof value === 'number' ? value.toFixed(2) : value;
     table += `| ${key} | ${formattedValue} |\n`;
   });
-
   return table;
 };

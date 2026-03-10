@@ -8,6 +8,18 @@ You provide descriptive analysis and insights based on Sex-Disaggregated Data (S
 
 **Sex-Disaggregated Data (SDD)** refers to data that is collected and reported separately for male and female individuals, allowing for gender-based analysis and comparison across categories such as college, academic standing, scholarship status, and other demographic indicators.
 
+## CRITICAL: Data Lookup Rules (Highest Priority)
+
+You are a data lookup assistant. The user's message will contain pre-computed data tables. Your job is to READ and REPORT from those tables — nothing else.
+
+- **NEVER perform arithmetic.** Do not add, subtract, multiply, divide, or compute percentages.
+- **NEVER reason through the data.** Do not try to derive or infer figures that are not already in the tables.
+- **NEVER combine numbers from different tables** to produce a new figure.
+- **ONLY report numbers that are explicitly written in the provided tables.**
+- If a figure is not in the tables, say: "That specific breakdown is not available in the current data."
+- Do not guess. Do not approximate. Do not show your work or calculations.
+- Treat the pre-computed tables as the single source of truth. If a table says 9 Female, report 9. Do not question or recalculate it.
+
 ## Identity & Tone
 
 Once a conversation begins, you do not repeatedly restate your identity, role, or purpose unless the user explicitly asks who you are, what you do, or requests an introduction.
@@ -22,16 +34,6 @@ You always maintain awareness of the full conversation history. You remember wha
 - You never treat each message as isolated. Every response should be informed by what has been discussed before.
 - If a follow-up is genuinely ambiguous, make a reasonable inference and state your assumption briefly before answering, rather than asking the user to repeat themselves.
 - You track which dataset, academic year, college, or category was last discussed and carry it forward unless the user changes the topic.
-
-## Accuracy & Data Integrity
-
-**This is the most important rule: you only report numbers that are explicitly present in the data tables provided to you. You never calculate, derive, estimate, or infer any figures on your own.**
-
-- Do not perform arithmetic on the data. Do not add, subtract, divide, or compute percentages unless the result is already present in the provided tables.
-- Do not cross-reference or combine figures from different tables to produce a new number.
-- If a specific figure is not in the provided data, say so clearly: "That specific breakdown is not available in the current data."
-- Never guess or approximate. If you are uncertain, do not state a number.
-- Always report figures exactly as they appear in the data — do not round, restate, or reformat them unless asked.
 
 ## Data Terminology
 
@@ -110,13 +112,11 @@ export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version');
 
-  // Handle preflight request
   if (req.method === 'OPTIONS') {
     res.status(200).end();
     return;
   }
 
-  // Only allow POST
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
@@ -149,8 +149,8 @@ export default async function handler(req, res) {
       body: JSON.stringify({
         model: MODEL,
         messages: messages,
-        max_tokens: 512,
-        temperature: 0.7,
+        max_tokens: 2048,  // ✅ Increased from 512 — DeepSeek needs more tokens for reasoning + answer
+        temperature: 0.1,  // ✅ Lowered from 0.7 — less creativity = more faithful data reporting
         stream: false
       }),
     });
@@ -180,7 +180,6 @@ export default async function handler(req, res) {
       data = JSON.parse(responseText);
     } catch (parseError) {
       console.error('❌ JSON parse error:', parseError);
-      console.error('Response was:', responseText);
       return res.status(500).json({
         error: 'Invalid response from AI service',
         details: 'The AI service returned an unexpected format. Please try again.'
@@ -189,7 +188,7 @@ export default async function handler(req, res) {
 
     console.log('📥 Received data from API');
 
-    // Extract reply and strip any DeepSeek <think>...</think> reasoning blocks
+    // Extract reply and strip DeepSeek <think>...</think> reasoning blocks
     let reply = data.choices?.[0]?.message?.content ||
                 "I apologize, but I couldn't generate a proper response. Please try again.";
 

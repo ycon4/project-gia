@@ -7,7 +7,7 @@ import EventsPage from './pages/EventsPage';
 import RegistrationForm from './components/RegistrationForm';
 import FloatingChatButton from './components/FloatingChatButton';
 import { getAllDocuments, saveEvent, removeEvent } from '../firebase/services';
-import { prepareDataContext } from './services/aiService';
+import { analyzeWithAI } from './services/aiService'; // ✅ switched to analyzeWithAI
 import { db } from '../firebase/config';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 
@@ -109,23 +109,9 @@ function App() {
     setMessages([...newMessages, { role: 'assistant', content: '🤔 Thinking...' }]);
     
     try {
-      const hostname = window.location.hostname;
-      const apiUrl = hostname === 'localhost' ? 'http://localhost:3001/api/chat' : '/api/chat';
-      
-      let messageToSend = userMessage;
-      if (dataLoaded && Object.keys(dbData).length > 0) {
-        const dataContext = prepareDataContext(dbData);
-        messageToSend = `${dataContext}\n\n=== USER QUESTION ===\n${userMessage}`;
-      }
-      
-      const response = await fetch(apiUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: messageToSend })
-      });
-
-      const data = await response.json();
-      setMessages([...newMessages, { role: 'assistant', content: data.reply || "No response." }]);
+      // ✅ Now uses analyzeWithAI which includes all strict data instructions
+      const reply = await analyzeWithAI(userMessage, dataLoaded ? dbData : {});
+      setMessages([...newMessages, { role: 'assistant', content: reply }]);
     } catch (error) {
       setMessages([...newMessages, { role: 'assistant', content: "Error: " + error.message }]);
     }
@@ -140,7 +126,6 @@ function App() {
 
       {!isRegisterMode && (
         <nav className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-slate-200/60">
-          {/* ✅ Removed max-w-7xl — nav now spans full width */}
           <div className="w-full px-8 py-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
@@ -167,7 +152,6 @@ function App() {
         </nav>
       )}
 
-      {/* ✅ Removed max-w-7xl — main content now spans full width */}
       <main className="w-full px-8 py-8">
         {isRegisterMode ? (
           <RegistrationForm 
