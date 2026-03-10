@@ -47,15 +47,12 @@ function App() {
   const loadDatabaseData = async () => {
     setIsLoadingData(true);
     try {
-      // ✅ Fixed: use actual collection names from Firebase
       const collections = ['attendance', 'employee_information', 'events', 'student_engagement', 'student_enrollment'];
       const data = {};
       for (const col of collections) {
         data[col] = await getAllDocuments(col);
       }
       setDbData(data);
-
-      // Event & Attendance Data (reuse already-fetched data)
       setEvents(data['events'] || []);
       setAttendance(data['attendance'] || []);
       setDataLoaded(true);
@@ -94,7 +91,6 @@ function App() {
         eventId: currentEventId,
         timestamp: serverTimestamp()
       });
-      // Refresh counts after submission
       const updatedAttendance = await getAllDocuments('attendance');
       setAttendance(updatedAttendance);
     } catch (error) {
@@ -116,7 +112,6 @@ function App() {
       const hostname = window.location.hostname;
       const apiUrl = hostname === 'localhost' ? 'http://localhost:3001/api/chat' : '/api/chat';
       
-      // ✅ Fixed: always send data context when data is loaded
       let messageToSend = userMessage;
       if (dataLoaded && Object.keys(dbData).length > 0) {
         const dataContext = prepareDataContext(dbData);
@@ -145,7 +140,8 @@ function App() {
 
       {!isRegisterMode && (
         <nav className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-slate-200/60">
-          <div className="max-w-7xl mx-auto px-6 py-3">
+          {/* ✅ Removed max-w-7xl — nav now spans full width */}
+          <div className="w-full px-8 py-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
                 <div className="relative group cursor-pointer" onClick={() => setActiveSection('home')}>
@@ -171,7 +167,8 @@ function App() {
         </nav>
       )}
 
-      <main className="max-w-7xl mx-auto px-6 py-8">
+      {/* ✅ Removed max-w-7xl — main content now spans full width */}
+      <main className="w-full px-8 py-8">
         {isRegisterMode ? (
           <RegistrationForm 
             eventName={events.find(e => e.id === currentEventId)?.title}
