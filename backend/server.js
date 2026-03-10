@@ -9,7 +9,7 @@ const PORT = process.env.PORT || 3001;
 
 // Hugging Face API configuration - NEW OpenAI-compatible endpoint
 const API_URL = 'https://router.huggingface.co/v1/chat/completions';
-const MODEL = 'meta-llama/Llama-3.2-3B-Instruct';
+const MODEL = 'deepseek-ai/DeepSeek-R1-Distill-Qwen-7B';
 
 // Middleware
 app.use(cors({
@@ -121,7 +121,7 @@ For **text emphasis**, use **bold** for key metrics or findings, and *italics* f
 
 Always add blank lines between paragraphs. Never write long unbroken blocks of text.`;
 
-// Chat endpointt
+// Chat endpoint
 app.post('/api/chat', async (req, res) => {
   console.log('📨 Received chat request:', req.body);
   
@@ -165,7 +165,6 @@ app.post('/api/chat', async (req, res) => {
       const errorText = await response.text();
       console.error('❌ Hugging Face API error:', errorText);
       
-      // Check if model is loading
       if (response.status === 503) {
         return res.json({ 
           reply: "I'm currently warming up! The AI model is loading. Please try again in about 20-30 seconds." 
