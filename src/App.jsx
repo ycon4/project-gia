@@ -7,7 +7,7 @@ import EventsPage from './pages/EventsPage';
 import RegistrationForm from './components/RegistrationForm';
 import FloatingChatButton from './components/FloatingChatButton';
 import { getAllDocuments, saveEvent, removeEvent } from '../firebase/services';
-import { analyzeWithAI } from './services/aiService'; // ✅ switched to analyzeWithAI
+import { analyzeWithAI } from './services/aiService';
 import { db } from '../firebase/config';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 
@@ -17,7 +17,10 @@ function App() {
     { role: 'assistant', content: 'Hello! I am GIA, the Gender and Development Center Information Assistant. I\'m loading the database now so I can help you analyze your data. How can I help you today?' }
   ]);
   const [inputMessage, setInputMessage] = useState('');
-  
+
+  // ✅ Conversation history for context awareness (role + content pairs for the API)
+  const [chatHistory, setChatHistory] = useState([]);
+
   // Database state
   const [dbData, setDbData] = useState({});
   const [isLoadingData, setIsLoadingData] = useState(false);
@@ -102,16 +105,29 @@ function App() {
   const handleSendMessage = async (e) => {
     e.preventDefault();
     if (!inputMessage.trim()) return;
-    
+
     const userMessage = inputMessage;
     setInputMessage('');
+
+    // Update display messages
     const newMessages = [...messages, { role: 'user', content: userMessage }];
     setMessages([...newMessages, { role: 'assistant', content: '🤔 Thinking...' }]);
-    
+
     try {
-      // ✅ Now uses analyzeWithAI which includes all strict data instructions
-      const reply = await analyzeWithAI(userMessage, dataLoaded ? dbData : {});
+      // ✅ Pass chatHistory for context awareness
+      const reply = await analyzeWithAI(userMessage, dataLoaded ? dbData : {}, chatHistory);
+
+      // Update display messages with real reply
       setMessages([...newMessages, { role: 'assistant', content: reply }]);
+
+      // ✅ Update chat history with this turn (user message + assistant reply)
+      // We store the original user message (not the enriched one) for cleaner history
+      setChatHistory(prev => [
+        ...prev,
+        { role: 'user', content: userMessage },
+        { role: 'assistant', content: reply }
+      ]);
+
     } catch (error) {
       setMessages([...newMessages, { role: 'assistant', content: "Error: " + error.message }]);
     }
@@ -140,7 +156,7 @@ function App() {
                   <div className="text-slate-500 text-[10px] font-bold uppercase tracking-widest mt-1">Information Assistant</div>
                 </div>
               </div>
-              
+
               <div className="flex items-center p-1 bg-slate-100/50 rounded-2xl border border-slate-200/50">
                 <NavButton active={activeSection === 'home'} onClick={() => setActiveSection('home')} icon={<HomeIcon size={16} />} label="Home" />
                 <NavButton active={activeSection === 'event'} onClick={() => setActiveSection('event')} icon={<BarChart3 size={16} />} label="Events" />
@@ -154,7 +170,7 @@ function App() {
 
       <main className="w-full px-8 py-8">
         {isRegisterMode ? (
-          <RegistrationForm 
+          <RegistrationForm
             eventName={events.find(e => e.id === currentEventId)?.title}
             onSubmit={handleAttendanceSubmit}
             currentCount={attendance.filter(a => String(a.eventId) === String(currentEventId)).length}
@@ -163,16 +179,16 @@ function App() {
           <div className="transition-all duration-500 ease-in-out">
             {activeSection === 'home' && <HomePage />}
             {activeSection === 'event' && (
-              <EventsPage 
-                events={events} 
-                attendanceData={attendance} 
+              <EventsPage
+                events={events}
+                attendanceData={attendance}
                 onCreateEvent={handleCreateEvent}
                 onDeleteEvent={handleDeleteEvent}
               />
             )}
             {activeSection === 'data' && <DashboardPage />}
             {activeSection === 'chat' && (
-              <ChatPage 
+              <ChatPage
                 messages={messages}
                 inputMessage={inputMessage}
                 setInputMessage={setInputMessage}
@@ -188,7 +204,7 @@ function App() {
       </main>
 
       {!isRegisterMode && (
-        <FloatingChatButton 
+        <FloatingChatButton
           onClick={() => setActiveSection('chat')}
           isOnChatPage={activeSection === 'chat'}
         />
@@ -199,11 +215,11 @@ function App() {
 
 function NavButton({ active, onClick, icon, label }) {
   return (
-    <button 
+    <button
       onClick={onClick}
       className={`flex items-center gap-2 px-6 py-2.5 rounded-xl transition-all duration-300 font-black text-[10px] uppercase tracking-widest ${
-        active 
-          ? 'bg-white text-purple-600 shadow-sm ring-1 ring-slate-200' 
+        active
+          ? 'bg-white text-purple-600 shadow-sm ring-1 ring-slate-200'
           : 'text-slate-500 hover:text-slate-900'
       }`}
     >

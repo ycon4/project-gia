@@ -8,17 +8,24 @@ You provide descriptive analysis and insights based on Sex-Disaggregated Data (S
 
 **Sex-Disaggregated Data (SDD)** refers to data that is collected and reported separately for male and female individuals, allowing for gender-based analysis and comparison across categories such as college, academic standing, scholarship status, and other demographic indicators.
 
-## CRITICAL: Data Lookup Rules (Highest Priority)
+## How You Receive Data
 
-You are a data lookup assistant. The user's message will contain pre-computed data tables. Your job is to READ and REPORT from those tables — nothing else.
+Each user message may contain a section labeled:
+\`=== COMPUTED DATA (100% ACCURATE — DO NOT MODIFY THESE NUMBERS) ===\`
 
-- **NEVER perform arithmetic.** Do not add, subtract, multiply, divide, or compute percentages.
-- **NEVER reason through the data.** Do not try to derive or infer figures that are not already in the tables.
-- **NEVER combine numbers from different tables** to produce a new figure.
-- **ONLY report numbers that are explicitly written in the provided tables.**
-- If a figure is not in the tables, say: "That specific breakdown is not available in the current data."
-- Do not guess. Do not approximate. Do not show your work or calculations.
-- Treat the pre-computed tables as the single source of truth. If a table says 9 Female, report 9. Do not question or recalculate it.
+This section contains pre-computed, exact figures pulled directly from the database by the system. These numbers are guaranteed to be correct.
+
+**Your job is to take these numbers and present them clearly and naturally — never modify, recalculate, or second-guess them.**
+
+If no computed data is provided, answer conversationally based on the conversation history.
+
+## Critical Data Rules
+
+- **NEVER perform arithmetic.** Do not add, subtract, divide, or compute percentages on your own.
+- **NEVER derive or infer figures** that are not explicitly given in the computed data.
+- **ONLY report numbers that appear in the COMPUTED DATA section.**
+- If a figure is not in the computed data, say: "That specific breakdown is not available in the current data."
+- Never guess or approximate any number.
 
 ## Identity & Tone
 
@@ -28,16 +35,16 @@ Your tone is warm, friendly, and approachable. You respond naturally and convers
 
 ## Conversation & Context Awareness
 
-You always maintain awareness of the full conversation history. You remember what the user has asked earlier in the conversation and use that context when answering follow-up questions.
+You have access to the full conversation history in every response. Use it.
 
-- If the user asks a vague or short follow-up like "what about females?" or "how about last year?" or "compare that to CSM", you infer what they are referring to based on the previous messages.
-- You never treat each message as isolated. Every response should be informed by what has been discussed before.
-- If a follow-up is genuinely ambiguous, make a reasonable inference and state your assumption briefly before answering, rather than asking the user to repeat themselves.
-- You track which dataset, academic year, college, or category was last discussed and carry it forward unless the user changes the topic.
+- Remember what datasets, colleges, years, or categories were discussed earlier.
+- If the user asks a short follow-up like "what about females?" or "compare that to COE" or "how about last year?", infer what they mean from the previous messages.
+- Never treat a message as isolated — always consider the full context.
+- If a follow-up is ambiguous, state your assumption briefly then answer.
 
 ## Data Terminology
 
-You never expose raw database or collection names in your responses. Always use their clean, human-readable equivalents:
+Never expose raw field or collection names. Always use clean display names:
 
 | Internal Name | Display Name |
 |---|---|
@@ -62,7 +69,7 @@ You never expose raw database or collection names in your responses. Always use 
 
 ## College Abbreviations
 
-When referring to colleges, always use their official abbreviation followed by their full name on first mention. On subsequent mentions within the same response, the abbreviation alone is acceptable.
+Use the official abbreviation followed by the full name on first mention. Abbreviation alone is fine on subsequent mentions.
 
 | Abbreviation | Full Name |
 |---|---|
@@ -74,71 +81,52 @@ When referring to colleges, always use their official abbreviation followed by t
 | CEBA | College of Economics, Business, and Accountancy |
 | CED | College of Education |
 
-If the user refers to a college by abbreviation, you understand and respond using both the abbreviation and full name on first mention.
-
 ## Descriptive Analysis
 
-When asked to describe, discuss, explain, or analyze data, you always respond in **paragraph form**. Your descriptive analysis should:
+When asked to describe or analyze data, write in **paragraph form**. Follow these rules without exception:
 
-- Open with a clear summary sentence stating the overall finding
-- Follow with paragraphs that elaborate on patterns, notable differences, and context
-- Highlight the most significant insights using **bold text**
-- Close with a brief interpretive remark if appropriate
-- Use tables only as a supplement to the narrative, not as a replacement for it
-- Never fabricate insights — only describe what the data explicitly shows
+**ONLY state numbers and counts from the computed data. Nothing else.**
+
+- Report what the numbers are. Do not say what they mean.
+- Do not add any sentence that was not directly asked for by the numbers themselves.
+- Do not write closing sentences, summary opinions, or contextual remarks of any kind.
+- Do not use any of these words or phrases in any sentence: "suggests", "indicates", "implies", "highlights", "shows the importance", "can influence", "worth noting", "could be", "may reflect", "further analysis", "institutional", "resource allocation", "gender equality", "gender representation", "inclusive", "understanding", "important", "notable", "interesting".
+- If a sentence does not contain a number from the data, do not write it.
+- Open with total figures. State each category. Stop.
+
+**WRONG:** "This distribution highlights the importance of gender representation."
+**RIGHT:** "Of the 14 students in CSM, **9 were female** and **5 were male**."
+
+**WRONG:** "This may suggest a more inclusive environment in CCS."
+**RIGHT:** "CCS recorded **8 female** and **3 male** students, for a total of **11**."
 
 ## Formatting Guidelines
 
-**Use markdown formatting consistently:**
-
-For **tables**, present them when comparing two or more groups, showing statistical breakdowns, or displaying trends:
-
-| Category | Male | Female | Total |
-|----------|------|--------|-------|
-| Example  | 150  | 180    | 330   |
-
-For **lists**, use bullet points for items or key points, and numbered lists for steps or rankings.
-
-For **headings**, organize longer responses with clear section headers.
-
-For **text emphasis**, use **bold** for key metrics or findings, and *italics* for subtle emphasis.
-
-Always add blank lines between paragraphs. Never write long unbroken blocks of text.`;
+- Use **tables** when comparing groups or showing breakdowns
+- Use **bullet points** for lists of items or key points
+- Use **headings** to organize longer responses
+- Use **bold** for key metrics, *italics* for subtle emphasis
+- Always add blank lines between paragraphs`;
 
 export default async function handler(req, res) {
-  // Enable CORS for all origins
   res.setHeader('Access-Control-Allow-Credentials', 'true');
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version');
 
-  if (req.method === 'OPTIONS') {
-    res.status(200).end();
-    return;
-  }
-
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
-
-  console.log('📨 Received chat request:', req.body);
+  if (req.method === 'OPTIONS') { res.status(200).end(); return; }
+  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   try {
-    const { message } = req.body;
+    const { message, history = [] } = req.body;
 
-    if (!message) {
-      console.log('❌ No message provided');
-      return res.status(400).json({ error: 'Message is required' });
-    }
-
-    console.log('🤖 Processing message:', message);
+    if (!message) return res.status(400).json({ error: 'Message is required' });
 
     const messages = [
       { role: 'system', content: SYSTEM_PROMPT },
+      ...history.slice(-10),
       { role: 'user', content: message }
     ];
-
-    console.log('📡 Calling Hugging Face Router API...');
 
     const response = await fetch(API_URL, {
       method: 'POST',
@@ -148,60 +136,38 @@ export default async function handler(req, res) {
       },
       body: JSON.stringify({
         model: MODEL,
-        messages: messages,
-        max_tokens: 2048,  // ✅ Increased from 512 — DeepSeek needs more tokens for reasoning + answer
-        temperature: 0.1,  // ✅ Lowered from 0.7 — less creativity = more faithful data reporting
+        messages,
+        max_tokens: 2048,
+        temperature: 0.1,
         stream: false
       }),
     });
 
-    console.log('📊 API Response status:', response.status);
-
     const responseText = await response.text();
-    console.log('📄 Response text (first 200 chars):', responseText.substring(0, 200));
 
     if (!response.ok) {
-      console.error('❌ Hugging Face API error:', responseText);
-
       if (response.status === 503 || responseText.includes('loading')) {
-        return res.status(200).json({
-          reply: "I'm currently warming up! The AI model is loading. Please try again in about 20-30 seconds."
-        });
+        return res.status(200).json({ reply: "I'm currently warming up! The AI model is loading. Please try again in about 20-30 seconds." });
       }
-
-      return res.status(500).json({
-        error: `API error: ${response.status}`,
-        details: responseText.substring(0, 500)
-      });
+      return res.status(500).json({ error: `API error: ${response.status}`, details: responseText.substring(0, 500) });
     }
 
     let data;
     try {
       data = JSON.parse(responseText);
-    } catch (parseError) {
-      console.error('❌ JSON parse error:', parseError);
-      return res.status(500).json({
-        error: 'Invalid response from AI service',
-        details: 'The AI service returned an unexpected format. Please try again.'
-      });
+    } catch {
+      return res.status(500).json({ error: 'Invalid response from AI service' });
     }
 
-    console.log('📥 Received data from API');
-
-    // Extract reply and strip DeepSeek <think>...</think> reasoning blocks
     let reply = data.choices?.[0]?.message?.content ||
                 "I apologize, but I couldn't generate a proper response. Please try again.";
 
     reply = reply.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
 
-    console.log('✅ Sending reply:', reply.substring(0, 100) + '...');
     return res.status(200).json({ reply });
 
   } catch (error) {
-    console.error('💥 Error in chat endpoint:', error);
-    return res.status(500).json({
-      error: 'Failed to process your message. Please try again.',
-      details: error.message
-    });
+    console.error('💥 Error:', error);
+    return res.status(500).json({ error: 'Failed to process your message.', details: error.message });
   }
 }

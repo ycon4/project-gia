@@ -1,6 +1,6 @@
 // src/services/aiService.js
 // Architecture: JavaScript computes exact numbers, AI only writes the response.
-// This guarantees 100% accurate data regardless of AI model used.
+// Conversation history is passed to the backend for context awareness.
 
 const API_URL = typeof window !== 'undefined' && window.location.hostname === 'localhost'
   ? 'http://localhost:3001/api/chat'
@@ -18,7 +18,6 @@ const COLLECTION_DISPLAY_NAMES = {
   events: 'Events',
 };
 
-// College name aliases — maps abbreviations and partial names to full names in DB
 const COLLEGE_ALIASES = {
   'csm': 'College of Science and Mathematics',
   'coe': 'College of Engineering',
@@ -31,12 +30,10 @@ const COLLEGE_ALIASES = {
   'ced': 'College of Education',
 };
 
-// Field aliases — maps natural language to actual field names
 const FIELD_ALIASES = {
   'college': 'college',
   'program': 'program',
   'course': 'program',
-  'year level': 'year_level',
   'year level': 'year_level',
   'academic standing': 'academic_standing',
   'standing': 'academic_standing',
@@ -53,31 +50,30 @@ const FIELD_ALIASES = {
   'ethnicity': 'ethnicity',
   'religion': 'religion',
   'income': 'income_order',
-  '4ps': '_4ps_beneficiary',
-  'pwd': '_pwd',
-  'solo parent': '_solo_parent',
-  'ip member': '_ip_member',
-  'indigenous': '_ip_member',
-  'ofw': '_ofw_dependent',
-  'working student': '_working_student',
-  'first generation': '_first_generation',
-  'international': '_international_student',
+  '4ps': '_4ps_beneficiary?',
+  'pwd': '_pwd?',
+  'solo parent': '_solo_parent?',
+  'ip member': '_ip_member?',
+  'indigenous': '_ip_member?',
+  'ofw': '_ofw_dependent?',
+  'working student': '_working_student?',
+  'first generation': '_first_generation?',
+  'international': '_international_student?',
   'sector': 'sector',
 };
 
-// Which collection each field belongs to
 const FIELD_TO_COLLECTION = {
   college: 'student_enrollment',
   program: 'student_enrollment',
   year_level: 'student_enrollment',
-  _4ps_beneficiary: 'student_enrollment',
-  _pwd: 'student_enrollment',
-  _solo_parent: 'student_enrollment',
-  _ip_member: 'student_enrollment',
-  _ofw_dependent: 'student_enrollment',
-  _working_student: 'student_enrollment',
-  _first_generation: 'student_enrollment',
-  _international_student: 'student_enrollment',
+  '_4ps_beneficiary?': 'student_enrollment',
+  '_pwd?': 'student_enrollment',
+  '_solo_parent?': 'student_enrollment',
+  '_ip_member?': 'student_enrollment',
+  '_ofw_dependent?': 'student_enrollment',
+  '_working_student?': 'student_enrollment',
+  '_first_generation?': 'student_enrollment',
+  '_international_student?': 'student_enrollment',
   academic_standing: 'student_engagement',
   scholarship_status: 'student_engagement',
   organizations: 'student_engagement',
@@ -104,19 +100,19 @@ const parseQuery = (message) => {
     collection: null,
     groupField: null,
     filterValue: null,
-    academicYears: [],      // ✅ now an array to support multiple years
+    academicYears: [],
     wantsSexBreakdown: false,
     wantsAll: false,
-    wantsComparison: false, // ✅ true when user wants to compare years
+    wantsComparison: false,
   };
 
-  // ✅ Extract ALL academic years mentioned (supports comparison queries)
+  // Extract ALL academic years
   const yearMatches = lower.matchAll(/20\d\d[-–]20\d\d/g);
   for (const match of yearMatches) {
     intent.academicYears.push(match[0].replace('–', '-'));
   }
 
-  // ✅ Detect comparison intent
+  // Detect comparison intent
   if (intent.academicYears.length > 1 ||
       lower.includes('compare') || lower.includes('versus') ||
       lower.includes(' vs ') || lower.includes('compared to') ||
@@ -124,7 +120,7 @@ const parseQuery = (message) => {
     intent.wantsComparison = true;
   }
 
-  // Detect sex/gender breakdown request
+  // Detect sex breakdown
   if (lower.includes('male') || lower.includes('female') || lower.includes('sex') ||
       lower.includes('gender') || lower.includes('distribution') || lower.includes('breakdown')) {
     intent.wantsSexBreakdown = true;
@@ -138,7 +134,7 @@ const parseQuery = (message) => {
     intent.wantsAll = true;
   }
 
-  // Detect collection from keywords
+  // Detect collection
   if (lower.includes('enrollment') || lower.includes('enrolled') || lower.includes('college') ||
       lower.includes('program') || lower.includes('course') || lower.includes('year level') ||
       lower.includes('4ps') || lower.includes('pwd') || lower.includes('solo parent') ||
@@ -157,7 +153,7 @@ const parseQuery = (message) => {
     intent.collection = 'events';
   }
 
-  // Detect group field from keywords
+  // Detect group field
   for (const [alias, field] of Object.entries(FIELD_ALIASES)) {
     if (lower.includes(alias)) {
       intent.groupField = field;
@@ -168,7 +164,17 @@ const parseQuery = (message) => {
     }
   }
 
-  // ✅ Detect specific college filter — check full name first, then abbreviation
+  // Boolean Yes/No fields — filter to "Yes" records and show sex breakdown
+  const BOOLEAN_FIELDS = [
+    '_pwd?', '_4ps_beneficiary?', '_solo_parent?', '_ip_member?',
+    '_ofw_dependent?', '_working_student?', '_first_generation?', '_international_student?'
+  ];
+  if (intent.groupField && BOOLEAN_FIELDS.includes(intent.groupField)) {
+    intent.filterValue = 'Yes';
+    intent.wantsSexBreakdown = true;
+  }
+
+  // Detect college filter
   for (const [alias, fullName] of Object.entries(COLLEGE_ALIASES)) {
     if (lower.includes(alias)) {
       intent.filterValue = fullName;
@@ -178,7 +184,7 @@ const parseQuery = (message) => {
     }
   }
 
-  // Default to college breakdown for general student queries
+  // Default group field for enrollment
   if (!intent.groupField && intent.collection === 'student_enrollment') {
     intent.groupField = 'college';
     intent.wantsAll = true;
@@ -189,26 +195,36 @@ const parseQuery = (message) => {
 
 // ─────────────────────────────────────────────────────────────
 // DATA COMPUTER
-// Computes exact counts for a single year or all docs
 // ─────────────────────────────────────────────────────────────
 
 const computeForDocs = (docs, groupField, filterValue, wantsSexBreakdown, sexField) => {
-  // Apply filter if specified
   let filtered = docs;
   if (filterValue && groupField) {
     filtered = docs.filter(d => {
       const val = d[groupField];
-      if (!val) return false;
-      return val.toLowerCase() === filterValue.toLowerCase() ||
-             val.toLowerCase().includes(filterValue.toLowerCase());
+      if (val === undefined || val === null) return false;
+      return val.toString().trim().toLowerCase() === filterValue.toString().trim().toLowerCase();
     });
   }
 
   const result = { totalRecords: filtered.length, data: {} };
 
+  const BOOLEAN_FIELD_LABELS = {
+    '_pwd?': 'PWD Students',
+    '_4ps_beneficiary?': '4Ps Beneficiary Students',
+    '_solo_parent?': 'Solo Parent Students',
+    '_ip_member?': 'IP Member Students',
+    '_ofw_dependent?': 'OFW Dependent Students',
+    '_working_student?': 'Working Students',
+    '_first_generation?': 'First Generation Students',
+    '_international_student?': 'International Students',
+  };
+  const displayKey = (filterValue === 'Yes' && BOOLEAN_FIELD_LABELS[groupField])
+    ? BOOLEAN_FIELD_LABELS[groupField]
+    : filterValue || 'Total';
+
   if (!groupField || filterValue) {
-    // Single category result
-    const key = filterValue || 'Total';
+    const key = displayKey;
     if (wantsSexBreakdown && sexField) {
       const sexCounts = {};
       filtered.forEach(d => {
@@ -220,7 +236,6 @@ const computeForDocs = (docs, groupField, filterValue, wantsSexBreakdown, sexFie
       result.data[key] = { Total: filtered.length };
     }
   } else {
-    // Group by field
     const grouped = {};
     filtered.forEach(d => {
       const groupVal = d[groupField] || 'Unknown';
@@ -254,24 +269,17 @@ const computeAnswer = (intent, dbData) => {
 
   const allDocs = dbData[collection];
   const displayName = COLLECTION_DISPLAY_NAMES[collection] || collection;
-
-  // Detect sex field
   const sexField = allDocs[0]?.sex !== undefined ? 'sex'
     : allDocs[0]?.gender !== undefined ? 'gender'
     : null;
 
-  // ✅ If comparison or multiple years — compute per year
   if (wantsComparison && academicYears.length > 0) {
-    const yearResults = {};
-
-    // Use specified years, or all available years if only 1 specified
     let yearsToUse = academicYears;
     if (academicYears.length === 1) {
-      // Get all available years and use them all for comparison
-      const allYears = [...new Set(allDocs.map(d => d.academicYear).filter(Boolean))].sort();
-      yearsToUse = allYears;
+      yearsToUse = [...new Set(allDocs.map(d => d.academicYear).filter(Boolean))].sort();
     }
 
+    const yearResults = {};
     yearsToUse.forEach(year => {
       const yearDocs = allDocs.filter(d => d.academicYear === year);
       if (yearDocs.length > 0) {
@@ -279,24 +287,13 @@ const computeAnswer = (intent, dbData) => {
       }
     });
 
-    return {
-      collection: displayName,
-      isComparison: true,
-      groupField,
-      filterValue,
-      sexField,
-      yearResults,
-    };
+    return { collection: displayName, isComparison: true, groupField, filterValue, sexField, yearResults };
   }
 
-  // ✅ Single year or no year filter
   let docs = allDocs;
   if (academicYears.length === 1) {
-    docs = allDocs.filter(d => d.academicYear === academicYears[0]);
-    if (docs.length === 0) {
-      // ✅ Fall back to all docs instead of returning error
-      docs = allDocs;
-    }
+    const filtered = allDocs.filter(d => d.academicYear === academicYears[0]);
+    docs = filtered.length > 0 ? filtered : allDocs;
   }
 
   const computed = computeForDocs(docs, groupField, filterValue, wantsSexBreakdown, sexField);
@@ -357,10 +354,45 @@ const formatResultForAI = (result) => {
 };
 
 // ─────────────────────────────────────────────────────────────
-// MAIN EXPORT
+// POST-PROCESSING — strip interpretive / opinion sentences
 // ─────────────────────────────────────────────────────────────
 
-export const analyzeWithAI = async (userMessage, dbData) => {
+const INTERPRETIVE_PATTERNS = [
+  /[^.!?]*\bthis (suggests?|indicates?|implies?|may indicate|may suggest|could suggest|could indicate|points? to)\b[^.!?]*[.!?]/gi,
+  /[^.!?]*\bthis (disparity|difference|gap|distribution|pattern|trend)\b[^.!?]*(suggests?|indicates?|implies?|reflects?|shows?|means?)\b[^.!?]*[.!?]/gi,
+  /[^.!?]*\b(may|might|could|can)\b[^.!?]*(suggest|indicate|imply|reflect|mean|be due to|be attributed)\b[^.!?]*[.!?]/gi,
+  /[^.!?]*\bit is (worth noting|notable|interesting|important to note)\b[^.!?]*[.!?]/gi,
+  /[^.!?]*\bthis (could|may|might) be (a point of interest|attributed to|due to|related to|reflective of)\b[^.!?]*[.!?]/gi,
+  /[^.!?]*\b(further (analysis|study|research|investigation)|future (analysis|study|research))\b[^.!?]*[.!?]/gi,
+  /[^.!?]*\b(initiatives? aimed at|efforts? to promote|programs? to address)\b[^.!?]*[.!?]/gi,
+  /[^.!?]*\bthis (finding|result|data|number|figure|statistic)\b[^.!?]*(suggests?|indicates?|implies?)\b[^.!?]*[.!?]/gi,
+  /[^.!?]*\bthis distribution highlights\b[^.!?]*[.!?]/gi,
+  /[^.!?]*\bhighlights the importance of\b[^.!?]*[.!?]/gi,
+  /[^.!?]*\b(can|may|might) (influence|affect|impact)\b[^.!?]*(resource allocation|institutional|strategies|support|policies)\b[^.!?]*[.!?]/gi,
+  /[^.!?]*\b(resource allocation|institutional strategies|academic support|gender (equality|representation|balance))\b[^.!?]*(is important|are important|should be|must be|need to)\b[^.!?]*[.!?]/gi,
+  /[^.!?]*\bunderstanding (gender|this|the) (representation|distribution|data|pattern)\b[^.!?]*[.!?]/gi,
+  // Strip meta-commentary openers
+  /^[^.!?\n]*\b(here'?s?|below is|the following|i('ve| have) prepared|based on the (data|computed|provided))[^.!?]*[.!?]\s*/gi,
+  // Strip meta-commentary closers
+  /[^.!?]*\b(this (response|table|analysis|summary) (uses?|provides?|presents?|follows?|includes?))[^.!?]*[.!?]\s*$/gi,
+  /[^.!?]*\b(as shown (above|in the table|below)|as you can see|in summary|to summarize|in conclusion|overall,)[^.!?]*[.!?]\s*$/gi,
+  /[^.!?]*\b(proper markdown|key metrics (in )?bold|clear (and )?concise)\b[^.!?]*[.!?]\s*$/gi,
+];
+
+const stripInterpretiveSentences = (text) => {
+  let cleaned = text;
+  for (const pattern of INTERPRETIVE_PATTERNS) {
+    cleaned = cleaned.replace(pattern, '');
+  }
+  cleaned = cleaned.replace(/\n{3,}/g, '\n\n').trim();
+  return cleaned;
+};
+
+// ─────────────────────────────────────────────────────────────
+// MAIN EXPORT — accepts conversation history
+// ─────────────────────────────────────────────────────────────
+
+export const analyzeWithAI = async (userMessage, dbData, history = []) => {
   try {
     const intent = parseQuery(userMessage);
     const computedResult = computeAnswer(intent, dbData);
@@ -371,26 +403,31 @@ export const analyzeWithAI = async (userMessage, dbData) => {
 USER QUESTION: ${userMessage}
 
 INSTRUCTIONS:
-- The numbers above are 100% accurate and pre-computed. Use them exactly as provided.
-- Do NOT recalculate, modify, or second-guess any number above.
-- Write a clear, friendly response using ONLY the numbers from the COMPUTED DATA section above.
+- Use ONLY the numbers from the COMPUTED DATA section above. Do not recalculate, modify, or derive any figure.
+- Do NOT open with any preamble, greeting, or meta-commentary (e.g. "Here's a summary", "Based on the data", "Sure!", "Below is").
+- Do NOT close with any remark about formatting, methodology, or how the response was written.
+- Begin your response immediately with the data or analysis — the first word should be substantive.
+- End your response when the data has been fully presented — no closing sentences.
 - Use proper markdown formatting (tables, bold, paragraphs).
-- If asked for a descriptive analysis, write in paragraph form.
-- Use clean display names: college abbreviations where appropriate (CSM, COE, CCS, CHS, CASS, CEBA, CED).
-- Never expose internal field names like "groupField", "filterValue", or collection names.
-- If showing a comparison across years, present the data side by side in a table.
+- For descriptive analysis: open with total count and scope, present a markdown table, then describe in paragraph form using only the numbers given.
+- For comparisons: present a markdown table first with groups as rows and years/categories as columns, then a short paragraph per group using only the numbers given.
+- Use clean college abbreviations (CSM, COE, CCS, CHS, CASS, CEBA, CED).
+- Never expose internal field names or collection names.
 `;
 
     const response = await fetch(API_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message: enrichedMessage })
+      body: JSON.stringify({
+        message: enrichedMessage,
+        history,
+      })
     });
 
     if (!response.ok) throw new Error(`API error: ${response.status}`);
 
     const data = await response.json();
-    if (data.reply) return data.reply;
+    if (data.reply) return stripInterpretiveSentences(data.reply);
     throw new Error('No reply in response');
 
   } catch (error) {
