@@ -1,18 +1,19 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { MessageCircle, BarChart3, Home as HomeIcon } from 'lucide-react';
 import HomePage from './pages/HomePage';
 import DashboardPage from './pages/DashboardPage';
 import ChatPage from './pages/ChatPage';
 import EventsPage from './pages/EventsPage';
-import RegistrationForm from './components/RegistrationForm';
+import RegistrationForm from './components/events/RegistrationForm';
 import FloatingChatButton from './components/FloatingChatButton';
-import { getAllDocuments, saveEvent, removeEvent } from '../firebase/services';
+import { getAllDocuments, saveEvent, updateDocument, deleteDocument } from '../firebase/services';
 import { analyzeWithAI } from './services/aiService';
 import { db } from '../firebase/config';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 
 function App() {
   const [activeSection, setActiveSection] = useState('home');
+  const [activeEvent, setActiveEvent] = useState(null);
   const [messages, setMessages] = useState([
     { role: 'assistant', content: 'Hello! I am GIA, the Gender and Development Center Information Assistant. I\'m loading the database now so I can help you analyze your data. How can I help you today?' }
   ]);
@@ -31,36 +32,79 @@ function App() {
   // Kiosk/Registration State
   const [isRegisterMode, setIsRegisterMode] = useState(false);
   const [currentEventId, setCurrentEventId] = useState(null);
+  const [currentSession, setCurrentSession] = useState('General Attendance');
 
   // 1. Detect if this is a registration link on mount
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const eventId = params.get('event');
+  const path = window.location.pathname; // This gets "/register/H5JI5yWv1bgMd6qs29mc"
+  const params = new URLSearchParams(window.location.search);
+  const session = params.get('session');
+
+  // Check if the path starts with /register/
+  if (path.startsWith('/register/')) {
+    // Extract the ID (the part after the second slash)
+    const eventId = path.split('/')[2]; 
+    
     if (eventId) {
+      console.log("Kiosk Mode Active for Event:", eventId);
       setIsRegisterMode(true);
       setCurrentEventId(eventId);
+      
+      if (session) {
+        setCurrentSession(decodeURIComponent(session));
+      }
     }
-  }, []);
+  }
+}, []);
 
   // 2. Load database data
   useEffect(() => {
     loadDatabaseData();
   }, []);
 
+  const getRegistrationData = () => {
+    const activeEvent = events.find(e => String(e.id) === String(currentEventId));
+    if (!activeEvent) {
+      return {
+        eventName: "Event Not Found",
+        description: "Please check your link or contact the administrator.",
+        formConfig: {}
+      };
+    }
+    return {
+      eventName: activeEvent.title,
+      description: activeEvent.description,
+      formConfig: activeEvent.formConfig || {}
+    };
+
+  };
+
   const loadDatabaseData = async () => {
     setIsLoadingData(true);
     try {
       const collections = ['attendance', 'employee_information', 'events', 'student_engagement', 'student_enrollment'];
+      const results = await Promise.allSettled(collections.map(col => getAllDocuments(col)));
+      
       const data = {};
-      for (const col of collections) {
-        data[col] = await getAllDocuments(col);
+ 
+      results.forEach((result, index) => {
+      const colName = collections[index];
+      if (result.status === 'fulfilled') {
+        data[colName] = result.value;
+      } else {
+        // Log exactly which collection is failing
+        console.error(`Error loading collection "${colName}":`, result.reason);
+        data[colName] = []; // Fallback to empty array so the app doesn't crash
       }
+    });
+
       setDbData(data);
       setEvents(data['events'] || []);
       setAttendance(data['attendance'] || []);
       setDataLoaded(true);
+
     } catch (error) {
-      console.error("Error loading data:", error);
+      console.error("Critical error in database loader:", globalError);
     } finally {
       setIsLoadingData(false);
     }
@@ -76,14 +120,39 @@ function App() {
     }
   };
 
-  const handleDeleteEvent = async (id) => {
-    if (window.confirm("Are you sure you want to delete this event?")) {
-      try {
-        await removeEvent(id);
-        setEvents(prev => prev.filter(e => e.id !== id));
-      } catch (error) {
-        alert("Failed to delete event.");
+   const handleUpdateEvent = async (id, updatedEvent) => {
+    try {
+      if (!id) throw new Error("The Event ID is missing!");
+      await updateDocument('events', id, updatedEvent);
+    
+      setEvents(prev => prev.map(ev => ev.id === id ? updatedEvent : ev));
+      if (typeof setActiveEvent !== 'undefined') {
+        setActiveEvent(updatedEvent);
+      } else {
+        console.error("The function 'setActiveEvent' was not found in this scope.");
       }
+
+      console.log("✅ Sync Complete");
+      alert("This event is successfully updated!")
+    } catch (error) {
+      console.error("❌ ERROR:", error);
+      alert(`Update failed: ${error.message}`);
+    }
+  };
+
+  const handleDeleteEvent = async (id, title) => {
+    if (!window.confirm(`Permanently delete "${title}"?`)) return;
+
+    try {
+      await deleteDocument('events', id); 
+      setEvents(prev => prev.filter(ev => ev.id !== id));
+      if (activeEvent?.id === id) setActiveEvent(null);
+      
+      console.log("Deleted from Firestore and State");
+      alert("The event has been successfully removed.")
+    } catch (error) {
+      console.error("Delete Error:", error);
+      alert("Could not delete. Check your Firestore permissions.");
     }
   };
 
@@ -92,15 +161,27 @@ function App() {
       await addDoc(collection(db, 'attendance'), {
         ...formData,
         eventId: currentEventId,
-        timestamp: serverTimestamp()
+        session_name: currentSession,
+        createdAt: serverTimestamp()
       });
-      const updatedAttendance = await getAllDocuments('attendance');
-      setAttendance(updatedAttendance);
+
+      loadDatabaseData();
     } catch (error) {
       console.error("Attendance submission error:", error);
       throw error;
     }
   };
+
+  const regData = useMemo(() => {
+  if (!isRegisterMode || events.length === 0) return null;
+  
+  const activeEvent = events.find(e => String(e.id) === String(currentEventId));
+  return {
+    eventName: activeEvent?.title || "Event Not Found",
+    description: activeEvent?.description || "",
+    formConfig: activeEvent?.formConfig || {}
+  };
+}, [isRegisterMode, events, currentEventId]);
 
   const handleSendMessage = async (e) => {
     e.preventDefault();
@@ -132,6 +213,29 @@ function App() {
       setMessages([...newMessages, { role: 'assistant', content: "Error: " + error.message }]);
     }
   };
+
+  const handleAddSession = async (eventId, sessionName) => {
+    try {
+      const eventToUpdate = events.find(e => e.id === eventId);
+      if (!eventToUpdate) return;
+      const updatedSessions = [...(eventToUpdate.sessions || []), sessionName];
+      const updatedEvent = { ...eventToUpdate, sessions: updatedSessions };
+      await updateDocument('events', eventId, updatedEvent);
+      setEvents(prev => prev.map(ev => ev.id === eventId ? updatedEvent : ev));
+      if (activeEvent?.id === eventId) setActiveEvent(updatedEvent);
+
+      console.log("Session added successfully");
+
+    } catch (error) {
+      console.error("Failed to add session:", error);
+      alert("Error adding session.");
+    }
+  }
+
+  const handleOpenSessionModal = (event) => {
+    setSessionTargetEvent(event);
+    setShowSessionModal(true);
+  }
 
   return (
     <div className="min-h-screen bg-slate-50 relative overflow-x-hidden">
@@ -171,9 +275,12 @@ function App() {
       <main className="w-full px-8 py-8">
         {isRegisterMode ? (
           <RegistrationForm
-            eventName={events.find(e => e.id === currentEventId)?.title}
+            eventName={regData?.eventName || "Loading..."}
+            description={regData?.description}
+            formConfig={regData?.formConfig} 
+            selectedSession={currentSession}
             onSubmit={handleAttendanceSubmit}
-            currentCount={attendance.filter(a => String(a.eventId) === String(currentEventId)).length}
+            currentCount={attendance.filter(a => String(a.eventId) === String(currentEventId) && a.session_name === currentSession).length}
           />
         ) : (
           <div className="transition-all duration-500 ease-in-out">
@@ -181,8 +288,10 @@ function App() {
             {activeSection === 'event' && (
               <EventsPage
                 events={events}
-                attendanceData={attendance}
+                activeEvent={activeEvent}
+                setActiveEvent = {setActiveEvent}
                 onCreateEvent={handleCreateEvent}
+                onUpdateEvent = {handleUpdateEvent}
                 onDeleteEvent={handleDeleteEvent}
               />
             )}

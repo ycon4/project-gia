@@ -299,9 +299,9 @@ export default function GeneralDashboard({ events = [], attendanceData = [] }) {
             sub={`${stats.femalePct}% of total`} />
           <KPICard label="Male Participants" value={stats.male.toLocaleString()} icon={Award} accent="#3b82f6"
             sub={`${pct(stats.male, stats.total)}% of total`} />
-          <KPICard label="Scholar Beneficiaries" value={stats.scholars.toLocaleString()} icon={GraduationCap} accent="#10b981"
-            sub="scholarship recipients" />
+          
         </div>
+
 
         {/* ── NARRATIVE ── */}
         <div className="bg-white p-8 rounded-2xl border border-slate-100 shadow-sm relative overflow-hidden">
@@ -541,6 +541,27 @@ export default function GeneralDashboard({ events = [], attendanceData = [] }) {
           <span>GAD Event Manager — Confidential</span>
           <span>Page 1</span>
         </div>
+
+        {/* ── FOOTER / NARRATIVE ── */}
+      <div className="bg-slate-900 text-white p-8 rounded-[32px] shadow-xl shadow-slate-200">
+        <div className="flex flex-col md:flex-row justify-between items-center gap-6">
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+              <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Executive Narrative</h4>
+            </div>
+            <p className="text-slate-300 text-sm leading-relaxed max-w-2xl">
+              Currently viewing data for <span className="text-white font-bold">{selectedEvent === 'All' ? 'all registered events' : 'a specific activity'}</span>. 
+              The gender distribution shows a <span className="text-pink-400 font-bold">{pct(stats.female, stats.total)}% female</span> participation rate. 
+              {stats.total > 0 && ` Most active unit recorded is ${stats.unitRanking[0]?.name}.`}
+            </p>
+          </div>
+          <div className="bg-slate-800 p-4 rounded-2xl border border-slate-700">
+             <p className="text-[9px] font-black uppercase text-slate-500 mb-1 text-center">Inclusion Score</p>
+             <div className="text-2xl font-black text-emerald-400">{pct(stats.female + stats.scholars, stats.total * 2)}%</div>
+          </div>
+        </div>
+      </div> 
 
       </div>
     </>

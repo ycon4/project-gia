@@ -4,8 +4,8 @@ import {
   doc, 
   addDoc, 
   getDoc, 
+  updateDoc,
   getDocs, 
-  updateDoc, 
   deleteDoc, 
   query, 
   where, 
@@ -14,6 +14,7 @@ import {
   setDoc,
   onSnapshot,
   serverTimestamp,
+  arrayUnion,
   writeBatch
 } from 'firebase/firestore';
 import { db } from './config';
@@ -151,15 +152,26 @@ export const queryDocuments = async (collectionName, conditions = [], orderByFie
  * @returns {Promise<void>}
  */
 export const updateDocument = async (collectionName, documentId, data) => {
+  if (!documentId || typeof documentId !== 'string') {
+    console.error("❌ UPDATE FAILED: documentId is missing or invalid!", documentId);
+    throw new Error("Invalid Document ID");
+  }
+
   try {
     const docRef = doc(db, collectionName, documentId);
+    const { id, ...dataToUpdate } = data; // Remove 'id' from the update payload
+    
     await updateDoc(docRef, {
-      ...data,
+      ...dataToUpdate,
       updatedAt: new Date().toISOString()
     });
-    console.log('Document updated:', documentId);
+
+    console.log('Document updated successfully:', documentId);
   } catch (error) {
-    console.error('Error updating document:', error);
+    
+    if (error.code === 'not-found') {
+      console.error("Document does not exist in Firestore. Check your ID!")
+    }
     throw error;
   }
 };
@@ -174,14 +186,14 @@ export const updateDocument = async (collectionName, documentId, data) => {
  */
 export const deleteDocument = async (collectionName, documentId) => {
   try {
-    await deleteDoc(doc(db, collectionName, documentId));
+    const docRef = doc(db, collectionName, documentId);
+    await deleteDoc(docRef);
     console.log('Document deleted:', documentId);
   } catch (error) {
     console.error('Error deleting document:', error);
     throw error;
   }
 };
-
 export const deleteAYData = async (sector, academicYear) => {
   const q = query(collection(db, sector), where("academicYear", "==", academicYear));
   const querySnapshot = await getDocs(q);
@@ -288,3 +300,26 @@ export const removeEvent = async (eventId) => {
     throw error;
   }
 };
+
+/**
+ * Add a new session to an existing event
+ * @param {string} eventId - The ID of the event
+ * @param {string} sessionName - The name of the new session (e.g., "Day 3")
+ */
+export const addEventSession = async (eventId, sessionName) => {
+  try {
+    const cleanId = String(eventId);
+    const eventRef = doc(db, 'events', eventId);
+    
+    await updateDoc(eventRef, {
+      sessions: arrayUnion(sessionName),
+      updatedAt: serverTimestamp()
+    });
+    console.log(`Session ${sessionName} added successfully!`);
+  } catch (error) {
+    console.error("Error adding session: ", error.code, error.message);
+    throw error;
+  }
+};
+
+
