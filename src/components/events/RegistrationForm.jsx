@@ -4,7 +4,7 @@ import {
   CalendarCheck, Globe, Info
 } from 'lucide-react';
 
-// --- STABLE STYLES (Defined outside to prevent typing focus loss) ---
+// --- STABLE STYLES ---
 const inputClass = `
   w-full px-4 py-3 bg-white border border-slate-200 rounded-xl 
   text-slate-700 font-semibold text-sm transition-all duration-300
@@ -37,21 +37,15 @@ export default function RegistrationForm({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
 
-  // Logic: Check if field is enabled based on prop or defaults
   const isEnabled = (fieldName) => {
-    // These are always required in the Primary Section
     if (fieldName === 'fullName' || fieldName === 'sex') return true;
-    
     if (formConfig && typeof formConfig === 'object' && Object.keys(formConfig).length > 0) {
       return formConfig[fieldName] === true;
     }
-    // Default fallback fields if no config is provided
     const defaults = ['email', 'phone', 'id_number', 'office_college'];
     return defaults.includes(fieldName);
   };
 
-  // Filter fields for the dynamic grid: 
-  // ONLY show enabled fields AND EXCLUDE the two already in the Primary Section
   const dynamicFields = Object.keys(initialFormState).filter(key => 
     isEnabled(key) && key !== 'fullName' && key !== 'sex'
   );
@@ -67,9 +61,7 @@ export default function RegistrationForm({
       };
       if (onSubmit) await onSubmit(submissionData);
       setSubmitted(true);
-
-      setFormData(initialFormState); // Reset form after submission
-
+      setFormData(initialFormState);
     } catch (error) {
       console.error("Submission error:", error);
       alert("An error occurred. Please try again.");
@@ -82,11 +74,57 @@ export default function RegistrationForm({
     const commonProps = {
       required: true,
       className: inputClass,
-      value: formData[field],
+      value: formData[field] || '',
       onChange: (e) => setFormData({ ...formData, [field]: e.target.value })
     };
 
-    // Dropdown Selects
+    if (field === 'office_college') {
+      const colleges = [
+        'College of Engineering (COE)',
+        'College of Arts and Social Sciences (CASS)',
+        'College of Science and Mathematics (CSM)',
+        'College of Economics, Business, and Accountancy (CEBA)',
+        'College of Education (CED)',
+        'College of Health Sciences (CHS)',
+        'College of Computer Studies (CCS)',
+        'Other'
+      ];
+      
+      const isManual = formData.office_college !== '' && !colleges.includes(formData.office_college);
+
+
+      return (
+        <div className="space-y-2">
+          <select 
+            className={inputClass}
+            // If we are typing manually, the dropdown should show "Other"
+            value={isManual ? 'Other' : formData.office_college}
+            onChange={(e) => {
+              const val = e.target.value;
+              // If "Other" is picked, set a temp value to show the input, else set the college
+              setFormData({ ...formData, [field]: val === 'Other' ? 'typing...' : val });
+            }}
+          >
+            <option value="">Select College...</option>
+            {colleges.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+            <option value="Other">Other (Please Specify)</option>
+          </select>
+    
+          {(isManual || formData.office_college === 'typing...') && (
+            <input
+              {...commonProps}
+              autoFocus
+              placeholder="Please type your Office/College"
+              className={`${inputClass} border-indigo-400 bg-indigo-50/30 ring-2 ring-indigo-500/5 animate-in slide-in-from-top-1 duration-200`}
+              // If it's our temp 'typing...' string, show empty box, otherwise show the text
+              value={formData.office_college === 'typing...' ? '' : formData.office_college}
+              onChange={(e) => setFormData({ ...formData, [field]: e.target.value })}
+            />
+          )}
+        </div>
+      );
+    }
+
     if (['sex', 'sector', 'pwd_status', 'employment_status', 'year_level'].includes(field)) {
       const options = {
         sex: ['Male', 'Female', 'Prefer not to say'],
@@ -103,12 +141,10 @@ export default function RegistrationForm({
       );
     }
 
-    // Textarea for longer text
     if (field === 'home_address') {
       return <textarea {...commonProps} rows="1" className={`${inputClass} resize-none`} placeholder="Address Details" />;
     }
 
-    // Input Types and Placeholders
     const typeMap = { email: 'email', age: 'number', phone: 'tel' };
     const placeholderMap = { 
         fullName: "Juan D. Dela Cruz", 
@@ -142,7 +178,6 @@ export default function RegistrationForm({
     <div className="min-h-screen bg-[#F8FAFC] py-12 px-4 font-sans selection:bg-indigo-100">
       <div className="max-w-2xl mx-auto space-y-6">
         
-        {/* FORMAL HEADER SECTION */}
         <div className="bg-white rounded-[32px] shadow-sm border border-slate-200/60 p-10 relative overflow-hidden group">
           <div className="absolute -top-12 -right-12 text-indigo-600 opacity-[0.05] group-hover:rotate-12 transition-transform duration-700">
             <Globe size={280} />
@@ -162,8 +197,6 @@ export default function RegistrationForm({
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          
-          {/* PRIMARY IDENTITY SECTION (Locked - Full Name and Sex) */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-indigo-600/5 p-6 rounded-[28px] border border-indigo-100/50 shadow-inner">
              <div className="space-y-1">
                 <label className={labelClass}>Full Name <span className="text-indigo-500">*</span></label>
@@ -175,17 +208,18 @@ export default function RegistrationForm({
              </div>
           </div>
 
-          {/* DYNAMIC ATTRIBUTE GRID (Filtered to exclude Primary fields) */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-5 px-2">
             {dynamicFields.map((field) => (
               <div key={field} className="space-y-1.5">
-                <label className={labelClass}>{field.replace('_', ' ')} <span className="text-indigo-300">*</span></label>
+                <label className={labelClass}>
+                  {field === 'office_college' ? 'Office / College' : field.replace('_', ' ')} 
+                  <span className="text-indigo-300">*</span>
+                </label>
                 {renderField(field)}
               </div>
             ))}
           </div>
 
-          {/* FORMAL SUBMIT BUTTON */}
           <div className="pt-8">
             <button 
               type="submit" 

@@ -16,7 +16,7 @@ const SECTOR_COLORS = {
   Student: '#6366f1',
   Faculty: '#f59e0b',
   Staff:   '#10b981',
-  Visitor: '#ec4899',
+  Guest:   '#ec4899',
 };
 
 const GENDER_COLORS = { Male: '#3b82f6', Female: '#f472b6' };
@@ -25,7 +25,7 @@ const SECTOR_ICONS = {
   Student: GraduationCap,
   Faculty: BookOpen,
   Staff:   Briefcase,
-  Visitor: UserCircle,
+  Guest:   UserCircle,
 };
 
 // ─── HELPERS ──────────────────────────────────────────────────────────────────
@@ -42,6 +42,28 @@ function monthKey(ts) {
 function formatMonth(key) {
   const [y, m] = key.split('-');
   return new Date(+y, +m - 1, 1).toLocaleDateString('en-PH', { month: 'short', year: '2-digit' });
+}
+
+function sexKey(sex) {
+  const v = (sex ?? '').toString().trim();
+  if (v === 'Male') return 'Male';
+  if (v === 'Female') return 'Female';
+  return null; // Ignore other values like "Prefer not to say" for SDD charts.
+}
+
+function getAgeBand(age) {
+  const n = parseInt(age, 10);
+  if (Number.isNaN(n)) return null;
+  if (n < 18) return 'Under 18';
+  if (n <= 24) return '18–24';
+  if (n <= 34) return '25–34';
+  if (n <= 44) return '35–44';
+  if (n <= 54) return '45–54';
+  return '55+';
+}
+
+function getSessionName(row) {
+  return row?.session_name || row?.session || 'Unknown';
 }
 
 // ─── SUB-COMPONENTS ───────────────────────────────────────────────────────────
@@ -95,7 +117,8 @@ export default function GeneralDashboard({ events = [], attendanceData = [] }) {
   // ── Filtered base data ──
   const filtered = useMemo(() => {
     return attendanceData.filter(item => {
-      const d = item.timestamp?.toDate ? item.timestamp.toDate() : new Date(item.timestamp);
+      const rawTs = item?.createdAt ?? item?.timestamp;
+      const d = rawTs?.toDate ? rawTs.toDate() : new Date(rawTs);
       const start = dateRange.start ? new Date(dateRange.start) : null;
       const end   = dateRange.end   ? new Date(new Date(dateRange.end).setHours(23,59,59)) : null;
       const okDate   = (!start || d >= start) && (!end || d <= end);
@@ -107,105 +130,210 @@ export default function GeneralDashboard({ events = [], attendanceData = [] }) {
 
   // ── Derived stats ──
   const stats = useMemo(() => {
-    const total   = filtered.length;
-    const male    = filtered.filter(d => d.sex === 'Male').length;
-    const female  = filtered.filter(d => d.sex === 'Female').length;
-    const scholars = filtered.filter(d => d.scholarship).length;
+    const total = filtered.length;
 
-    // Sector breakdown
-    const sectors = ['Student', 'Faculty', 'Staff', 'Visitor'];
-    const sectorData = sectors.map(s => ({
-      sector: s,
-      count:  filtered.filter(d => d.sector === s).length,
-      Male:   filtered.filter(d => d.sector === s && d.sex === 'Male').length,
-      Female: filtered.filter(d => d.sector === s && d.sex === 'Female').length,
-    }));
+    const male = filtered.reduce((acc, d) => acc + (sexKey(d.sex) === 'Male' ? 1 : 0), 0);
+    const female = filtered.reduce((acc, d) => acc + (sexKey(d.sex) === 'Female' ? 1 : 0), 0);
 
-    // Gender pie
+    // PWD participation (used for inclusion score)
+    const pwdYes = filtered.reduce((acc, d) => acc + ((d.pwd_status ?? '').toString().trim() === 'Yes' ? 1 : 0), 0);
+
+    // Sector breakdown (data uses "Guest" from RegistrationForm)
+    const sectors = ['Student', 'Faculty', 'Staff', 'Guest'];
+    const sectorData = sectors.map((s) => {
+      const inSector = filtered.filter((d) => d.sector === s);
+      const m = inSector.reduce((acc, d) => acc + (sexKey(d.sex) === 'Male' ? 1 : 0), 0);
+      const f = inSector.reduce((acc, d) => acc + (sexKey(d.sex) === 'Female' ? 1 : 0), 0);
+      return { sector: s, count: inSector.length, Male: m, Female: f };
+    });
+
     const genderPie = [
-      { name: 'Male',   value: male,   color: GENDER_COLORS.Male },
+      { name: 'Male', value: male, color: GENDER_COLORS.Male },
       { name: 'Female', value: female, color: GENDER_COLORS.Female },
     ];
 
-    // Sector pie
     const sectorPie = sectorData
-      .filter(s => s.count > 0)
-      .map(s => ({ name: s.sector, value: s.count, color: SECTOR_COLORS[s.sector] }));
+      .filter((s) => s.count > 0)
+      .map((s) => ({
+        name: s.sector,
+        value: s.count,
+        color: SECTOR_COLORS[s.sector] || '#94a3b8',
+      }));
 
-    // College / Office ranking
-    const unitMap = {};
-    filtered.forEach(d => {
+    // Office/College SDD ranking
+    const ageBands = ['Under 18', '18–24', '25–34', '35–44', '45–54', '55+'];
+    const unitGenderMap = {};
+    filtered.forEach((d) => {
       const u = d.office_college || 'External / N/A';
-      unitMap[u] = (unitMap[u] || 0) + 1;
+      if (!unitGenderMap[u]) unitGenderMap[u] = { name: u, male: 0, female: 0, total: 0 };
+      unitGenderMap[u].total += 1;
+      const sk = sexKey(d.sex);
+      if (sk === 'Male') unitGenderMap[u].male += 1;
+      if (sk === 'Female') unitGenderMap[u].female += 1;
     });
-    const unitRanking = Object.entries(unitMap)
-      .map(([name, count]) => ({ name, count }))
-      .sort((a, b) => b.count - a.count);
+    const unitGenderRanking = Object.values(unitGenderMap).sort((a, b) => b.total - a.total);
 
-    // Monthly trend (all attendance data for trend, not just filtered)
+    const unitRanking = unitGenderRanking.map((u) => ({ name: u.name, count: u.total }));
+
+    // Monthly trend (all data for trend, not just filtered)
     const trendMap = {};
-    attendanceData.forEach(d => {
-      const key = monthKey(d.timestamp);
+    attendanceData.forEach((d) => {
+      const rawTs = d.createdAt ?? d.timestamp;
+      if (!rawTs) return;
+      const key = monthKey(rawTs);
       if (!trendMap[key]) trendMap[key] = { month: key, Total: 0, Male: 0, Female: 0 };
-      trendMap[key].Total++;
-      if (d.sex === 'Male')   trendMap[key].Male++;
-      if (d.sex === 'Female') trendMap[key].Female++;
+      trendMap[key].Total += 1;
+      const sk = sexKey(d.sex);
+      if (sk === 'Male') trendMap[key].Male += 1;
+      if (sk === 'Female') trendMap[key].Female += 1;
     });
     const trend = Object.values(trendMap)
       .sort((a, b) => a.month.localeCompare(b.month))
-      .map(t => ({ ...t, month: formatMonth(t.month) }));
+      .map((t) => ({ ...t, month: formatMonth(t.month) }));
 
-    // Session funnel (across filtered data)
-    const sessionMap = {};
-    filtered.forEach(d => {
-      const s = d.session || 'Unknown';
-      sessionMap[s] = (sessionMap[s] || 0) + 1;
+    // Session funnel data (SDD)
+    const sessionGenderMap = {};
+    filtered.forEach((d) => {
+      const s = getSessionName(d);
+      if (!sessionGenderMap[s]) sessionGenderMap[s] = { name: s, Male: 0, Female: 0, total: 0 };
+      sessionGenderMap[s].total += 1;
+      const sk = sexKey(d.sex);
+      if (sk === 'Male') sessionGenderMap[s].Male += 1;
+      if (sk === 'Female') sessionGenderMap[s].Female += 1;
     });
-    const sessionFunnel = Object.entries(sessionMap)
-      .map(([name, value]) => ({ name, value }))
+    const sessionGenderData = Object.values(sessionGenderMap)
+      .sort((a, b) => b.total - a.total)
+      .slice(0, 8);
+
+    const sessionFunnel = sessionGenderData
+      .map((s) => ({ name: s.name, value: s.total }))
       .sort((a, b) => b.value - a.value);
 
-    // Event comparison table
-    const eventTable = events.map(ev => {
-      const evData = filtered.filter(d => String(d.eventId) === String(ev.id));
-      const evMale   = evData.filter(d => d.sex === 'Male').length;
-      const evFemale = evData.filter(d => d.sex === 'Female').length;
-      const topUnit  = (() => {
-        const m = {};
-        evData.forEach(d => { const u = d.office_college || 'N/A'; m[u] = (m[u]||0)+1; });
-        return Object.entries(m).sort((a,b) => b[1]-a[1])[0]?.[0] || '—';
-      })();
-      return {
-        id:       ev.id,
-        title:    ev.title,
-        date:     ev.startDate,
-        status:   ev.status,
-        total:    evData.length,
-        male:     evMale,
-        female:   evFemale,
-        femalePct: pct(evFemale, evData.length),
-        topUnit,
-      };
-    }).filter(e => e.total > 0);
+    // Age SDD distribution
+    const ageGenderMap = {};
+    ageBands.forEach((b) => (ageGenderMap[b] = { band: b, Male: 0, Female: 0, total: 0 }));
+    filtered.forEach((d) => {
+      const band = getAgeBand(d.age);
+      if (!band) return;
+      ageGenderMap[band].total += 1;
+      const sk = sexKey(d.sex);
+      if (sk === 'Male') ageGenderMap[band].Male += 1;
+      if (sk === 'Female') ageGenderMap[band].Female += 1;
+    });
+    const ageGenderData = ageBands.map((b) => ageGenderMap[b]);
+    const topAgeBand = [...ageGenderData].sort((a, b) => b.total - a.total)[0]?.band || 'N/A';
 
-    // Narrative
-    const topUnit = unitRanking[0]?.name || 'N/A';
+    // Employment SDD
+    const employmentGenderMap = {};
+    filtered.forEach((d) => {
+      const raw = (d.employment_status ?? '').toString().trim();
+      const status = raw || 'N/A';
+      if (!employmentGenderMap[status]) employmentGenderMap[status] = { name: status, Male: 0, Female: 0, total: 0 };
+      employmentGenderMap[status].total += 1;
+      const sk = sexKey(d.sex);
+      if (sk === 'Male') employmentGenderMap[status].Male += 1;
+      if (sk === 'Female') employmentGenderMap[status].Female += 1;
+    });
+    const employmentGenderData = Object.values(employmentGenderMap)
+      .sort((a, b) => b.total - a.total)
+      .slice(0, 8);
+    const topEmployment = employmentGenderData[0]?.name || 'N/A';
+
+    // PWD SDD
+    const pwdGenderMap = {
+      Yes: { name: 'Yes', Male: 0, Female: 0, total: 0 },
+      No: { name: 'No', Male: 0, Female: 0, total: 0 },
+    };
+    filtered.forEach((d) => {
+      const val = (d.pwd_status ?? '').toString().trim();
+      const key = val === 'Yes' ? 'Yes' : val === 'No' ? 'No' : null;
+      if (!key) return;
+      pwdGenderMap[key].total += 1;
+      const sk = sexKey(d.sex);
+      if (sk === 'Male') pwdGenderMap[key].Male += 1;
+      if (sk === 'Female') pwdGenderMap[key].Female += 1;
+    });
+    const pwdGenderData = ['Yes', 'No'].map((k) => pwdGenderMap[k]).filter((x) => x.total > 0);
+    const pwdYesPct = pct(pwdYes, total);
+
+    // Event comparison table
+    const eventTable = events
+      .map((ev) => {
+        const evData = filtered.filter((d) => String(d.eventId) === String(ev.id));
+        const evMale = evData.reduce((acc, d) => acc + (sexKey(d.sex) === 'Male' ? 1 : 0), 0);
+        const evFemale = evData.reduce((acc, d) => acc + (sexKey(d.sex) === 'Female' ? 1 : 0), 0);
+        const topUnit = (() => {
+          const m = {};
+          evData.forEach((d) => {
+            const u = d.office_college || 'N/A';
+            m[u] = (m[u] || 0) + 1;
+          });
+          return Object.entries(m).sort((a, b) => b[1] - a[1])[0]?.[0] || '—';
+        })();
+        return {
+          id: ev.id,
+          title: ev.title,
+          date: ev.startDate,
+          status: ev.status,
+          total: evData.length,
+          male: evMale,
+          female: evFemale,
+          femalePct: pct(evFemale, evData.length),
+          topUnit,
+        };
+      })
+      .filter((e) => e.total > 0);
+
+    // Narrative + topinsights
+    const topUnit = unitGenderRanking[0]?.name || 'N/A';
     const femalePct = pct(female, total);
-    const topSector = sectorData.sort((a,b) => b.count - a.count)[0]?.sector || 'N/A';
-    const narrative = total === 0
-      ? 'No data available for the selected filters.'
-      : `This reporting period recorded ${total} total participants across ${
-          events.filter(e => filtered.some(d => String(d.eventId) === String(e.id))).length
-        } event(s). ${topUnit} contributed the highest participation. The gender composition stands at ${femalePct}% female, with ${topSector}s representing the largest sector group. ${
-          scholars > 0 ? `A total of ${scholars} scholarship recipients were recorded.` : ''
-        }`;
+    const topSectorRow = [...sectorData].sort((a, b) => b.count - a.count)[0] || null;
+    const topSector = topSectorRow?.sector || 'N/A';
+    const topSectorFemalePct = topSectorRow ? pct(topSectorRow.Female, topSectorRow.count) : '0';
+
+    const genderGap = male + female > 0 ? Math.round(((female - male) / (male + female)) * 100) : 0;
+    const topSessionRow = sessionGenderData[0] || null;
+    const topSession = topSessionRow?.name || 'N/A';
+
+    const trendFirst = trend[0]?.Total ?? 0;
+    const trendLast = trend[trend.length - 1]?.Total ?? 0;
+    const trendDelta = trendLast - trendFirst;
+
+    const narrative =
+      total === 0
+        ? 'No data available for the selected filters.'
+        : `This reporting period recorded ${total} total participants across ${
+            events.filter((e) => filtered.some((d) => String(d.eventId) === String(e.id))).length
+          } event(s). Top participation came from ${topUnit}. Gender composition is ${femalePct}% female (gender gap: ${genderGap > 0 ? '+' : ''}${genderGap} pts). The largest sector group is ${topSector}, while the most active gate/session is ${topSession}. ${
+            pwdYes > 0 ? `${pwdYes} participant(s) were recorded as PWD.` : 'No PWD participants were recorded in this period.'
+          }`;
 
     return {
-      total, male, female, scholars,
-      sectorData, genderPie, sectorPie,
-      unitRanking, trend, sessionFunnel,
-      eventTable, narrative,
-      femalePct: pct(female, total),
+      total,
+      male,
+      female,
+      pwdYes,
+      pwdYesPct,
+      sectorData,
+      genderPie,
+      sectorPie,
+      unitRanking,
+      unitGenderRanking,
+      trend,
+      sessionGenderData,
+      sessionFunnel,
+      ageGenderData,
+      topAgeBand,
+      employmentGenderData,
+      topEmployment,
+      pwdGenderData,
+      eventTable,
+      narrative,
+      femalePct,
+      topSector,
+      topSectorFemalePct,
+      topSession,
+      trendDelta,
     };
   }, [filtered, events, attendanceData]);
 
@@ -266,7 +394,7 @@ export default function GeneralDashboard({ events = [], attendanceData = [] }) {
             <select className="bg-transparent outline-none text-[10px] font-bold"
               value={selectedSector} onChange={e => setSelectedSector(e.target.value)}>
               <option value="All">All Sectors</option>
-              {['Student','Faculty','Staff','Visitor'].map(s => <option key={s} value={s}>{s}</option>)}
+              {['Student','Faculty','Staff','Guest'].map(s => <option key={s} value={s}>{s}</option>)}
             </select>
           </div>
 
@@ -299,7 +427,13 @@ export default function GeneralDashboard({ events = [], attendanceData = [] }) {
             sub={`${stats.femalePct}% of total`} />
           <KPICard label="Male Participants" value={stats.male.toLocaleString()} icon={Award} accent="#3b82f6"
             sub={`${pct(stats.male, stats.total)}% of total`} />
-          
+          <KPICard
+            label="PWD Participants"
+            value={stats.pwdYes.toLocaleString()}
+            icon={Target}
+            accent="#10b981"
+            sub={`${stats.pwdYesPct}% of total`}
+          />
         </div>
 
 
@@ -379,6 +513,8 @@ export default function GeneralDashboard({ events = [], attendanceData = [] }) {
           </div>
         </div>
 
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+
         {/* ── ROW 2: Sex-Disaggregated by Sector (grouped bar) ── */}
         <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
           <SectionTitle>Sex-Disaggregated Data by Sector</SectionTitle>
@@ -397,6 +533,13 @@ export default function GeneralDashboard({ events = [], attendanceData = [] }) {
               <Bar dataKey="Female" fill={GENDER_COLORS.Female} barSize={24} radius={[4,4,0,0]} />
             </BarChart>
           </ResponsiveContainer>
+
+          <p className="mt-3 text-[9px] font-bold text-slate-400">
+            Largest sector: <span className="text-slate-700">{stats.topSector}</span> •{" "}
+            Female {stats.sectorData.find(s => s.sector === stats.topSector)?.Female ?? 0} / Male{" "}
+            {stats.sectorData.find(s => s.sector === stats.topSector)?.Male ?? 0} •{" "}
+            {stats.topSectorFemalePct}% female
+          </p>
         </div>
 
         {/* ── ROW 3: Monthly Trend (Area) ── */}
@@ -429,40 +572,81 @@ export default function GeneralDashboard({ events = [], attendanceData = [] }) {
               </AreaChart>
             </ResponsiveContainer>
           )}
+
+          {stats.trend.length > 1 && (
+            <p className="mt-3 text-[9px] font-bold text-slate-400">
+              Trend direction (Total):{" "}
+              <span className={stats.trendDelta >= 0 ? 'text-emerald-600' : 'text-rose-600'}>
+                {stats.trendDelta >= 0 ? '+' : ''}{stats.trendDelta}
+              </span>{' '}
+              net change from first to last month
+            </p>
+          )}
         </div>
 
-        {/* ── ROW 4: Session Funnel + College Ranking ── */}
+        </div>
+
+        {/* ── ROW 4: Session SDD + Office/College SDD ── */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
 
-          {/* Session Funnel (horizontal bars as funnel proxy) */}
+          {/* Session SDD (Male vs Female) */}
           <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
-            <SectionTitle>Session Attendance Funnel</SectionTitle>
-            {stats.sessionFunnel.length === 0 ? (
+            <SectionTitle>Session Attendance SDD</SectionTitle>
+
+            {stats.sessionGenderData.length === 0 ? (
               <p className="text-center text-slate-300 text-xs py-10">No session data</p>
             ) : (
-              <div className="space-y-3 mt-2">
-                {stats.sessionFunnel.map((s, i) => {
-                  const maxVal = stats.sessionFunnel[0].value;
-                  const pctWidth = maxVal ? (s.value / maxVal) * 100 : 0;
-                  const dropoff = i > 0
-                    ? ` (${((1 - s.value / stats.sessionFunnel[i-1].value) * 100).toFixed(0)}% drop)`
-                    : '';
+              <>
+                <ResponsiveContainer width="100%" height={260}>
+                  <BarChart data={stats.sessionGenderData} layout="vertical" barGap={6} margin={{ left: 0, right: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                    <XAxis type="number" hide />
+                    <YAxis
+                      dataKey="name"
+                      type="category"
+                      width={140} 
+                      axisLine={false}
+                      tickLine={false}
+                      tick={{ fontSize: 10, fontWeight: 700 }}
+                    />
+                    <Tooltip
+                      contentStyle={{ borderRadius: 0, border: 'none', fontSize: 11 }}
+                      formatter={(v, n) => [`${v}`, n]}
+                    />
+                    <Legend iconType="circle" iconSize={8} formatter={(v) => <span style={{ fontSize: 10, fontWeight: 700 }}>{v}</span>} />
+                    <Bar dataKey="Female" stackId="gender" fill={GENDER_COLORS.Female} barSize={22} radius={[6, 0, 0, 6]} />
+                    <Bar dataKey="Male" stackId="gender" fill={GENDER_COLORS.Male} barSize={22} radius={[0, 6, 6, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+
+                <p className="mt-3 text-[9px] font-bold text-slate-400">
+                  Top gate: <span className="text-slate-700">{stats.sessionGenderData[0].name}</span> •{" "}
+                  {stats.sessionGenderData[0].Female} Female / {stats.sessionGenderData[0].Male} Male
+                </p>
+              </>
+            )}
+          </div>
+
+          {/* Office/College SDD Ranking */}
+          <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
+            <SectionTitle>Top Units / Colleges (Male vs Female)</SectionTitle>
+            {stats.unitGenderRanking.length === 0 ? (
+              <p className="text-center text-slate-300 text-xs py-10">No data</p>
+            ) : (
+              <div className="space-y-3">
+                {stats.unitGenderRanking.slice(0, 8).map((u, i) => {
+                  const femaleShare = u.total ? u.female / u.total : 0;
                   return (
-                    <div key={s.name}>
-                      <div className="flex justify-between text-[10px] font-bold text-slate-600 mb-1">
-                        <span>{s.name}</span>
-                        <span className="text-slate-400">{s.value}{dropoff}</span>
+                    <div key={u.name}>
+                      <div className="flex justify-between text-[10px] font-bold mb-1">
+                        <span className="truncate pr-3">{u.name}</span>
+                        <span className="text-slate-500">
+                          {u.total} • F {u.female} / M {u.male}
+                        </span>
                       </div>
-                      <div className="h-6 bg-slate-100 rounded-lg overflow-hidden">
-                        <div
-                          className="h-full rounded-lg flex items-center pl-2 transition-all duration-500"
-                          style={{
-                            width: `${pctWidth}%`,
-                            background: `hsl(${240 - i * 30}, 80%, ${55 + i * 5}%)`,
-                          }}
-                        >
-                          <span className="text-[9px] font-black text-white">{pct(s.value, stats.total)}%</span>
-                        </div>
+                      <div className="h-3 bg-slate-50 rounded-sm overflow-hidden flex">
+                        <div className="h-full bg-rose-400" style={{ width: `${femaleShare * 100}%` }} />
+                        <div className="h-full bg-indigo-400" style={{ width: `${(1 - femaleShare) * 100}%` }} />
                       </div>
                     </div>
                   );
@@ -470,20 +654,90 @@ export default function GeneralDashboard({ events = [], attendanceData = [] }) {
               </div>
             )}
           </div>
+        </div>
 
-          {/* College / Office Ranking */}
+        {/* ── ROW 5: Additional SDD breakdowns ── */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {/* Age SDD */}
           <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
-            <SectionTitle>Top Contributing Units / Colleges</SectionTitle>
-            {stats.unitRanking.length === 0 ? (
-              <p className="text-center text-slate-300 text-xs py-10">No data</p>
-            ) : (
-              <div className="space-y-1">
-                {stats.unitRanking.slice(0, 8).map((u, i) => (
-                  <RankRow key={u.name} rank={i + 1} name={u.name} count={u.count} total={stats.total}
-                    color={`hsl(${240 + i * 15}, 70%, 55%)`} />
-                ))}
-              </div>
-            )}
+            <SectionTitle>Age Distribution (SDD)</SectionTitle>
+            <div className="h-[260px]">
+              {stats.total === 0 ? (
+                <p className="text-center text-slate-300 text-xs py-20">No data</p>
+              ) : (
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={stats.ageGenderData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                    <XAxis dataKey="band" tick={{ fontSize: 10, fontWeight: 700 }} axisLine={false} tickLine={false} />
+                    <YAxis tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
+                    <Tooltip contentStyle={{ borderRadius: 12, border: 'none', fontSize: 11 }} />
+                    <Legend iconType="circle" iconSize={8} formatter={(v) => <span style={{ fontSize: 10, fontWeight: 700 }}>{v}</span>} />
+                    <Bar dataKey="Male" stackId="age" fill={GENDER_COLORS.Male} radius={[0, 0, 0, 0]} />
+                    <Bar dataKey="Female" stackId="age" fill={GENDER_COLORS.Female} radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              )}
+            </div>
+            <p className="mt-3 text-[9px] font-bold text-slate-400">
+              Top age band: <span className="text-slate-700">{stats.topAgeBand}</span>
+            </p>
+          </div>
+
+          {/* Employment SDD */}
+          <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
+            <SectionTitle>Employment Status (SDD)</SectionTitle>
+            <div className="h-[260px]">
+              {stats.employmentGenderData.length === 0 ? (
+                <p className="text-center text-slate-300 text-xs py-20">No data</p>
+              ) : (
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={stats.employmentGenderData} layout="vertical" margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                    <XAxis type="number" hide />
+                    <YAxis
+                      dataKey="name"
+                      type="category"
+                      width={140}
+                      axisLine={false}
+                      tickLine={false}
+                      tick={{ fontSize: 10, fontWeight: 700 }}
+                    />
+                    <Tooltip contentStyle={{ borderRadius: 12, border: 'none', fontSize: 11 }} />
+                    <Legend iconType="circle" iconSize={8} formatter={(v) => <span style={{ fontSize: 10, fontWeight: 700 }}>{v}</span>} />
+                    <Bar dataKey="Male" stackId="emp" fill={GENDER_COLORS.Male} barSize={22} radius={[6, 0, 0, 6]} />
+                    <Bar dataKey="Female" stackId="emp" fill={GENDER_COLORS.Female} barSize={22} radius={[0, 6, 6, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              )}
+            </div>
+            <p className="mt-3 text-[9px] font-bold text-slate-400">
+              Top status: <span className="text-slate-700">{stats.topEmployment}</span>
+            </p>
+          </div>
+
+          {/* PWD SDD */}
+          <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm print-page-break">
+            <SectionTitle>PWD Status (SDD)</SectionTitle>
+            <div className="h-[260px]">
+              {stats.pwdGenderData.length === 0 ? (
+                <p className="text-center text-slate-300 text-xs py-20">No PWD data</p>
+              ) : (
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={stats.pwdGenderData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                    <XAxis dataKey="name" tick={{ fontSize: 10, fontWeight: 700 }} axisLine={false} tickLine={false} />
+                    <YAxis tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
+                    <Tooltip contentStyle={{ borderRadius: 12, border: 'none', fontSize: 11 }} />
+                    <Legend iconType="circle" iconSize={8} formatter={(v) => <span style={{ fontSize: 10, fontWeight: 700 }}>{v}</span>} />
+                    <Bar dataKey="Male" stackId="pwd" fill={GENDER_COLORS.Male} radius={[0, 0, 0, 0]} />
+                    <Bar dataKey="Female" stackId="pwd" fill={GENDER_COLORS.Female} radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              )}
+            </div>
+            <p className="mt-3 text-[9px] font-bold text-slate-400">
+              PWD “Yes”: <span className="text-slate-700">{stats.pwdYes}</span> • {stats.pwdYesPct}%
+            </p>
           </div>
         </div>
 
@@ -557,8 +811,8 @@ export default function GeneralDashboard({ events = [], attendanceData = [] }) {
             </p>
           </div>
           <div className="bg-slate-800 p-4 rounded-2xl border border-slate-700">
-             <p className="text-[9px] font-black uppercase text-slate-500 mb-1 text-center">Inclusion Score</p>
-             <div className="text-2xl font-black text-emerald-400">{pct(stats.female + stats.scholars, stats.total * 2)}%</div>
+             <p className="text-[9px] font-black uppercase text-slate-500 mb-1 text-center">Inclusion Score (PWD)</p>
+             <div className="text-2xl font-black text-emerald-400">{stats.pwdYesPct}%</div>
           </div>
         </div>
       </div> 

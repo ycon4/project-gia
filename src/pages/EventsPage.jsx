@@ -17,6 +17,8 @@ import { db } from '../../firebase/config';
 import * as XLSX from 'xlsx';
 import AttendanceTable from '../components/events/AttendanceTable';
 import { SessionQRManager } from '../components/events/SessionQRManager';
+import { EventAnalyticsDashboard } from '../components/events/EventsAnalytics';
+import GeneralDashboard from '../components/events/GeneralPage';
 
 const GAD_ATTRIBUTES = [
   'sex', 'age', 'home_address', 'email', 'phone', 'office_college', 
@@ -26,6 +28,7 @@ const GAD_ATTRIBUTES = [
 
 export default function EventsPage({ 
   events = [], 
+  attendance = [],
   onCreateEvent = () => {},
   onDeleteEvent = () => {},
   onUpdateEvent = () => {},
@@ -91,7 +94,7 @@ export default function EventsPage({
       ...activeEvent,
       sessions: [...(activeEvent.sessions || []), sessionName]
     };
-
+    
     setActiveEvent(updated);
     setSelectedSession(newSessionInput.trim());
     setNewSessionInput("");
@@ -173,13 +176,24 @@ const filteredAttendance = useMemo(() => {
   }, [activeEvent, attendanceData, searchTerm, selectedSession]);
 
   if (loading && activeEvent) {
-  return (
-    <div className="col-span-12 lg:col-span-9 p-20 text-center">
-       <div className="animate-spin w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full mx-auto mb-4" />
-       <p className="font-black text-slate-300 uppercase tracking-widest">Loading Records...</p>
-    </div>
-  );
-};
+    return (
+      <div className="col-span-12 lg:col-span-9 space-y-4 animate-pulse">
+        <div className="bg-white rounded-2xl h-32 border border-slate-100" />
+        <div className="grid grid-cols-4 gap-3">
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className="bg-white rounded-2xl h-20 border border-slate-100" />
+          ))}
+        </div>
+        <div className="grid grid-cols-2 gap-4">
+          <div className="bg-white rounded-2xl h-48 border border-slate-100" />
+          <div className="bg-white rounded-2xl h-48 border border-slate-100" />
+        </div>
+        <p className="text-center text-[10px] font-black text-slate-300 uppercase tracking-widest pt-2">
+          Loading Records...
+        </p>
+      </div>
+    );
+  }
 
   const registrationUrl = activeEvent ? `${window.location.origin}/register/${activeEvent.id}?session=${encodeURIComponent(selectedSession)}` : '';
 
@@ -338,7 +352,21 @@ const filteredAttendance = useMemo(() => {
                     <div className="bg-indigo-600 p-3 rounded-xl text-white shadow-lg shadow-indigo-200"><Calendar size={24}/></div>
                     <div>
                       {/* The Title: Switches between "Global Overview" and "Event Title" */}
-                      <h1 className="text-xl font-black text-slate-800 uppercase tracking-tight transition-all duration-300">
+                      <h1
+                        className={`text-xl font-black uppercase tracking-tight transition-all duration-300 ${
+                          activeEvent ? 'text-slate-800 cursor-pointer hover:text-indigo-600' : 'text-indigo-600 cursor-default'
+                        }`}
+                        role="button"
+                        tabIndex={0}
+                        aria-label="Go to Global Overview"
+                        onClick={() => {
+                          if (activeEvent) setActiveEvent(null);
+                        }}
+                        onKeyDown={(e) => {
+                          if (!activeEvent) return;
+                          if (e.key === 'Enter' || e.key === ' ') setActiveEvent(null);
+                        }}
+                      >
                         {activeEvent ? activeEvent.title : "Global Overview"}
                       </h1>
 
@@ -375,6 +403,15 @@ const filteredAttendance = useMemo(() => {
 
         {/* Event List */}
         <div className="space-y-2 max-h-[400px] overflow-y-auto pr-1">
+          {events.length === 0 && (
+            <div className="text-center py-6 px-2">
+              <div className="w-12 h-12 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                <Calendar size={20} className="text-slate-300" />
+              </div>
+              <p className="text-[9px] font-black uppercase tracking-widest text-slate-300">No Events Yet</p>
+              <p className="text-[9px] text-slate-300 mt-1">Click "New Event" to get started.</p>
+            </div>
+          )}
           {events.map(event => (
             <div 
               key={event.id}
@@ -389,6 +426,8 @@ const filteredAttendance = useMemo(() => {
                 <p className="font-bold text-sm text-slate-800 truncate pr-8">
                   {event.title}
                 </p>
+
+              
                 
                 {/* The "Actions" Container */}
                 <div className="flex gap-1">
@@ -406,24 +445,38 @@ const filteredAttendance = useMemo(() => {
                     <Edit3 size={14} />
                   </button>
 
-                  <button 
+                  <button
                     type="button"
                     onClick={(e) => {
                       e.stopPropagation();
-                      onDeleteEvent(event.id, event.title);
+                      if (window.confirm(`Delete "${event.title}"? This cannot be undone.`)) {
+                        onDeleteEvent(event.id, event.title);
+                      }
                     }}
                     className="p-1.5 hover:bg-white hover:shadow-sm rounded-md text-slate-400 hover:text-rose-600 transition-all"
                     title="Delete Event"
                   >
                     <Trash2 size={14} />
-                  </button>    
+                  </button>
                 </div>
               </div>
 
+              {(event.startDate || event.endDate) && (
+                <p className="text-[9px] text-slate-400 font-medium mt-0.5">
+                  {event.startDate} {event.endDate ? `→ ${event.endDate}` : ''}
+                </p>
+              )}
+
               <div className="flex justify-between items-center mt-1">
-                <span className="text-[9px] text-slate-400 font-black uppercase">
-                  {event.status}
-                </span>
+                <div className="flex items-center gap-2 mt-1">
+                  <span className="text-[9px] text-slate-400 font-black uppercase">{event.status}</span>
+                  {/* Quick count badge — show total attendance across all sessions */}
+                  {activeEvent?.id === event.id && attendanceData.length > 0 && (
+                    <span className="bg-indigo-100 text-indigo-600 text-[9px] font-black px-2 py-0.5 rounded-full">
+                      {attendanceData.length} records
+                    </span>
+                  )}
+                </div>
                 {event.status === 'Done' && <CheckCircle2 size={12} className="text-emerald-500" />}
               </div>
             </div>
@@ -461,30 +514,62 @@ const filteredAttendance = useMemo(() => {
         {/* MAIN CONTENT */}
         <div className="col-span-12 lg:col-span-9">
           {!activeEvent ? (
-            <div className="bg-white border-2 border-dashed rounded-[40px] p-32 text-center border-slate-200">
-              <div className="bg-slate-50 w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-6 text-slate-300">
-                <Users size={48} />
-              </div>
-              <h2 className="text-xl font-black text-slate-400 uppercase tracking-widest">
-                Select an event to view dashboard
-              </h2>
-              <p className="text-slate-400 text-sm mt-2 font-medium">Choose from the sidebar to manage sessions and attendance.</p>
+            <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+              <GeneralDashboard events={events} attendanceData={attendance} />
             </div>
           ) : (
             <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
               
               {/* 1. SESSION & QR MANAGER */}
-              <div className="relative">
+              
                 <SessionQRManager 
                   activeEvent={activeEvent}
                   selectedSession={selectedSession}
                   onSessionChange={(newSession) => setSelectedSession(newSession)}
                   registrationUrl={`${window.location.origin}/register/${activeEvent.id}?session=${encodeURIComponent(selectedSession)}`}
                 />
+
+               
+                <EventAnalyticsDashboard 
+                  attendanceData={attendanceData}
+                  filteredAttendance={filteredAttendance}
+                  activeEvent={activeEvent}
+                  selectedSession={selectedSession} 
+                    />
                 
-              </div>
+                
+              
 
               {/* 2. DATA TABLE SECTION */}
+
+              <div className="flex gap-2 flex-wrap">
+                {/* Pre-Registration always first */}
+                {activeEvent.hasPreReg && (
+                  <button
+                    onClick={() => setSelectedSession('Pre-Registration')}
+                    className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${
+                      selectedSession === 'Pre-Registration'
+                        ? 'bg-indigo-600 text-white shadow-sm'
+                        : 'bg-white border border-slate-200 text-slate-500 hover:border-indigo-300'
+                    }`}
+                  >
+                    Pre-Registration
+                  </button>
+                )}
+                {(activeEvent.sessions || []).map(session => (
+                  <button
+                    key={session}
+                    onClick={() => setSelectedSession(session)}
+                    className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${
+                      selectedSession === session
+                        ? 'bg-indigo-600 text-white shadow-sm'
+                        : 'bg-white border border-slate-200 text-slate-500 hover:border-indigo-300'
+                    }`}
+                  >
+                    {session}
+                  </button>
+                ))}
+              </div>
               <div className="space-y-4">
                 {/* Search Bar (Functional filtering handled here) */}
                 <div className="relative group max-w-md">
@@ -502,13 +587,12 @@ const filteredAttendance = useMemo(() => {
                 <AttendanceTable 
                   title={`${selectedSession} Logs`} 
                   data={filteredAttendance} 
-                  onExport={() => {
-                    const cleanData = filteredAttendance.map(({ eventId, session, ...rest }) => rest);
-                    
-                    const ws = XLSX.utils.json_to_sheet(cleanData);
+                  onExport={(exportRows) => {
+                    if (!exportRows || exportRows.length === 0) return alert("No records to export");
+                    const ws = XLSX.utils.json_to_sheet(exportRows);
                     const wb = XLSX.utils.book_new();
                     XLSX.utils.book_append_sheet(wb, ws, "Attendance");
-                    XLSX.writeFile(wb, `${activeEvent.name}_${selectedSession}.xlsx`);
+                    XLSX.writeFile(wb, `${activeEvent.title}_${selectedSession}.xlsx`);
                   }}
                 />
               </div>

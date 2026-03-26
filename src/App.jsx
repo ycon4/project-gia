@@ -288,6 +288,7 @@ function App() {
             {activeSection === 'event' && (
               <EventsPage
                 events={events}
+                attendance={attendance}
                 activeEvent={activeEvent}
                 setActiveEvent = {setActiveEvent}
                 onCreateEvent={handleCreateEvent}
