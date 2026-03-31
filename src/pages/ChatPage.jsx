@@ -2,6 +2,7 @@ import { Send, Database, RefreshCw } from 'lucide-react';
 import { useEffect, useRef } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import ChatChart from '../components/chat/ChatChart';
 
 export default function ChatPage({ 
   messages, 
@@ -89,7 +90,7 @@ export default function ChatPage({
                         color: white !important;
                       }
                     `}</style>
-                    <ReactMarkdown 
+                    <ReactMarkdown
                       remarkPlugins={[remarkGfm]}
                       components={{
                         // Headings
@@ -170,6 +171,7 @@ export default function ChatPage({
                     >
                       {msg.content}
                     </ReactMarkdown>
+                    {msg.chartData && <ChatChart chartData={msg.chartData} />}
                   </div>
                 ) : (
                   <p className="whitespace-pre-wrap">{msg.content}</p>

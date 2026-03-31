@@ -13,7 +13,7 @@ const GROQ_API_KEY = process.env.GROQ_API_KEY;
 const PORT = process.env.PORT || 3001;
 
 const API_URL = 'https://api.groq.com/openai/v1/chat/completions';
-const MODEL = 'groq/compound';
+const MODEL = 'compound-beta';
 
 app.use(cors({
   origin: ['http://localhost:5173', 'http://localhost:3000', 'http://127.0.0.1:5173'],

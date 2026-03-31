@@ -1,17 +1,21 @@
 import { useState, useEffect, useMemo } from 'react';
-import { MessageCircle, BarChart3, Home as HomeIcon } from 'lucide-react';
+import { MessageCircle, BarChart3, Home as HomeIcon, LogOut } from 'lucide-react';
 import HomePage from './pages/HomePage';
 import DashboardPage from './pages/DashboardPage';
 import ChatPage from './pages/ChatPage';
 import EventsPage from './pages/EventsPage';
+import LoginPage from './pages/LoginPage';
 import RegistrationForm from './components/events/RegistrationForm';
 import FloatingChatButton from './components/FloatingChatButton';
 import { getAllDocuments, saveEvent, updateDocument, deleteDocument } from '../firebase/services';
 import { analyzeWithAI } from './services/aiService';
-import { db } from '../firebase/config';
+import { db, auth } from '../firebase/config';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { onAuthStateChanged, signOut } from 'firebase/auth';
 
 function App() {
+  const [user, setUser] = useState(null);
+  const [authLoading, setAuthLoading] = useState(true);
   const [activeSection, setActiveSection] = useState('home');
   const [activeEvent, setActiveEvent] = useState(null);
   const [messages, setMessages] = useState([
@@ -34,7 +38,16 @@ function App() {
   const [currentEventId, setCurrentEventId] = useState(null);
   const [currentSession, setCurrentSession] = useState('General Attendance');
 
-  // 1. Detect if this is a registration link on mount
+  // 1. Auth state listener
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+      setAuthLoading(false);
+    });
+    return unsubscribe;
+  }, []);
+
+  // 2. Detect if this is a registration link on mount
   useEffect(() => {
   const path = window.location.pathname; // This gets "/register/H5JI5yWv1bgMd6qs29mc"
   const params = new URLSearchParams(window.location.search);
@@ -61,6 +74,8 @@ function App() {
   useEffect(() => {
     loadDatabaseData();
   }, []);
+
+  const handleLogout = () => signOut(auth);
 
   const getRegistrationData = () => {
     const activeEvent = events.find(e => String(e.id) === String(currentEventId));
@@ -104,7 +119,7 @@ function App() {
       setDataLoaded(true);
 
     } catch (error) {
-      console.error("Critical error in database loader:", globalError);
+      console.error("Critical error in database loader:", error);
     } finally {
       setIsLoadingData(false);
     }
@@ -196,17 +211,17 @@ function App() {
 
     try {
       // ✅ Pass chatHistory for context awareness
-      const reply = await analyzeWithAI(userMessage, dataLoaded ? dbData : {}, chatHistory);
+      const result = await analyzeWithAI(userMessage, dataLoaded ? dbData : {}, chatHistory);
 
       // Update display messages with real reply
-      setMessages([...newMessages, { role: 'assistant', content: reply }]);
+      setMessages([...newMessages, { role: 'assistant', content: result.reply, chartData: result.chartData }]);
 
       // ✅ Update chat history with this turn (user message + assistant reply)
       // We store the original user message (not the enriched one) for cleaner history
       setChatHistory(prev => [
         ...prev,
         { role: 'user', content: userMessage },
-        { role: 'assistant', content: reply }
+        { role: 'assistant', content: result.reply }
       ]);
 
     } catch (error) {
@@ -237,6 +252,14 @@ function App() {
     setShowSessionModal(true);
   }
 
+  if (authLoading) return (
+    <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+      <div className="text-purple-600 font-bold text-sm animate-pulse">Loading...</div>
+    </div>
+  );
+
+  if (!user && !isRegisterMode) return <LoginPage />;
+
   return (
     <div className="min-h-screen bg-slate-50 relative overflow-x-hidden">
       <div className="fixed inset-0 overflow-hidden pointer-events-none -z-10">
@@ -261,11 +284,21 @@ function App() {
                 </div>
               </div>
 
-              <div className="flex items-center p-1 bg-slate-100/50 rounded-2xl border border-slate-200/50">
-                <NavButton active={activeSection === 'home'} onClick={() => setActiveSection('home')} icon={<HomeIcon size={16} />} label="Home" />
-                <NavButton active={activeSection === 'event'} onClick={() => setActiveSection('event')} icon={<BarChart3 size={16} />} label="Events" />
-                <NavButton active={activeSection === 'data'} onClick={() => setActiveSection('data')} icon={<BarChart3 size={16} />} label="Dashboard" />
-                <NavButton active={activeSection === 'chat'} onClick={() => setActiveSection('chat')} icon={<MessageCircle size={16} />} label="Chat AI" />
+              <div className="flex items-center gap-3">
+                <div className="flex items-center p-1 bg-slate-100/50 rounded-2xl border border-slate-200/50">
+                  <NavButton active={activeSection === 'home'} onClick={() => setActiveSection('home')} icon={<HomeIcon size={16} />} label="Home" />
+                  <NavButton active={activeSection === 'event'} onClick={() => setActiveSection('event')} icon={<BarChart3 size={16} />} label="Events" />
+                  <NavButton active={activeSection === 'data'} onClick={() => setActiveSection('data')} icon={<BarChart3 size={16} />} label="Dashboard" />
+                  <NavButton active={activeSection === 'chat'} onClick={() => setActiveSection('chat')} icon={<MessageCircle size={16} />} label="Chat AI" />
+                </div>
+                <button
+                  onClick={handleLogout}
+                  className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-slate-500 hover:text-red-600 hover:bg-red-50 transition-all duration-200 font-black text-[10px] uppercase tracking-widest"
+                  title="Sign out"
+                >
+                  <LogOut size={16} />
+                  <span>Logout</span>
+                </button>
               </div>
             </div>
           </div>

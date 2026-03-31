@@ -579,13 +579,13 @@ export const analyzeWithAI = async (userMessage, dbData, history = []) => {
       );
       if (!response.ok) {
         if (response.status === 500 || response.status === 503)
-          return "I'm currently unavailable due to high server demand. Please try again in 20–30 seconds.";
+          return { reply: "I'm currently unavailable due to high server demand. Please try again in 20–30 seconds.", chartData: null };
         if (response.status === 429)
-          return "I've hit the rate limit for requests. Please wait a moment and try again.";
+          return { reply: "I've hit the rate limit for requests. Please wait a moment and try again.", chartData: null };
         throw new Error(`API error: ${response.status}`);
       }
       const data = await response.json();
-      return data.reply || "Hi there! How can I help you today?";
+      return { reply: data.reply || "Hi there! How can I help you today?", chartData: null };
     }
 
     // ── Data query — compute then send to AI ─────────────────
@@ -619,19 +619,19 @@ INSTRUCTIONS:
     if (!response.ok) {
       const status = response.status;
       if (status === 500 || status === 503)
-        return "I'm currently unavailable due to high server demand. Please try again in 20–30 seconds.";
+        return { reply: "I'm currently unavailable due to high server demand. Please try again in 20–30 seconds.", chartData: null };
       if (status === 429)
-        return "I've hit the rate limit for requests. Please wait a moment and try again.";
+        return { reply: "I've hit the rate limit for requests. Please wait a moment and try again.", chartData: null };
       throw new Error(`API error: ${status}`);
     }
 
     const data = await response.json();
-    if (data.reply) return stripInterpretiveSentences(data.reply);
+    if (data.reply) return { reply: stripInterpretiveSentences(data.reply), chartData: computedResult.error ? null : computedResult };
     throw new Error('No reply in response');
 
   } catch (error) {
     console.error('❌ Error calling AI service:', error);
-    return "I'm having trouble connecting to the server right now. Please check your connection and try again.";
+    return { reply: "I'm having trouble connecting to the server right now. Please check your connection and try again.", chartData: null };
   }
 };
 
