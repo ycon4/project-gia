@@ -8,7 +8,6 @@ import LoginPage from './pages/LoginPage';
 import RegistrationForm from './components/events/RegistrationForm';
 import FloatingChatButton from './components/FloatingChatButton';
 import { getAllDocuments, saveEvent, updateDocument, deleteDocument } from '../firebase/services';
-import { analyzeWithAI } from './services/aiService';
 import { db, auth } from '../firebase/config';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
@@ -18,14 +17,6 @@ function App() {
   const [authLoading, setAuthLoading] = useState(true);
   const [activeSection, setActiveSection] = useState('home');
   const [activeEvent, setActiveEvent] = useState(null);
-  const [messages, setMessages] = useState([
-    { role: 'assistant', content: 'Hello! I am GIA, the Gender and Development Center Information Assistant. I\'m loading the database now so I can help you analyze your data. How can I help you today?' }
-  ]);
-  const [inputMessage, setInputMessage] = useState('');
-
-  // ✅ Conversation history for context awareness (role + content pairs for the API)
-  const [chatHistory, setChatHistory] = useState([]);
-
   // Database state
   const [dbData, setDbData] = useState({});
   const [isLoadingData, setIsLoadingData] = useState(false);
@@ -198,36 +189,6 @@ function App() {
   };
 }, [isRegisterMode, events, currentEventId]);
 
-  const handleSendMessage = async (e) => {
-    e.preventDefault();
-    if (!inputMessage.trim()) return;
-
-    const userMessage = inputMessage;
-    setInputMessage('');
-
-    // Update display messages
-    const newMessages = [...messages, { role: 'user', content: userMessage }];
-    setMessages([...newMessages, { role: 'assistant', content: '🤔 Thinking...' }]);
-
-    try {
-      // ✅ Pass chatHistory for context awareness
-      const result = await analyzeWithAI(userMessage, dataLoaded ? dbData : {}, chatHistory);
-
-      // Update display messages with real reply
-      setMessages([...newMessages, { role: 'assistant', content: result.reply, chartData: result.chartData }]);
-
-      // ✅ Update chat history with this turn (user message + assistant reply)
-      // We store the original user message (not the enriched one) for cleaner history
-      setChatHistory(prev => [
-        ...prev,
-        { role: 'user', content: userMessage },
-        { role: 'assistant', content: result.reply }
-      ]);
-
-    } catch (error) {
-      setMessages([...newMessages, { role: 'assistant', content: "Error: " + error.message }]);
-    }
-  };
 
   const handleAddSession = async (eventId, sessionName) => {
     try {
@@ -332,13 +293,10 @@ function App() {
             {activeSection === 'data' && <DashboardPage />}
             {activeSection === 'chat' && (
               <ChatPage
-                messages={messages}
-                inputMessage={inputMessage}
-                setInputMessage={setInputMessage}
-                handleSendMessage={handleSendMessage}
                 dbData={dbData}
                 isLoadingData={isLoadingData}
                 dataLoaded={dataLoaded}
+                user={user}
                 onRefreshData={loadDatabaseData}
               />
             )}
