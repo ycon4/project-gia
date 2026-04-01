@@ -562,18 +562,20 @@ const fetchWithRetry = async (url, options, retries = 3, delayMs = 3000) => {
 // MAIN EXPORT
 // ─────────────────────────────────────────────────────────────
 
-export const analyzeWithAI = async (userMessage, dbData, history = []) => {
+export const analyzeWithAI = async (userMessage, dbData, _history = []) => {
   try {
     const intent = parseQuery(userMessage);
 
     // ── Conversational — send directly, no data computation ──
     if (intent.isConversational) {
+      // History is stored in Firebase for display only.
+      // No history is sent to Groq — every request is stateless.
       const response = await fetchWithRetry(
         API_URL,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ message: userMessage, history }),
+          body: JSON.stringify({ message: userMessage, history: [] }),
         },
         3, 3000
       );
@@ -590,7 +592,15 @@ export const analyzeWithAI = async (userMessage, dbData, history = []) => {
 
     // ── Data query — compute then send to AI ─────────────────
     const computedResult = computeAnswer(intent, dbData);
-    const computedText = formatResultForAI(computedResult);
+    let computedText = formatResultForAI(computedResult);
+
+    // Groq compound-beta has an 8192-token context window. Cap the computed
+    // data at 8000 chars so the full payload stays well under the limit.
+    const MAX_DATA_CHARS = 8000;
+    if (computedText.length > MAX_DATA_CHARS) {
+      computedText = computedText.substring(0, MAX_DATA_CHARS) +
+        '\n[...data truncated for size — show only what is available above]\n=== END OF COMPUTED DATA ===';
+    }
 
     const enrichedMessage = `${computedText}
 
@@ -611,7 +621,9 @@ INSTRUCTIONS:
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: enrichedMessage, history }),
+        // Data queries are self-contained (computed data provides full context),
+        // so history is omitted to avoid exceeding Groq's request size limit.
+        body: JSON.stringify({ message: enrichedMessage, history: [] }),
       },
       3, 3000
     );
@@ -648,7 +660,7 @@ export const prepareDataContext = (dbData) => {
   return context;
 };
 
-export const extractRelevantData = (userMessage, dbData) => dbData;
+export const extractRelevantData = (_userMessage, dbData) => dbData;
 
 export const generateMarkdownTable = (data, fields) => {
   if (!data || data.length === 0) return '';

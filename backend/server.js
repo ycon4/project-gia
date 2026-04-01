@@ -13,7 +13,7 @@ const GROQ_API_KEY = process.env.GROQ_API_KEY;
 const PORT = process.env.PORT || 3001;
 
 const API_URL = 'https://api.groq.com/openai/v1/chat/completions';
-const MODEL = 'compound-beta';
+const MODEL = 'llama-3.3-70b-versatile';
 
 app.use(cors({
   origin: ['http://localhost:5173', 'http://localhost:3000', 'http://127.0.0.1:5173'],
@@ -59,13 +59,23 @@ app.post('/api/chat', async (req, res) => {
 
     if (!message) return res.status(400).json({ error: 'Message is required' });
 
+    // Keep last 6 turns (3 exchanges). Truncate assistant replies so large
+    // table responses from previous queries don't blow up the payload.
+    const trimmedHistory = history.slice(-6).map(msg => ({
+      role: msg.role,
+      content: msg.role === 'assistant' && msg.content.length > 500
+        ? msg.content.substring(0, 500) + '…'
+        : msg.content,
+    }));
+
     const messages = [
       { role: 'system', content: SYSTEM_PROMPT },
-      ...history.slice(-10),
+      ...trimmedHistory,
       { role: 'user', content: message }
     ];
 
-    console.log(`📡 Calling API with ${messages.length} messages (${history.length} history turns)...`);
+    const payload = JSON.stringify({ model: MODEL, messages, max_tokens: 1024, temperature: 0.1, stream: false });
+    console.log(`📡 Calling API — ${messages.length} messages, payload: ${(payload.length / 1024).toFixed(1)} KB`);
 
     const response = await fetchWithRetry(
       API_URL,
@@ -75,13 +85,7 @@ app.post('/api/chat', async (req, res) => {
           'Authorization': `Bearer ${GROQ_API_KEY}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          model: MODEL,
-          messages,
-          max_tokens: 2048,
-          temperature: 0.1,
-          stream: false
-        }),
+        body: payload,
       },
       3,
       3000
@@ -98,6 +102,9 @@ app.post('/api/chat', async (req, res) => {
       }
       if (response.status === 429) {
         return res.json({ reply: "I've hit the rate limit for requests. Please wait a moment and try again." });
+      }
+      if (response.status === 413) {
+        return res.json({ reply: "The request was too large to process. Please try a more specific question." });
       }
 
       throw new Error(`API error: ${response.status} - ${errorText}`);
@@ -119,11 +126,11 @@ app.post('/api/chat', async (req, res) => {
   }
 });
 
-app.get('/api/health', (req, res) => {
+app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', message: 'GIA backend is running!' });
 });
 
-app.get('/', (req, res) => {
+app.get('/', (_req, res) => {
   res.json({ message: 'GIA Backend API', endpoints: { health: '/api/health', chat: 'POST /api/chat' } });
 });
 
