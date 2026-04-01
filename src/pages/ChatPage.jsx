@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Send, Database, RefreshCw } from 'lucide-react';
+import giaLogo from '../assets/GIA Logo.svg';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { updateDoc, doc, addDoc, collection } from 'firebase/firestore';
@@ -132,8 +133,8 @@ export default function ChatPage({
       {/* ── Welcome screen ── */}
       {isWelcomeScreen ? (
         <div className="flex-1 flex flex-col items-center justify-center px-8 pb-12 select-none">
-          <div className="w-12 h-12 bg-gia-900 dark:bg-gia-800 rounded-2xl flex items-center justify-center shadow-lg shadow-gia-900/20 mb-6">
-            <span className="text-white font-black text-sm tracking-tight">GIA</span>
+          <div className="mb-6">
+            <img src={giaLogo} alt="GIA" className="w-16 h-16 object-contain" style={{ filter: 'brightness(0) saturate(100%) invert(22%) sepia(90%) saturate(2500%) hue-rotate(272deg) brightness(0.9)' }} />
           </div>
           <h1 className="text-p4-3xl font-bold text-slate-800 dark:text-slate-100 text-center leading-tight mb-3 max-w-lg">
             What would you like to know?

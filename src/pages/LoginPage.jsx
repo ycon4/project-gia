@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '../../firebase/config';
 import { ShieldCheck } from 'lucide-react';
+import giaLogo from '../assets/GIA Logo.svg';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -34,10 +35,7 @@ export default function LoginPage() {
         {/* Brand mark */}
         <div className="flex flex-col items-center mb-10">
           <div className="relative mb-5">
-            <div className="absolute -inset-1.5 bg-gradient-to-br from-gia-500 to-gia-800 rounded-2xl blur opacity-30" />
-            <div className="relative w-16 h-16 bg-gia-900 dark:bg-gia-800 rounded-2xl flex items-center justify-center shadow-xl shadow-gia-900/20">
-              <span className="text-white font-black text-lg tracking-tight">GIA</span>
-            </div>
+            <img src={giaLogo} alt="GIA" className="w-20 h-20 object-contain" style={{ filter: 'brightness(0) saturate(100%) invert(22%) sepia(90%) saturate(2500%) hue-rotate(272deg) brightness(0.9)' }} />
           </div>
           <h1 className="text-p4-lg font-black text-slate-900 dark:text-slate-100 uppercase tracking-tight leading-none">
             MSU-IIT GADC

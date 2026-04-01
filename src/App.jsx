@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import giaLogo from './assets/GIA Logo.svg';
 import {
   MessageCircle, BarChart3, Home as HomeIcon, LogOut,
   CalendarDays, PanelLeftClose, PanelLeft, Plus, Trash2, MessageSquare,
@@ -343,10 +344,10 @@ function Sidebar({
         <div className="flex items-center h-16 px-3 gap-3 border-b border-slate-100 dark:border-neutral-700/60 shrink-0">
           <button
             onClick={() => setActiveSection('home')}
-            className="shrink-0 w-9 h-9 bg-gia-900 dark:bg-gia-800 rounded-xl flex items-center justify-center shadow-md"
+            className="shrink-0 flex items-center justify-center"
             title="GIA Home"
           >
-            <span className="text-white font-black text-[10px] tracking-tight">GIA</span>
+            <img src={giaLogo} alt="GIA" className="w-8 h-8 object-contain" style={{ filter: 'brightness(0) saturate(100%) invert(22%) sepia(90%) saturate(2500%) hue-rotate(272deg) brightness(0.9)' }} />
           </button>
           <div className="flex-1 min-w-0">
             <div className="text-slate-900 dark:text-neutral-100 font-semibold text-sm leading-none truncate">MSU-IIT GADC</div>
