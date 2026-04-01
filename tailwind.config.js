@@ -1,4 +1,6 @@
 /** @type {import('tailwindcss').Config} */
+import defaultColors from 'tailwindcss/colors.js';
+
 export default {
   darkMode: 'class',
   content: [
@@ -8,6 +10,11 @@ export default {
   theme: {
     extend: {
       colors: {
+        neutral: {
+          ...defaultColors.neutral,
+          900: '#212121',
+          950: '#121212',
+        },
         gia: {
           50:  '#f8f0ff',
           100: '#f1deff',
@@ -34,8 +41,9 @@ export default {
         'p4-4xl':  ['4.209rem',  { lineHeight: '1.1' }],        // ~67px
       },
       fontFamily: {
-        sans:  ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
-        serif: ['Source Serif 4', 'Georgia', 'serif'],
+        sans:       ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+        serif:      ['Source Serif 4', 'Georgia', 'serif'],
+        montserrat: ['Montserrat', 'system-ui', 'sans-serif'],
       },
     },
   },

@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
 import { Send, Database, RefreshCw } from 'lucide-react';
-import giaLogo from '../assets/GIA Logo.svg';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { updateDoc, doc, addDoc, collection } from 'firebase/firestore';
@@ -8,17 +7,17 @@ import { db } from '../../firebase/config';
 import { analyzeWithAI } from '../services/aiService';
 import ChatChart from '../components/chat/ChatChart';
 
-const WELCOME_MESSAGE = {
+const makeWelcome = (name) => ({
   role: 'assistant',
-  content: "Hello! I'm **GIA**, the Gender and Development Center Information Assistant. I can help you analyze enrollment, engagement, employee, attendance, and events data. What would you like to know?",
+  content: `Hello${name ? `, ${name}` : ''}! I'm **GIA**, the Gender and Development Center Information Assistant. I can help you analyze enrollment, engagement, employee, attendance, and events data. What would you like to know?`,
   timestamp: null,
-};
+});
 
 export default function ChatPage({
-  dbData, isLoadingData, dataLoaded, user, onRefreshData,
+  dbData, isLoadingData, dataLoaded, user, displayName, onRefreshData,
   conversations, setConversations, activeConvId, setActiveConvId,
 }) {
-  const [messages, setMessages] = useState([WELCOME_MESSAGE]);
+  const [messages, setMessages] = useState(() => [makeWelcome(displayName)]);
   const [chatHistory, setChatHistory] = useState([]);
   const [inputMessage, setInputMessage] = useState('');
   const [isThinking, setIsThinking] = useState(false);
@@ -33,14 +32,14 @@ export default function ChatPage({
   // Load messages when active conversation changes
   useEffect(() => {
     if (activeConvId === null) {
-      setMessages([WELCOME_MESSAGE]);
+      setMessages([makeWelcome(displayName)]);
       setChatHistory([]);
       setInputMessage('');
       if (textareaRef.current) textareaRef.current.style.height = 'auto';
     } else {
       const conv = conversations.find(c => c.id === activeConvId);
       if (conv) {
-        setMessages(conv.messages?.length ? conv.messages : [WELCOME_MESSAGE]);
+        setMessages(conv.messages?.length ? conv.messages : [makeWelcome(displayName)]);
         setChatHistory((conv.messages || []).map(m => ({ role: m.role, content: m.content })));
       }
       setInputMessage('');
@@ -132,33 +131,31 @@ export default function ChatPage({
 
       {/* ── Welcome screen ── */}
       {isWelcomeScreen ? (
-        <div className="flex-1 flex flex-col items-center justify-center px-8 pb-12 select-none">
-          <div className="mb-6">
-            <img src={giaLogo} alt="GIA" className="w-16 h-16 object-contain" style={{ filter: 'brightness(0) saturate(100%) invert(22%) sepia(90%) saturate(2500%) hue-rotate(272deg) brightness(0.9)' }} />
-          </div>
-          <h1 className="text-p4-3xl font-bold text-slate-800 dark:text-slate-100 text-center leading-tight mb-3 max-w-lg">
-            What would you like to know?
-          </h1>
-          <p className="text-p4-base text-slate-400 dark:text-slate-500 text-center max-w-sm leading-relaxed">
-            Ask about enrollment, engagement, employees, attendance, or events data.
-          </p>
-
-          <div className="mt-8">
-            {isLoadingData ? (
-              <div className="flex items-center gap-2 text-slate-400 dark:text-slate-500 text-p4-sm">
-                <RefreshCw size={13} className="animate-spin" /> Loading database...
-              </div>
-            ) : dataLoaded ? (
-              <div className="flex items-center gap-2 text-slate-400 dark:text-slate-500 text-p4-sm">
-                <Database size={13} className="text-green-400" />
-                {totalRecords.toLocaleString()} records ready
-                {onRefreshData && (
-                  <button onClick={onRefreshData} className="text-slate-300 dark:text-slate-600 hover:text-slate-500 dark:hover:text-slate-400 transition ml-1">
-                    <RefreshCw size={12} />
-                  </button>
-                )}
-              </div>
-            ) : null}
+        <div className="flex-1 flex items-center justify-center px-8 pb-12 select-none">
+          <div className="flex flex-col items-start w-fit">
+            <div>
+              <h1 className="text-p4-3xl font-bold text-neutral-800 dark:text-neutral-100 leading-tight mb-1">
+                What would you<br />like to know{displayName ? `, ${displayName}` : ''}?
+              </h1>
+              <p className="text-p4-base text-neutral-400 dark:text-neutral-500 leading-relaxed mb-3">
+                Ask about enrollment, engagement, employees, attendance, or events data.
+              </p>
+              {isLoadingData ? (
+                <div className="flex items-center gap-2 text-neutral-400 dark:text-neutral-500 text-p4-sm">
+                  <RefreshCw size={13} className="animate-spin" /> Loading database...
+                </div>
+              ) : dataLoaded ? (
+                <div className="flex items-center gap-2 text-neutral-400 dark:text-neutral-500 text-p4-sm">
+                  <Database size={13} className="text-green-400" />
+                  {totalRecords.toLocaleString()} records ready
+                  {onRefreshData && (
+                    <button onClick={onRefreshData} className="text-neutral-400 dark:text-neutral-600 hover:text-neutral-500 dark:hover:text-neutral-400 transition ml-1">
+                      <RefreshCw size={12} />
+                    </button>
+                  )}
+                </div>
+              ) : null}
+            </div>
           </div>
         </div>
       ) : (
@@ -233,7 +230,7 @@ export default function ChatPage({
                   )}
 
                   {msg.timestamp && (
-                    <span className="text-[10px] text-gray-300 dark:text-slate-600 mt-1 px-1 font-sans">
+                    <span className="text-[10px] text-neutral-300 dark:text-neutral-600 mt-1 px-1 font-sans">
                       {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                     </span>
                   )}
@@ -246,10 +243,10 @@ export default function ChatPage({
       )}
 
       {/* ── Input ── */}
-      <div className="px-6 py-4 border-t border-gray-100 dark:border-neutral-800 bg-white dark:bg-neutral-950 shrink-0">
+      <div className="px-6 py-4 bg-white dark:bg-neutral-950 shrink-0">
         <form onSubmit={handleSendMessage}>
           <div className="max-w-3xl mx-auto">
-            <div className="flex items-end gap-3 bg-gray-50 dark:bg-neutral-900 border border-gray-200 dark:border-neutral-700 rounded-2xl px-4 py-3 focus-within:border-gia-300 dark:focus-within:border-gia-700 focus-within:ring-2 focus-within:ring-gia-100 dark:focus-within:ring-gia-900/40 transition-all">
+            <div className="flex items-center gap-3 bg-gray-50 dark:bg-neutral-900 border border-gray-200 dark:border-neutral-700 rounded-2xl px-4 py-3 focus-within:border-gia-300 dark:focus-within:border-gia-700 focus-within:ring-2 focus-within:ring-gia-100 dark:focus-within:ring-gia-900/40 transition-all">
               <textarea
                 ref={textareaRef}
                 value={inputMessage}
@@ -262,7 +259,7 @@ export default function ChatPage({
                 }}
                 placeholder="Ask about enrollment, employees, attendance, events..."
                 rows={1}
-                className="flex-1 bg-transparent resize-none text-gray-800 dark:text-slate-200 placeholder-gray-400 dark:placeholder-slate-600 focus:outline-none text-sm leading-relaxed"
+                className="flex-1 bg-transparent resize-none text-gray-800 dark:text-neutral-200 placeholder-neutral-400 dark:placeholder-neutral-500 focus:outline-none text-sm leading-relaxed"
                 style={{ scrollbarWidth: 'none', maxHeight: '160px' }}
               />
               <button
@@ -273,7 +270,7 @@ export default function ChatPage({
                 <Send size={13} />
               </button>
             </div>
-            <p className="text-[10px] text-gray-300 dark:text-slate-600 mt-2 text-center font-sans">
+            <p className="text-[10px] text-neutral-400 dark:text-neutral-600 mt-2 text-center font-sans">
               Enter to send · Shift+Enter for new line
             </p>
           </div>

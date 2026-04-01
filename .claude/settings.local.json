@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node -e \"const tw = require\\(''tailwindcss/package.json''\\); console.log\\(tw.version\\)\")",
+      "Bash(node -e \"const colors = require\\(''tailwindcss/colors''\\); console.log\\(JSON.stringify\\({n800: colors.neutral[800], n900: colors.neutral[900], n950: colors.neutral[950]}\\)\\)\")",
+      "Bash(npx tailwindcss:*)",
+      "Read(//c//**)",
+      "Bash(del \"c:\\\\Users\\\\Admin\\\\Documents\\\\Thesis\\\\GIA Project\\\\project-gia\\\\tw-test.css\")"
+    ]
+  }
+}
