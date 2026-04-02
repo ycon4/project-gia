@@ -246,7 +246,7 @@ export default function ChatPage({
       <div className="px-6 py-4 bg-white dark:bg-neutral-950 shrink-0">
         <form onSubmit={handleSendMessage}>
           <div className="max-w-3xl mx-auto">
-            <div className="flex items-center gap-3 bg-gray-50 dark:bg-neutral-900 border border-gray-200 dark:border-neutral-700 rounded-2xl px-4 py-3 focus-within:border-gia-300 dark:focus-within:border-gia-700 focus-within:ring-2 focus-within:ring-gia-100 dark:focus-within:ring-gia-900/40 transition-all">
+            <div className="flex items-center gap-3 bg-gray-50 dark:bg-neutral-900 border border-gray-200 dark:border-neutral-700 rounded-2xl px-4 py-3 focus-within:border-neutral-400 dark:focus-within:border-neutral-500 focus-within:ring-2 focus-within:ring-neutral-200 dark:focus-within:ring-neutral-700/50 transition-all">
               <textarea
                 ref={textareaRef}
                 value={inputMessage}

@@ -3,7 +3,7 @@ import { join } from 'path';
 
 const GROQ_API_KEY = process.env.GROQ_API_KEY;
 const API_URL = 'https://api.groq.com/openai/v1/chat/completions';
-const MODEL = 'compound-beta';
+const MODEL = 'llama-3.3-70b-versatile';
 
 // ─── Load prompt from backend/prompt.txt ────────────────────
 // api/chat.js is one level up from backend/, so we go ../backend/prompt.txt
@@ -25,6 +25,7 @@ const fetchWithRetry = async (url, options, retries = 3, delayMs = 3000) => {
     if (attempt === retries) return response;
 
     const wait = status === 429 ? delayMs * 2 : delayMs;
+    console.log(`⏳ Waiting ${wait / 1000}s before retry...`);
     await new Promise(r => setTimeout(r, wait));
   }
 };
@@ -38,16 +39,30 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') { res.status(200).end(); return; }
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
+  console.log('📨 Received chat request');
+
   try {
     const { message, history = [] } = req.body;
 
     if (!message) return res.status(400).json({ error: 'Message is required' });
 
+    // Keep last 6 turns (3 exchanges). Truncate assistant replies so large
+    // table responses from previous queries don't blow up the payload.
+    const trimmedHistory = history.slice(-6).map(msg => ({
+      role: msg.role,
+      content: msg.role === 'assistant' && msg.content.length > 500
+        ? msg.content.substring(0, 500) + '…'
+        : msg.content,
+    }));
+
     const messages = [
       { role: 'system', content: SYSTEM_PROMPT },
-      ...history.slice(-10),
+      ...trimmedHistory,
       { role: 'user', content: message }
     ];
+
+    const payload = JSON.stringify({ model: MODEL, messages, max_tokens: 1024, temperature: 0.1, stream: false });
+    console.log(`📡 Calling API — ${messages.length} messages, payload: ${(payload.length / 1024).toFixed(1)} KB`);
 
     const response = await fetchWithRetry(API_URL, {
       method: 'POST',
@@ -55,23 +70,22 @@ export default async function handler(req, res) {
         'Authorization': `Bearer ${GROQ_API_KEY}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        model: MODEL,
-        messages,
-        max_tokens: 2048,
-        temperature: 0.1,
-        stream: false
-      }),
+      body: payload,
     }, 3, 3000);
 
+    console.log('📊 API Response status:', response.status);
     const responseText = await response.text();
 
     if (!response.ok) {
+      console.error('❌ Groq API error:', responseText);
       if (response.status === 503 || response.status === 500) {
         return res.status(200).json({ reply: "I'm currently unavailable due to high server demand. Please try again in 20–30 seconds." });
       }
       if (response.status === 429) {
         return res.status(200).json({ reply: "I've hit the rate limit for requests. Please wait a moment and try again." });
+      }
+      if (response.status === 413) {
+        return res.status(200).json({ reply: "The request was too large to process. Please try a more specific question." });
       }
       return res.status(500).json({ error: `API error: ${response.status}`, details: responseText.substring(0, 500) });
     }
@@ -88,6 +102,7 @@ export default async function handler(req, res) {
 
     reply = reply.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
 
+    console.log('✅ Sending reply:', reply.substring(0, 100) + '...');
     return res.status(200).json({ reply });
 
   } catch (error) {

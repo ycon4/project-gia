@@ -321,7 +321,7 @@ function App() {
         )}
       </div>
 
-      {!isRegisterMode && (
+      {!isRegisterMode && activeSection !== 'data' && (
         <FloatingChatButton
           onClick={handleNewChat}
           isOnChatPage={activeSection === 'chat' || activeSection === 'chats'}
@@ -511,7 +511,7 @@ function SideNavItem({ open, active, onClick, icon, label, danger, newChat }) {
         ${danger
           ? 'text-neutral-400 dark:text-neutral-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30'
           : newChat
-            ? 'text-gia-600 dark:text-gia-400 hover:bg-gia-50 dark:hover:bg-gia-950/50'
+            ? 'text-[#7cacf8] hover:bg-[#7cacf8]/10'
             : active
               ? 'bg-neutral-100 dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100'
               : 'text-neutral-500 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 hover:text-neutral-900 dark:hover:text-neutral-100'
@@ -578,7 +578,7 @@ function ProfileButton({ open, user, displayName, onEditProfile, onLogout }) {
         title={!open ? name : undefined}
         className={`w-full flex items-center py-2 px-2 rounded-md transition-colors hover:bg-neutral-100 dark:hover:bg-neutral-800 ${open ? 'gap-2.5' : ''}`}
       >
-        <span className={`shrink-0 rounded-full bg-gia-600 text-white flex items-center justify-center font-bold leading-none ${open ? 'w-6 h-6 text-xs' : 'w-4 h-4 text-[9px]'}`}>
+        <span className={`shrink-0 rounded-full bg-[#7cacf8] text-white flex items-center justify-center font-bold leading-none ${open ? 'w-6 h-6 text-xs' : 'w-4 h-4 text-[9px]'}`}>
           {initial}
         </span>
         {open && (
