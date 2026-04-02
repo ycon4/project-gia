@@ -126,10 +126,11 @@ export default function ExcelUpload({ activeTab, onUploadSuccess }) {
       <label 
         htmlFor="sector-excel-upload" 
         className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-xs uppercase tracking-widest transition-all cursor-pointer shadow-sm border
-          ${isUploading 
-            ? 'bg-slate-100 text-slate-400 border-slate-200' 
-            : 'bg-slate-900 text-white border-slate-800 hover:bg-black hover:shadow-lg'
+          ${isUploading
+            ? 'bg-neutral-100 text-neutral-400 border-neutral-200'
+            : 'text-white hover:opacity-90 hover:shadow-lg'
           }`}
+          style={!isUploading ? { backgroundColor: '#a680cf', borderColor: '#a680cf' } : {}}
       >
         {isUploading ? <Loader2 className="animate-spin" size={16} /> : <FileUp size={16} />}
         <span>{uploadStatus || `Import Dataset`}</span>

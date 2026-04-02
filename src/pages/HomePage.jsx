@@ -1,6 +1,13 @@
 import { MessageCircle, BarChart3, ShieldCheck, Zap, Info, ArrowRight, CalendarDays } from 'lucide-react';
 import giaLogo from '../assets/GIA Logo.svg';
 
+const LILAC        = '#a680cf';
+const LILAC_LIGHT  = '#b89bde';
+const LILAC_DARK   = '#7a55a0';
+const LILAC_BG     = '#faf8fd';
+const LILAC_BORDER = '#e5d8f3';
+const LOGO_GRADIENT = `linear-gradient(to bottom, ${LILAC_LIGHT}, ${LILAC_DARK})`;
+
 export default function HomePage({ onGoToDashboard, onNewChat }) {
   return (
     <div className="max-w-5xl mx-auto space-y-12 pb-20 animate-in fade-in duration-700">
@@ -10,13 +17,16 @@ export default function HomePage({ onGoToDashboard, onNewChat }) {
 
       <section className="relative pt-12 pb-8">
         <div className="absolute inset-0 -z-10 pointer-events-none overflow-hidden">
-          <div className="absolute top-0 left-0 w-[500px] h-[300px] bg-gia-100/40 dark:bg-gia-900/20 rounded-full blur-[100px]" />
+          <div className="absolute top-0 left-0 w-[500px] h-[300px] rounded-full blur-[100px]" style={{ backgroundColor: `${LILAC_LIGHT}28` }} />
         </div>
 
         <div className="flex items-center justify-between gap-8">
           {/* Left: text */}
           <div className="flex-1 min-w-0">
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-gia-50 dark:bg-gia-950/60 border border-gia-200 dark:border-gia-800/60 text-gia-600 dark:text-gia-400 mb-7">
+            <div
+              className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full mb-7 bg-[#faf8fd] dark:bg-[#4f366c]/30 border border-[#e5d8f3] dark:border-[#4f366c]/60"
+              style={{ color: LILAC }}
+            >
               <Zap size={13} />
               <span className="text-p4-xs font-black uppercase tracking-widest">GIA · Smart Information Assistant</span>
             </div>
@@ -24,7 +34,7 @@ export default function HomePage({ onGoToDashboard, onNewChat }) {
             <h1 className="font-montserrat text-p4-4xl font-bold tracking-tight leading-tight mb-5">
               <span className="text-neutral-900 dark:text-neutral-100">Gender and<br />
               Development Center<br /></span>
-              <span className="text-transparent bg-clip-text bg-gradient-to-b from-gia-500 to-gia-700">
+              <span style={{ background: LOGO_GRADIENT, WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent' }}>
                 Information Assistant
               </span>
             </h1>
@@ -41,7 +51,7 @@ export default function HomePage({ onGoToDashboard, onNewChat }) {
             <div
               className="w-24 h-24 shrink-0"
               style={{
-                background: 'linear-gradient(to bottom, #9d35d9, #7318a8)',
+                background: LOGO_GRADIENT,
                 WebkitMaskImage: `url(${giaLogo})`,
                 maskImage: `url(${giaLogo})`,
                 WebkitMaskSize: 'contain',
@@ -52,7 +62,10 @@ export default function HomePage({ onGoToDashboard, onNewChat }) {
                 maskPosition: 'center',
               }}
             />
-            <span className="font-montserrat text-[6rem] font-bold leading-none text-transparent bg-clip-text bg-gradient-to-b from-gia-500 to-gia-700 -ml-2">
+            <span
+              className="font-montserrat text-[6rem] font-bold leading-none -ml-2"
+              style={{ background: LOGO_GRADIENT, WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent' }}
+            >
               IA
             </span>
           </div>
@@ -62,19 +75,19 @@ export default function HomePage({ onGoToDashboard, onNewChat }) {
       {/* ── Feature Cards ── */}
       <div className="grid md:grid-cols-3 gap-5">
         <FeatureCard
-          icon={<Info size={20} className="text-gia-600 dark:text-gia-400" />}
+          icon={<Info size={20} color={LILAC} />}
           title="About GADC"
           description="Explore the mission, vision, and gender-responsive initiatives of MSU-IIT."
           href="https://www.msuiit.edu.ph/offices/gad/index.php"
         />
         <FeatureCard
-          icon={<BarChart3 size={20} className="text-gia-600 dark:text-gia-400" />}
+          icon={<BarChart3 size={20} color={LILAC} />}
           title="Data Analytics"
           description="Access comprehensive SDD visual reports and real-time population metrics."
           onClick={onGoToDashboard}
         />
         <FeatureCard
-          icon={<MessageCircle size={20} className="text-gia-600 dark:text-gia-400" />}
+          icon={<MessageCircle size={20} color={LILAC} />}
           title="AI Assistant"
           description="Chat with GIA for instant data queries and intelligent analysis."
           onClick={onNewChat}
@@ -85,7 +98,7 @@ export default function HomePage({ onGoToDashboard, onNewChat }) {
 
       {/* ── About Section ── */}
       <section className="bg-white dark:bg-neutral-900 rounded-3xl p-10 md:p-14 shadow-sm border border-neutral-100 dark:border-neutral-700/50 relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-64 h-64 bg-gia-50/60 dark:bg-gia-900/20 rounded-full blur-3xl -z-0 pointer-events-none translate-x-1/4 -translate-y-1/4" />
+        <div className="absolute top-0 right-0 w-64 h-64 rounded-full blur-3xl -z-0 pointer-events-none translate-x-1/4 -translate-y-1/4 bg-[#faf8fd]/60 dark:bg-[#4f366c]/20" />
 
         <div className="relative space-y-10">
 
@@ -95,7 +108,7 @@ export default function HomePage({ onGoToDashboard, onNewChat }) {
               <h2 className="font-montserrat text-p4-2xl font-semibold text-neutral-900 dark:text-neutral-100 tracking-tight leading-tight">
                 <em>Who</em> is GIA?
               </h2>
-              <div className="w-12 h-1 bg-gia-600 rounded-full mt-3" />
+              <div className="w-12 h-1 rounded-full mt-3" style={{ backgroundColor: LILAC }} />
             </div>
             <p className="text-p4-sm text-neutral-600 dark:text-neutral-300 font-medium leading-relaxed">
               <span className="text-neutral-900 dark:text-neutral-100 font-semibold">GIA (GADC Information Assistant)</span>{' '}
@@ -106,8 +119,8 @@ export default function HomePage({ onGoToDashboard, onNewChat }) {
           <div className="grid lg:grid-cols-2 gap-8">
 
             {/* How it works */}
-            <div className="bg-gia-50 dark:bg-gia-900/30 border border-gia-100 dark:border-gia-800/40 rounded-2xl p-6 space-y-3">
-              <h3 className="font-montserrat text-p4-sm font-bold text-gia-600 dark:text-gia-400 uppercase tracking-widest">How It Works</h3>
+            <div className="rounded-2xl p-6 space-y-3 bg-[#faf8fd] dark:bg-[#4f366c]/20 border border-[#e5d8f3] dark:border-[#4f366c]/40">
+              <h3 className="font-montserrat text-p4-sm font-bold uppercase tracking-widest" style={{ color: LILAC }}>How It Works</h3>
               <p className="text-p4-sm text-neutral-600 dark:text-neutral-300 font-medium leading-relaxed">
                 GIA connects directly to the GADC's institutional database and uses a large language model to interpret your natural language queries. It reads real data from multiple collections — enrollment, engagement, employees, attendance, and events — and returns descriptive analysis, summaries, comparisons, and visualizations in real time.
               </p>
@@ -126,7 +139,7 @@ export default function HomePage({ onGoToDashboard, onNewChat }) {
                   'Cross-collection queries that span multiple data sources at once.',
                 ].map(item => (
                   <li key={item} className="flex items-start gap-2.5 text-p4-sm text-neutral-600 dark:text-neutral-300 font-medium leading-relaxed">
-                    <ShieldCheck size={15} className="text-gia-600 dark:text-gia-400 shrink-0 mt-0.5" />
+                    <ShieldCheck size={15} color={LILAC} className="shrink-0 mt-0.5" />
                     {item}
                   </li>
                 ))}
@@ -160,16 +173,16 @@ export default function HomePage({ onGoToDashboard, onNewChat }) {
       {/* ── Capabilities Strip ── */}
       <section className="grid sm:grid-cols-4 gap-4">
         {[
-          { icon: <CalendarDays size={18} />, label: 'Events & Attendance' },
-          { icon: <BarChart3 size={18} />,    label: 'SDD Analytics' },
-          { icon: <MessageCircle size={18} />, label: 'AI-Powered Chat' },
-          { icon: <ShieldCheck size={18} />,  label: 'GAD Compliance' },
+          { icon: <CalendarDays size={18} color={LILAC} />, label: 'Events & Attendance' },
+          { icon: <BarChart3 size={18} color={LILAC} />,    label: 'SDD Analytics' },
+          { icon: <MessageCircle size={18} color={LILAC} />, label: 'AI-Powered Chat' },
+          { icon: <ShieldCheck size={18} color={LILAC} />,  label: 'GAD Compliance' },
         ].map(({ icon, label }) => (
           <div
             key={label}
             className="flex items-center gap-3 bg-white dark:bg-neutral-900 border border-neutral-100 dark:border-neutral-700/50 rounded-2xl px-5 py-4 shadow-sm"
           >
-            <span className="text-gia-600 dark:text-gia-400 shrink-0">{icon}</span>
+            <span className="shrink-0">{icon}</span>
             <span className="text-p4-sm font-semibold text-neutral-700 dark:text-neutral-300">{label}</span>
           </div>
         ))}
@@ -181,7 +194,7 @@ export default function HomePage({ onGoToDashboard, onNewChat }) {
 function FeatureCard({ icon, title, description, href, onClick }) {
   const inner = (
     <div className="group bg-white dark:bg-neutral-900 rounded-2xl p-7 border border-neutral-100 dark:border-neutral-700/50 shadow-sm hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300 cursor-pointer overflow-hidden relative">
-      <div className="p-2.5 bg-gia-50 dark:bg-gia-950/50 rounded-xl w-fit mb-5 group-hover:bg-gia-100 dark:group-hover:bg-gia-900/60 transition-colors">
+      <div className="p-2.5 rounded-xl w-fit mb-5 transition-colors bg-[#faf8fd] dark:bg-[#4f366c]/30">
         {icon}
       </div>
       <h3 className="font-montserrat text-p4-sm font-black text-neutral-900 dark:text-neutral-100 tracking-wider uppercase mb-2">
@@ -190,7 +203,10 @@ function FeatureCard({ icon, title, description, href, onClick }) {
       <p className="text-p4-sm text-neutral-500 dark:text-neutral-400 font-medium leading-relaxed">
         {description}
       </p>
-      <div className="mt-5 flex items-center gap-1.5 text-p4-xs font-black uppercase tracking-widest text-gia-600 dark:text-gia-400 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+      <div
+        className="mt-5 flex items-center gap-1.5 text-p4-xs font-black uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+        style={{ color: LILAC }}
+      >
         Explore <ArrowRight size={13} />
       </div>
     </div>

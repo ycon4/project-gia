@@ -385,7 +385,7 @@ function Sidebar({
               className="shrink-0 flex items-center justify-center p-1 rounded-md hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-all"
               title="GIA Home"
             >
-              <img src={giaLogo} alt="GIA" className="w-6 h-6 object-contain" style={{ filter: 'brightness(0) saturate(100%) invert(22%) sepia(90%) saturate(2500%) hue-rotate(272deg) brightness(0.9)' }} />
+              <div style={{ width: 24, height: 24, background: '#a680cf', WebkitMaskImage: `url(${giaLogo})`, maskImage: `url(${giaLogo})`, WebkitMaskSize: 'contain', maskSize: 'contain', WebkitMaskRepeat: 'no-repeat', maskRepeat: 'no-repeat', WebkitMaskPosition: 'center', maskPosition: 'center' }} />
             </button>
             <div className="flex-1 min-w-0">
               <div className="font-montserrat text-neutral-900 dark:text-neutral-100 font-semibold text-sm leading-none truncate">MSU-IIT GADC</div>
@@ -511,7 +511,7 @@ function SideNavItem({ open, active, onClick, icon, label, danger, newChat }) {
         ${danger
           ? 'text-neutral-400 dark:text-neutral-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30'
           : newChat
-            ? 'text-[#7cacf8] hover:bg-[#7cacf8]/10'
+            ? 'text-[#a680cf] hover:bg-[#a680cf]/10'
             : active
               ? 'bg-neutral-100 dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100'
               : 'text-neutral-500 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 hover:text-neutral-900 dark:hover:text-neutral-100'
@@ -578,7 +578,7 @@ function ProfileButton({ open, user, displayName, onEditProfile, onLogout }) {
         title={!open ? name : undefined}
         className={`w-full flex items-center py-2 px-2 rounded-md transition-colors hover:bg-neutral-100 dark:hover:bg-neutral-800 ${open ? 'gap-2.5' : ''}`}
       >
-        <span className={`shrink-0 rounded-full bg-[#7cacf8] text-white flex items-center justify-center font-bold leading-none ${open ? 'w-6 h-6 text-xs' : 'w-4 h-4 text-[9px]'}`}>
+        <span className={`shrink-0 rounded-full bg-[#a680cf] text-white flex items-center justify-center font-bold leading-none ${open ? 'w-6 h-6 text-xs' : 'w-4 h-4 text-[9px]'}`}>
           {initial}
         </span>
         {open && (

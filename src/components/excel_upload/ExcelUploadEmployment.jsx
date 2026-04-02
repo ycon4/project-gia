@@ -114,9 +114,13 @@ export default function ExcelUploadEmployee({ activeTab, onUploadSuccess }) {
     <div className="relative">
       <input type="file" accept=".xlsx, .xls" onChange={onFileChange} className="hidden" id="emp-upload" disabled={isUploading} />
       
-      <label htmlFor="emp-upload" className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-xs uppercase tracking-widest transition-all cursor-pointer shadow-sm border ${isUploading ? 'bg-slate-100 text-slate-400 border-slate-200' : 'bg-blue-600 text-white border-blue-500 hover:bg-blue-700'}`}>
+      <label
+        htmlFor="emp-upload"
+        className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-xs uppercase tracking-widest transition-all cursor-pointer shadow-sm border ${isUploading ? 'bg-neutral-100 text-neutral-400 border-neutral-200' : 'text-white hover:opacity-90 hover:shadow-lg'}`}
+        style={!isUploading ? { backgroundColor: '#a680cf', borderColor: '#a680cf' } : {}}
+      >
         {isUploading ? <Loader2 className="animate-spin" size={16} /> : <FileUp size={16} />}
-        <span>{uploadStatus || `Import Employee Data`}</span>
+        <span>{uploadStatus || `Import Dataset`}</span>
       </label>
 
       {showAYPicker && (

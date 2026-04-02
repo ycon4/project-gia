@@ -1,8 +1,8 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import {
-  Search, Trash2, LayoutDashboard, Table2, AlertCircle,
-  RefreshCcw, Database, FolderOpen, Users, Briefcase, Zap,
-  ChevronLeft, ChevronRight,
+  Search, Trash2, AlertCircle,
+  RefreshCcw, Database, Users, Briefcase, Zap,
+  ChevronLeft, ChevronRight, ChevronDown,
 } from 'lucide-react';
 
 import { getAllDocuments, deleteAYData } from '../../firebase/services.js';
@@ -13,50 +13,55 @@ import StudentEnrollmentVisuals from '../components/visuals/StudentEnrollmentVis
 import EmployeeVisuals from '../components/visuals/EmployeeVisuals.jsx';
 import StudentEngagementVisuals from '../components/visuals/EngagementVisuals.jsx';
 
+const LILAC = '#a680cf';
+
 const SECTORS = {
   student_enrollment: {
     label: 'Student Enrollment',
-    icon: <Users size={14} />,
+    icon: <Users size={16} />,
     headers: ['student_id', 'sex', 'income_PSA_category', 'ethnicity', 'college', 'program', 'year_level'],
   },
   employee_information: {
     label: 'Employee Info',
-    icon: <Briefcase size={14} />,
+    icon: <Briefcase size={16} />,
     headers: ['employee_id', 'sex', 'employee_type', 'administrative_officials', 'plantilla_position', 'income_order', 'ethnicity', 'religion', 'place_of_birth', 'special_needs'],
   },
   student_engagement: {
     label: 'Student Engagement',
-    icon: <Zap size={14} />,
+    icon: <Zap size={16} />,
     headers: ['student_id', 'sex', 'scholarship_status', 'academic_standing', 'student_council', 'organizations', 'publication'],
   },
 };
 
 const ROWS_OPTIONS = [10, 25, 50];
 
-// Active accent color: #7cacf8
-const A = {
-  bg:         'bg-[#7cacf8]',
-  bgDark:     'dark:bg-[#7cacf8]',
-  text:       'text-[#7cacf8]',
-  border:     'border-[#7cacf8]',
-  hoverBg:    'hover:bg-[#7cacf8]/10',
-  hoverText:  'hover:text-[#7cacf8]',
-  hoverBorder:'hover:border-[#7cacf8]/60',
-};
-
 export default function DashboardPage() {
   const [allSectorData, setAllSectorData] = useState([]);
   const [loading, setLoading]             = useState(true);
   const [activeTab, setActiveTab]         = useState('student_enrollment');
   const [activeAY, setActiveAY]           = useState(null);
-  const [viewMode, setViewMode]           = useState('table');
+  const [viewMode, setViewMode]           = useState('visuals');
   const [searchTerm, setSearchTerm]       = useState('');
   const [isDeleting, setIsDeleting]       = useState(false);
   const [currentPage, setCurrentPage]     = useState(1);
   const [rowsPerPage, setRowsPerPage]     = useState(10);
+  const [datasetOpen, setDatasetOpen]     = useState(false);
+  const [ayOpen, setAyOpen]               = useState(false);
+  const datasetRef                        = useRef(null);
+  const ayRef                             = useRef(null);
 
   useEffect(() => { loadTabData(); }, [activeTab]);
   useEffect(() => { setCurrentPage(1); }, [searchTerm, activeAY, activeTab, rowsPerPage]);
+
+  // Close dropdowns on outside click
+  useEffect(() => {
+    const handler = (e) => {
+      if (datasetRef.current && !datasetRef.current.contains(e.target)) setDatasetOpen(false);
+      if (ayRef.current && !ayRef.current.contains(e.target)) setAyOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
 
   const loadTabData = async () => {
     try {
@@ -127,111 +132,131 @@ export default function DashboardPage() {
     }, []);
 
   return (
-    /* Panel fills from top of padding to bottom of viewport */
-    <div
-      className="flex flex-col bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-lg overflow-hidden font-sans"
-      style={{ minHeight: 'calc(100dvh - 4rem)' }}
-    >
-      {/* ── HEADER BAR ── */}
-      <div className="flex items-center justify-between px-5 py-3 border-b border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800/60 shrink-0">
-        <div className="flex items-center gap-2.5">
-          <Database size={15} className="text-[#7cacf8]" />
-          <div>
-            <h1 className="text-sm font-semibold text-neutral-900 dark:text-neutral-100 leading-none">GADC Data Hub</h1>
-            <p className="text-[10px] text-neutral-400 dark:text-neutral-500 mt-0.5 uppercase tracking-wider font-medium">Sector Management</p>
+    <div className="flex flex-col font-sans" style={{ minHeight: 'calc(100dvh - 4rem)' }}>
+
+      {/* ── TITLE ROW: Large dataset name + AY selector + actions ── */}
+      <div className="flex items-center justify-between pb-3">
+
+        {/* Left: Large title + AY pill */}
+        <div className="flex items-center gap-3">
+
+          {/* Dataset dropdown — Firebase "Database" style title */}
+          <div className="relative" ref={datasetRef}>
+            <button
+              onClick={() => setDatasetOpen(o => !o)}
+              className="flex items-center gap-2 group"
+            >
+              <h1 className="text-3xl font-bold text-neutral-900 dark:text-neutral-100 leading-none">
+                {sector.label}
+              </h1>
+              <ChevronDown
+                size={18}
+                className={`text-neutral-400 transition-transform duration-200 mt-0.5 ${datasetOpen ? 'rotate-180' : ''}`}
+              />
+            </button>
+
+            {datasetOpen && (
+              <div className="absolute top-full left-0 mt-2 z-30 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-xl shadow-xl overflow-hidden min-w-[210px]">
+                {Object.entries(SECTORS).map(([key, s]) => (
+                  <button
+                    key={key}
+                    onClick={() => { setActiveTab(key); setViewMode('visuals'); setActiveAY(null); setSearchTerm(''); setDatasetOpen(false); }}
+                    className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-left transition-colors"
+                    style={activeTab === key
+                      ? { color: LILAC, backgroundColor: `${LILAC}12`, fontWeight: 600 }
+                      : { color: '#6b7280' }
+                    }
+                    onMouseEnter={e => { if (activeTab !== key) e.currentTarget.style.backgroundColor = '#f9fafb'; }}
+                    onMouseLeave={e => { if (activeTab !== key) e.currentTarget.style.backgroundColor = ''; }}
+                  >
+                    <span style={activeTab === key ? { color: LILAC } : { color: '#9ca3af' }}>{s.icon}</span>
+                    {s.label}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
+
+          {/* AY selector — Firebase "(default) ▼" gray pill style */}
+          {availableYears.length > 0 && (
+            <div className="relative" ref={ayRef}>
+              <button
+                onClick={() => setAyOpen(o => !o)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-neutral-300 dark:border-neutral-600 text-neutral-600 dark:text-neutral-400 text-sm font-medium bg-white dark:bg-neutral-900 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors"
+              >
+                {activeAY ?? '—'}
+                <ChevronDown size={13} className={`transition-transform duration-200 ${ayOpen ? 'rotate-180' : ''}`} />
+              </button>
+
+              {ayOpen && (
+                <div className="absolute top-full left-0 mt-1 z-30 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-xl shadow-xl overflow-hidden min-w-[130px]">
+                  {availableYears.map(ay => (
+                    <button
+                      key={ay}
+                      onClick={() => { setActiveAY(ay); setAyOpen(false); }}
+                      className="w-full flex items-center justify-between gap-2 px-4 py-2.5 text-sm text-left transition-colors"
+                      style={activeAY === ay
+                        ? { color: LILAC, backgroundColor: `${LILAC}12`, fontWeight: 600 }
+                        : { color: '#6b7280' }
+                      }
+                      onMouseEnter={e => { if (activeAY !== ay) e.currentTarget.style.backgroundColor = '#f9fafb'; }}
+                      onMouseLeave={e => { if (activeAY !== ay) e.currentTarget.style.backgroundColor = ''; }}
+                    >
+                      {ay}
+                      {activeAY === ay && <span className="text-xs">✓</span>}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </div>
-        <div>{UploadButton}</div>
-      </div>
 
-      {/* ── SECTOR TABS ── */}
-      <div className="flex border-b border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 shrink-0">
-        {Object.entries(SECTORS).map(([key, s]) => (
-          <button
-            key={key}
-            onClick={() => { setActiveTab(key); setActiveAY(null); setViewMode('table'); setSearchTerm(''); }}
-            className={`flex items-center gap-2 px-5 py-3 text-xs font-semibold uppercase tracking-wider border-b-2 transition-colors ${
-              activeTab === key
-                ? 'border-[#7cacf8] text-[#7cacf8] bg-[#7cacf8]/5'
-                : 'border-transparent text-neutral-500 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200 hover:bg-neutral-50 dark:hover:bg-neutral-800/50'
-            }`}
-          >
-            {s.icon}
-            <span>{s.label}</span>
-          </button>
-        ))}
-      </div>
-
-      {/* ── AY SELECTOR BAR ── */}
-      {availableYears.length > 0 && (
-        <div className="flex items-center justify-between px-4 py-2 border-b border-neutral-200 dark:border-neutral-700 bg-neutral-50/50 dark:bg-neutral-800/30 shrink-0">
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-1.5 text-neutral-400 dark:text-neutral-500">
-              <FolderOpen size={12} />
-              <span className="text-[10px] font-semibold uppercase tracking-widest">Inboxes:</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              {availableYears.map(ay => (
-                <button
-                  key={ay}
-                  onClick={() => setActiveAY(ay)}
-                  className={`px-3 py-1 rounded text-[11px] font-medium transition-colors ${
-                    activeAY === ay
-                      ? 'bg-[#7cacf8] text-white'
-                      : 'border border-neutral-200 dark:border-neutral-700 text-neutral-500 dark:text-neutral-400 hover:border-[#7cacf8]/60 hover:text-[#7cacf8] bg-white dark:bg-neutral-900'
-                  }`}
-                >
-                  AY {ay}
-                </button>
-              ))}
-            </div>
-          </div>
+        {/* Right: Clear AY + Import button */}
+        <div className="flex items-center gap-2">
           {activeAY && (
             <button
               onClick={handleDeleteAY}
               disabled={isDeleting}
-              className="flex items-center gap-1.5 px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded border border-transparent hover:border-red-200 dark:hover:border-red-900 disabled:opacity-40 transition-colors"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-lg border border-transparent hover:border-red-200 dark:hover:border-red-900 disabled:opacity-40 transition-colors"
             >
               {isDeleting ? <RefreshCcw className="animate-spin" size={11} /> : <Trash2 size={11} />}
               Clear AY {activeAY}
             </button>
           )}
-        </div>
-      )}
-
-      {/* ── VIEW TOGGLE + META ── */}
-      <div className="flex items-center justify-between px-4 py-2 border-b border-neutral-200 dark:border-neutral-700 shrink-0">
-        <div className="flex items-center gap-1">
-          <button
-            onClick={() => setViewMode('table')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-[11px] font-semibold uppercase tracking-wider transition-colors ${
-              viewMode === 'table'
-                ? 'bg-[#7cacf8] text-white'
-                : 'text-neutral-500 dark:text-neutral-400 hover:bg-[#7cacf8]/10 hover:text-[#7cacf8]'
-            }`}
-          >
-            <Table2 size={13} /> Data Sheet
-          </button>
-          <button
-            onClick={() => setViewMode('visuals')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-[11px] font-semibold uppercase tracking-wider transition-colors ${
-              viewMode === 'visuals'
-                ? 'bg-[#7cacf8] text-white'
-                : 'text-neutral-500 dark:text-neutral-400 hover:bg-[#7cacf8]/10 hover:text-[#7cacf8]'
-            }`}
-          >
-            <LayoutDashboard size={13} /> Visuals
-          </button>
-        </div>
-        <div className="flex items-center gap-3 text-[11px] font-medium text-neutral-400 dark:text-neutral-500">
-          <span>AY: <span className="text-[#7cacf8] font-semibold">{activeAY ?? '—'}</span></span>
-          <span className="text-neutral-200 dark:text-neutral-700">|</span>
-          <span>Records: <span className="text-neutral-700 dark:text-neutral-300 font-semibold">{currentInboxData.length}</span></span>
+          {UploadButton}
         </div>
       </div>
 
-      {/* ── CONTENT ── fills remaining height ── */}
-      <div className="flex-1 flex flex-col min-h-0">
+      {/* ── VIEW TABS: Full-width divider line like Firebase ── */}
+      <div className="border-b border-neutral-200 dark:border-neutral-700">
+        <div className="flex items-center justify-between">
+          <div className="flex">
+            {[
+              { id: 'visuals',  label: 'Visuals' },
+              { id: 'table',    label: 'Data Sheet' },
+            ].map(tab => (
+              <button
+                key={tab.id}
+                onClick={() => setViewMode(tab.id)}
+                className="px-5 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors"
+                style={viewMode === tab.id
+                  ? { borderColor: LILAC, color: LILAC }
+                  : { borderColor: 'transparent', color: '#9ca3af' }
+                }
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+          <div className="flex items-center gap-3 pb-2 text-[11px] font-medium text-neutral-400 dark:text-neutral-500">
+            <span>Records: <span className="text-neutral-700 dark:text-neutral-300 font-semibold">{currentInboxData.length}</span></span>
+          </div>
+        </div>
+      </div>
+
+      {/* ── CONTENT BOX ── */}
+      <div className="flex-1 flex flex-col min-h-0 bg-white dark:bg-neutral-900 border border-t-0 border-neutral-200 dark:border-neutral-700 rounded-b-lg overflow-hidden">
         {loading ? (
           <LoadingState label={sector.label} />
         ) : !activeAY ? (
@@ -254,7 +279,7 @@ export default function DashboardPage() {
             pageNums={pageNums}
           />
         ) : (
-          <div className="flex-1 overflow-y-auto p-6">
+          <div className="flex-1 flex flex-col min-h-0 overflow-y-auto">
             {activeTab === 'student_enrollment' ? (
               <StudentEnrollmentVisuals data={currentInboxData} />
             ) : activeTab === 'employee_information' ? (
@@ -300,14 +325,12 @@ function TableView({
         )}
       </div>
 
-      {/* Table — scrollable */}
+      {/* Table */}
       <div className="flex-1 overflow-auto min-h-0">
         <table className="w-full text-left border-collapse text-sm">
           <thead className="sticky top-0 z-10">
             <tr className="bg-neutral-50 dark:bg-neutral-800">
-              <th className="px-4 py-2.5 text-[10px] font-semibold uppercase tracking-widest text-neutral-500 dark:text-neutral-400 border-b border-r border-neutral-200 dark:border-neutral-700 w-10 text-center">
-                #
-              </th>
+              <th className="px-4 py-2.5 text-[10px] font-semibold uppercase tracking-widest text-neutral-500 dark:text-neutral-400 border-b border-r border-neutral-200 dark:border-neutral-700 w-10 text-center">#</th>
               {sector.headers.map(h => (
                 <th key={h} className="px-4 py-2.5 text-[10px] font-semibold uppercase tracking-widest text-neutral-500 dark:text-neutral-400 border-b border-r border-neutral-200 dark:border-neutral-700 whitespace-nowrap last:border-r-0">
                   {h.replace(/_/g, ' ')}
@@ -319,15 +342,11 @@ function TableView({
             {paginatedData.length > 0 ? paginatedData.map((row, idx) => (
               <tr
                 key={idx}
-                className={`transition-colors ${
-                  idx % 2 === 0
-                    ? 'bg-white dark:bg-neutral-900'
-                    : 'bg-neutral-50/50 dark:bg-neutral-800/25'
-                } hover:bg-[#7cacf8]/5 dark:hover:bg-[#7cacf8]/10`}
+                className={`transition-colors ${idx % 2 === 0 ? 'bg-white dark:bg-neutral-900' : 'bg-neutral-50/50 dark:bg-neutral-800/25'}`}
+                onMouseEnter={e => e.currentTarget.style.backgroundColor = `${LILAC}0d`}
+                onMouseLeave={e => e.currentTarget.style.backgroundColor = ''}
               >
-                <td className="px-4 py-2 text-center text-xs font-medium text-neutral-300 dark:text-neutral-600 border-b border-r border-neutral-100 dark:border-neutral-800">
-                  {showingFrom + idx}
-                </td>
+                <td className="px-4 py-2 text-center text-xs font-medium text-neutral-300 dark:text-neutral-600 border-b border-r border-neutral-100 dark:border-neutral-800">{showingFrom + idx}</td>
                 {sector.headers.map(h => (
                   <td key={h} className="px-4 py-2 text-sm font-medium text-neutral-700 dark:text-neutral-300 border-b border-r border-neutral-100 dark:border-neutral-800 whitespace-nowrap last:border-r-0">
                     {row[h] ?? <span className="text-neutral-300 dark:text-neutral-600">—</span>}
@@ -353,7 +372,7 @@ function TableView({
             <select
               value={rowsPerPage}
               onChange={e => setRowsPerPage(Number(e.target.value))}
-              className="text-xs font-medium bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded px-2 py-1 text-neutral-700 dark:text-neutral-300 outline-none focus:border-[#7cacf8] cursor-pointer"
+              className="text-xs font-medium bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded px-2 py-1 text-neutral-700 dark:text-neutral-300 outline-none cursor-pointer"
             >
               {ROWS_OPTIONS.map(n => <option key={n} value={n}>{n}</option>)}
             </select>
@@ -368,9 +387,7 @@ function TableView({
         </div>
 
         <div className="flex items-center gap-1">
-          <NavBtn onClick={() => setCurrentPage(p => p - 1)} disabled={currentPage === 1}>
-            <ChevronLeft size={13} /> Prev
-          </NavBtn>
+          <NavBtn onClick={() => setCurrentPage(p => p - 1)} disabled={currentPage === 1}><ChevronLeft size={13} /> Prev</NavBtn>
 
           {pageNums.map((p, i) =>
             p === '…' ? (
@@ -379,20 +396,15 @@ function TableView({
               <button
                 key={p}
                 onClick={() => setCurrentPage(p)}
-                className={`w-7 h-7 rounded text-xs font-semibold transition-colors ${
-                  currentPage === p
-                    ? 'bg-[#7cacf8] text-white'
-                    : 'text-neutral-500 dark:text-neutral-400 hover:bg-[#7cacf8]/10 hover:text-[#7cacf8]'
-                }`}
-              >
-                {p}
-              </button>
+                className="w-7 h-7 rounded text-xs font-semibold transition-colors"
+                style={currentPage === p ? { backgroundColor: LILAC, color: '#fff' } : { color: '#9ca3af' }}
+                onMouseEnter={e => { if (currentPage !== p) { e.currentTarget.style.backgroundColor = `${LILAC}1a`; e.currentTarget.style.color = LILAC; } }}
+                onMouseLeave={e => { if (currentPage !== p) { e.currentTarget.style.backgroundColor = ''; e.currentTarget.style.color = '#9ca3af'; } }}
+              >{p}</button>
             )
           )}
 
-          <NavBtn onClick={() => setCurrentPage(p => p + 1)} disabled={currentPage === totalPages}>
-            Next <ChevronRight size={13} />
-          </NavBtn>
+          <NavBtn onClick={() => setCurrentPage(p => p + 1)} disabled={currentPage === totalPages}>Next <ChevronRight size={13} /></NavBtn>
         </div>
       </div>
     </div>
@@ -404,10 +416,10 @@ function NavBtn({ onClick, disabled, children }) {
     <button
       onClick={onClick}
       disabled={disabled}
-      className="flex items-center gap-0.5 px-2.5 py-1.5 rounded border border-neutral-200 dark:border-neutral-700 text-xs font-semibold text-neutral-600 dark:text-neutral-400 hover:border-[#7cacf8]/60 hover:text-[#7cacf8] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-    >
-      {children}
-    </button>
+      className="flex items-center gap-0.5 px-2.5 py-1.5 rounded border border-neutral-200 dark:border-neutral-700 text-xs font-semibold text-neutral-600 dark:text-neutral-400 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+      onMouseEnter={e => { if (!disabled) { e.currentTarget.style.borderColor = `${LILAC}99`; e.currentTarget.style.color = LILAC; } }}
+      onMouseLeave={e => { e.currentTarget.style.borderColor = ''; e.currentTarget.style.color = ''; }}
+    >{children}</button>
   );
 }
 
