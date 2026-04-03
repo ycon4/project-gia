@@ -3,11 +3,11 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
   PieChart, Pie, Cell, ComposedChart
 } from 'recharts';
-import { Printer, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 
-const COLORS = { Male: '#7cacf8', Female: '#ec4899' };
+const COLORS = { Male: '#73DAE1', Female: '#DD6E6B' };
 
-export default function EmployeeVisuals({ data }) {
+export default function EmployeeVisuals({ data, recordsCount = 0 }) {
   const [activeChart, setActiveChart] = useState(0);
 
   const getSDD = (key, filterFn = () => true) => {
@@ -212,12 +212,9 @@ export default function EmployeeVisuals({ data }) {
           <h2 className="text-sm font-bold text-neutral-900 dark:text-neutral-100 uppercase tracking-wide">Employment GAD Report</h2>
           <p className="text-[10px] text-neutral-400 dark:text-neutral-500 uppercase tracking-widest mt-0.5">Sex-Disaggregated Data System · MSU-IIT</p>
         </div>
-        <button
-          onClick={() => window.print()}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded border border-neutral-200 dark:border-neutral-700 text-xs font-bold text-neutral-600 dark:text-neutral-400 hover:border-gia-400 hover:text-gia-600 dark:hover:text-gia-400 transition-colors"
-        >
-          <Printer size={13} /> Print Report
-        </button>
+        <span className="text-xs font-medium text-neutral-400 dark:text-neutral-500 tabular-nums">
+          {recordsCount.toLocaleString()} records
+        </span>
       </div>
 
       {/* Summary Stat Cards */}
@@ -240,7 +237,7 @@ export default function EmployeeVisuals({ data }) {
           <button
             onClick={() => setActiveChart(i => Math.max(0, i - 1))}
             disabled={activeChart === 0}
-            className="shrink-0 p-1 rounded border border-neutral-200 dark:border-neutral-700 text-neutral-400 hover:border-[#7cacf8]/60 hover:text-[#7cacf8] disabled:opacity-25 disabled:cursor-not-allowed transition-colors"
+            className="shrink-0 p-1 rounded border border-neutral-200 dark:border-neutral-700 text-neutral-400 hover:border-[#73DAE1]/60 hover:text-[#73DAE1] disabled:opacity-25 disabled:cursor-not-allowed transition-colors"
           >
             <ChevronLeft size={13} />
           </button>
@@ -251,8 +248,8 @@ export default function EmployeeVisuals({ data }) {
                 onClick={() => setActiveChart(i)}
                 className={`shrink-0 px-3 py-1 rounded text-[11px] font-medium transition-colors whitespace-nowrap ${
                   activeChart === i
-                    ? 'bg-[#7cacf8] text-white'
-                    : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400 hover:bg-[#7cacf8]/10 hover:text-[#7cacf8]'
+                    ? 'bg-[#73DAE1] text-white'
+                    : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400 hover:bg-[#73DAE1]/10 hover:text-[#73DAE1]'
                 }`}
               >
                 {i + 1}. {chart.title}
@@ -262,7 +259,7 @@ export default function EmployeeVisuals({ data }) {
           <button
             onClick={() => setActiveChart(i => Math.min(charts.length - 1, i + 1))}
             disabled={activeChart === charts.length - 1}
-            className="shrink-0 p-1 rounded border border-neutral-200 dark:border-neutral-700 text-neutral-400 hover:border-[#7cacf8]/60 hover:text-[#7cacf8] disabled:opacity-25 disabled:cursor-not-allowed transition-colors"
+            className="shrink-0 p-1 rounded border border-neutral-200 dark:border-neutral-700 text-neutral-400 hover:border-[#73DAE1]/60 hover:text-[#73DAE1] disabled:opacity-25 disabled:cursor-not-allowed transition-colors"
           >
             <ChevronRight size={13} />
           </button>
@@ -279,6 +276,7 @@ export default function EmployeeVisuals({ data }) {
           {current.render()}
         </div>
       </div>
+
     </div>
   );
 }

@@ -3,7 +3,7 @@ import * as XLSX from 'xlsx';
 import { Upload, Loader2, FileUp, Calendar, X, AlertCircle } from 'lucide-react';
 import { addDocument } from '../../../firebase/services';
 
-export default function ExcelUpload({ activeTab, onUploadSuccess }) {
+export default function ExcelUpload({ activeTab, onUploadSuccess, compact = false }) {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadStatus, setUploadStatus] = useState('');
   const [showAYPicker, setShowAYPicker] = useState(false);
@@ -123,16 +123,14 @@ export default function ExcelUpload({ activeTab, onUploadSuccess }) {
         disabled={isUploading}
       />
       
-      <label 
-        htmlFor="sector-excel-upload" 
-        className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-xs uppercase tracking-widest transition-all cursor-pointer shadow-sm border
-          ${isUploading
-            ? 'bg-neutral-100 text-neutral-400 border-neutral-200'
-            : 'text-white hover:opacity-90 hover:shadow-lg'
-          }`}
-          style={!isUploading ? { backgroundColor: '#a680cf', borderColor: '#a680cf' } : {}}
+      <label
+        htmlFor="sector-excel-upload"
+        className={compact
+          ? `flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-semibold transition-colors cursor-pointer ${isUploading ? 'border-neutral-200 text-neutral-400 dark:border-neutral-700' : 'border-neutral-200 dark:border-neutral-700 text-neutral-500 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200 hover:border-neutral-300 dark:hover:border-neutral-500'}`
+          : `flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-xs uppercase tracking-widest transition-all cursor-pointer shadow-sm border ${isUploading ? 'bg-neutral-100 text-neutral-400 border-neutral-200' : 'text-white hover:opacity-90 hover:shadow-lg'}`}
+          style={(!compact && !isUploading) ? { backgroundColor: '#a673d8', borderColor: '#a673d8' } : {}}
       >
-        {isUploading ? <Loader2 className="animate-spin" size={16} /> : <FileUp size={16} />}
+        {isUploading ? <Loader2 className="animate-spin" size={compact ? 13 : 16} /> : <FileUp size={compact ? 13 : 16} />}
         <span>{uploadStatus || `Import Dataset`}</span>
       </label>
 

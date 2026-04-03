@@ -3,18 +3,18 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
   PieChart, Pie, Cell
 } from 'recharts';
-import { Printer, ChevronDown } from 'lucide-react';
+import { ChevronDown } from 'lucide-react';
 
-const LILAC   = '#a680cf';
-const LILAC_2 = '#b89bde';
-const BLUE    = '#7cacf8';
+const LILAC   = '#a673d8';
+const LILAC_2 = '#b07ade';
+const BLUE    = '#73DAE1';
 const COLORS  = {
   Male:    BLUE,
-  Female:  '#f87cac',
+  Female:  '#DD6E6B',
   palette: [LILAC, LILAC_2, BLUE, '#f43f5e', '#f59e0b', '#10b981'],
 };
 
-export default function StudentEnrollmentVisuals({ data }) {
+export default function StudentEnrollmentVisuals({ data, recordsCount = 0 }) {
   const [activeChart, setActiveChart] = useState(0);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef(null);
@@ -71,8 +71,8 @@ export default function StudentEnrollmentVisuals({ data }) {
     {
       title: "Enrollment by College",
       desc:  "Total student population distribution across colleges disaggregated by sex.",
-      render: (h) => (
-        <ResponsiveContainer width="100%" height={h}>
+      render: () => (
+        <ResponsiveContainer width="100%" height="100%">
           <BarChart data={stats.college} layout="vertical">
             <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#e5e7eb" />
             <XAxis type="number" hide />
@@ -88,8 +88,8 @@ export default function StudentEnrollmentVisuals({ data }) {
     {
       title: "Year Level Distribution",
       desc:  "Progress of male vs female students per academic year level.",
-      render: (h) => (
-        <ResponsiveContainer width="100%" height={h}>
+      render: () => (
+        <ResponsiveContainer width="100%" height="100%">
           <BarChart data={stats.yearLevel}>
             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
             <XAxis dataKey="name" fontSize={11} fontWeight="bold" />
@@ -105,8 +105,8 @@ export default function StudentEnrollmentVisuals({ data }) {
     {
       title: "Income PSA Category",
       desc:  "Economic clustering using the PSA classification.",
-      render: (h) => (
-        <ResponsiveContainer width="100%" height={h}>
+      render: () => (
+        <ResponsiveContainer width="100%" height="100%">
           <BarChart data={stats.income} layout="vertical">
             <XAxis type="number" hide />
             <YAxis dataKey="name" type="category" fontSize={9} width={90} />
@@ -121,8 +121,8 @@ export default function StudentEnrollmentVisuals({ data }) {
     {
       title: "Vulnerability & Support Tracking",
       desc:  "Sex representation across specific support groups (PWD, 4Ps, Solo Parent, etc.).",
-      render: (h) => (
-        <ResponsiveContainer width="100%" height={h}>
+      render: () => (
+        <ResponsiveContainer width="100%" height="100%">
           <BarChart data={stats.vulnerabilities}>
             <CartesianGrid strokeDasharray="3 3" vertical={false} />
             <XAxis dataKey="name" fontSize={11} fontWeight="black" />
@@ -138,8 +138,8 @@ export default function StudentEnrollmentVisuals({ data }) {
     {
       title: "Top 10 Degree Programs",
       desc:  "Most populated academic programs disaggregated by gender.",
-      render: (h) => (
-        <ResponsiveContainer width="100%" height={h}>
+      render: () => (
+        <ResponsiveContainer width="100%" height="100%">
           <BarChart data={stats.programs} layout="vertical">
             <YAxis dataKey="name" type="category" width={160} fontSize={8} />
             <XAxis type="number" hide />
@@ -154,8 +154,8 @@ export default function StudentEnrollmentVisuals({ data }) {
     {
       title: "Cultural Profile — Ethnicity",
       desc:  "Top 5 ethnic groups represented in the student body.",
-      render: (h) => (
-        <ResponsiveContainer width="100%" height={h}>
+      render: () => (
+        <ResponsiveContainer width="100%" height="100%">
           <PieChart>
             <Pie data={stats.ethnicity} dataKey="total" nameKey="name" innerRadius={70} outerRadius={110}>
               {stats.ethnicity.map((_, i) => <Cell key={i} fill={COLORS.palette[i % COLORS.palette.length]} />)}
@@ -169,8 +169,8 @@ export default function StudentEnrollmentVisuals({ data }) {
     {
       title: "Religious Affiliation",
       desc:  "Top 5 religious groups recorded in the data.",
-      render: (h) => (
-        <ResponsiveContainer width="100%" height={h}>
+      render: () => (
+        <ResponsiveContainer width="100%" height="100%">
           <BarChart data={stats.religion}>
             <CartesianGrid strokeDasharray="3 3" vertical={false} />
             <XAxis dataKey="name" fontSize={9} />
@@ -186,8 +186,8 @@ export default function StudentEnrollmentVisuals({ data }) {
     {
       title: "First Generation Students",
       desc:  "Students who are the first in their families to attend college.",
-      render: (h) => (
-        <ResponsiveContainer width="100%" height={h}>
+      render: () => (
+        <ResponsiveContainer width="100%" height="100%">
           <BarChart data={stats.firstGen}>
             <CartesianGrid strokeDasharray="3 3" vertical={false} />
             <XAxis dataKey="name" fontSize={11} />
@@ -203,8 +203,8 @@ export default function StudentEnrollmentVisuals({ data }) {
     {
       title: "Regional Origin",
       desc:  "Top provinces/cities where students are currently originating from.",
-      render: (h) => (
-        <ResponsiveContainer width="100%" height={h}>
+      render: () => (
+        <ResponsiveContainer width="100%" height="100%">
           <BarChart data={stats.origin} layout="vertical">
             <YAxis dataKey="name" type="category" fontSize={9} width={90} />
             <XAxis type="number" hide />
@@ -216,8 +216,7 @@ export default function StudentEnrollmentVisuals({ data }) {
     },
   ];
 
-  const current    = charts[activeChart];
-  const chartHeight = Math.max(320, Math.floor(window.innerHeight * 0.55));
+  const current = charts[activeChart];
 
   return (
     <div className="flex flex-col h-full">
@@ -263,13 +262,10 @@ export default function StudentEnrollmentVisuals({ data }) {
           <span className="text-xs text-neutral-400 dark:text-neutral-500 tabular-nums">{activeChart + 1} / {charts.length}</span>
         </div>
 
-        {/* Print */}
-        <button
-          onClick={() => window.print()}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-neutral-200 dark:border-neutral-700 text-xs font-semibold text-neutral-500 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200 hover:border-neutral-300 dark:hover:border-neutral-500 transition-colors"
-        >
-          <Printer size={13} /> Print
-        </button>
+        {/* Records count */}
+        <span className="text-xs font-medium text-neutral-400 dark:text-neutral-500 tabular-nums">
+          {recordsCount.toLocaleString()} records
+        </span>
       </div>
 
       {/* ── Description ── */}
@@ -277,8 +273,9 @@ export default function StudentEnrollmentVisuals({ data }) {
 
       {/* ── Chart fills remaining space ── */}
       <div className="flex-1 px-4 pb-4 pt-2 min-h-0">
-        {current.render(chartHeight)}
+        {current.render()}
       </div>
+
     </div>
   );
 }

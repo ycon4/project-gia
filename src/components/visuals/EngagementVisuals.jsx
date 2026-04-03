@@ -6,9 +6,9 @@ import {
 import { Zap, Award, ShieldCheck, BookOpen, Users, GraduationCap, Target, Star, AlertCircle, ChevronLeft, ChevronRight } from 'lucide-react';
 
 const COLORS = {
-  Male: '#7cacf8',
-  Female: '#ec4899',
-  palette: ['#7cacf8', '#6366f1', '#d946ef', '#f43f5e', '#f59e0b', '#10b981']
+  Male: '#73DAE1',
+  Female: '#DD6E6B',
+  palette: ['#73DAE1', '#6366f1', '#d946ef', '#f43f5e', '#f59e0b', '#10b981']
 };
 
 const getVal = (row, key1, key2) => {
@@ -22,7 +22,7 @@ const isActive = (val) => {
   return !['none', 'paying', 'no', 'n/a', '', ' '].includes(lower);
 };
 
-export default function StudentEngagementVisuals({ data = [] }) {
+export default function StudentEngagementVisuals({ data = [], recordsCount = 0 }) {
   const [activeChart, setActiveChart] = useState(0);
 
   const stats = useMemo(() => {
@@ -295,9 +295,14 @@ export default function StudentEngagementVisuals({ data = [] }) {
     <div className="space-y-0 border border-neutral-200 dark:border-neutral-700 rounded-lg overflow-hidden">
 
       {/* Header */}
-      <div className="px-5 py-3 bg-neutral-50 dark:bg-neutral-800/60 border-b border-neutral-200 dark:border-neutral-700">
-        <h2 className="text-sm font-bold text-neutral-900 dark:text-neutral-100 uppercase tracking-wide">Student Engagement Visuals</h2>
-        <p className="text-[10px] text-neutral-400 dark:text-neutral-500 uppercase tracking-widest mt-0.5">Sex-Disaggregated Engagement Report</p>
+      <div className="flex justify-between items-center px-5 py-3 bg-neutral-50 dark:bg-neutral-800/60 border-b border-neutral-200 dark:border-neutral-700">
+        <div>
+          <h2 className="text-sm font-bold text-neutral-900 dark:text-neutral-100 uppercase tracking-wide">Student Engagement Visuals</h2>
+          <p className="text-[10px] text-neutral-400 dark:text-neutral-500 uppercase tracking-widest mt-0.5">Sex-Disaggregated Engagement Report</p>
+        </div>
+        <span className="text-xs font-medium text-neutral-400 dark:text-neutral-500 tabular-nums">
+          {recordsCount.toLocaleString()} records
+        </span>
       </div>
 
       {/* Summary Stat Cards */}
@@ -323,7 +328,7 @@ export default function StudentEngagementVisuals({ data = [] }) {
           <button
             onClick={() => setActiveChart(i => Math.max(0, i - 1))}
             disabled={activeChart === 0}
-            className="shrink-0 p-1 rounded border border-neutral-200 dark:border-neutral-700 text-neutral-400 hover:border-[#7cacf8]/60 hover:text-[#7cacf8] disabled:opacity-25 disabled:cursor-not-allowed transition-colors"
+            className="shrink-0 p-1 rounded border border-neutral-200 dark:border-neutral-700 text-neutral-400 hover:border-[#73DAE1]/60 hover:text-[#73DAE1] disabled:opacity-25 disabled:cursor-not-allowed transition-colors"
           >
             <ChevronLeft size={13} />
           </button>
@@ -334,8 +339,8 @@ export default function StudentEngagementVisuals({ data = [] }) {
                 onClick={() => setActiveChart(i)}
                 className={`shrink-0 px-3 py-1 rounded text-[11px] font-medium transition-colors whitespace-nowrap ${
                   activeChart === i
-                    ? 'bg-[#7cacf8] text-white'
-                    : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400 hover:bg-[#7cacf8]/10 hover:text-[#7cacf8]'
+                    ? 'bg-[#73DAE1] text-white'
+                    : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400 hover:bg-[#73DAE1]/10 hover:text-[#73DAE1]'
                 }`}
               >
                 {i + 1}. {chart.title}
@@ -345,7 +350,7 @@ export default function StudentEngagementVisuals({ data = [] }) {
           <button
             onClick={() => setActiveChart(i => Math.min(charts.length - 1, i + 1))}
             disabled={activeChart === charts.length - 1}
-            className="shrink-0 p-1 rounded border border-neutral-200 dark:border-neutral-700 text-neutral-400 hover:border-[#7cacf8]/60 hover:text-[#7cacf8] disabled:opacity-25 disabled:cursor-not-allowed transition-colors"
+            className="shrink-0 p-1 rounded border border-neutral-200 dark:border-neutral-700 text-neutral-400 hover:border-[#73DAE1]/60 hover:text-[#73DAE1] disabled:opacity-25 disabled:cursor-not-allowed transition-colors"
           >
             <ChevronRight size={13} />
           </button>
@@ -362,6 +367,7 @@ export default function StudentEngagementVisuals({ data = [] }) {
           {current.render()}
         </div>
       </div>
+
     </div>
   );
 }

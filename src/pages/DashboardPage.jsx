@@ -1,7 +1,8 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import {
-  Search, Trash2, AlertCircle,
-  RefreshCcw, Database, Users, Briefcase, Zap,
+  Search, AlertCircle,
+  RefreshCcw, Trash2, Printer, FileUp, MoreVertical,
+  Database, Users, Briefcase, Zap,
   ChevronLeft, ChevronRight, ChevronDown,
 } from 'lucide-react';
 
@@ -13,7 +14,7 @@ import StudentEnrollmentVisuals from '../components/visuals/StudentEnrollmentVis
 import EmployeeVisuals from '../components/visuals/EmployeeVisuals.jsx';
 import StudentEngagementVisuals from '../components/visuals/EngagementVisuals.jsx';
 
-const LILAC = '#a680cf';
+const LILAC = '#a673d8';
 
 const SECTORS = {
   student_enrollment: {
@@ -47,6 +48,7 @@ export default function DashboardPage() {
   const [rowsPerPage, setRowsPerPage]     = useState(10);
   const [datasetOpen, setDatasetOpen]     = useState(false);
   const [ayOpen, setAyOpen]               = useState(false);
+  const [clearModalOpen, setClearModalOpen] = useState(false);
   const datasetRef                        = useRef(null);
   const ayRef                             = useRef(null);
 
@@ -80,7 +82,6 @@ export default function DashboardPage() {
 
   const handleDeleteAY = async () => {
     if (!activeAY) return;
-    if (!window.confirm(`Permanently delete ALL ${currentInboxData.length} records for AY ${activeAY} in ${SECTORS[activeTab].label}? This cannot be undone.`)) return;
     try {
       setIsDeleting(true);
       await deleteAYData(activeTab, activeAY);
@@ -118,10 +119,10 @@ export default function DashboardPage() {
   const sector      = SECTORS[activeTab];
 
   const UploadButton = activeTab === 'student_engagement'
-    ? <ExcelUploadEngagement activeTab={activeTab} onUploadSuccess={loadTabData} />
+    ? <ExcelUploadEngagement activeTab={activeTab} onUploadSuccess={loadTabData} compact />
     : activeTab === 'employee_information'
-      ? <ExcelUploadEmployee activeTab={activeTab} onUploadSuccess={loadTabData} />
-      : <ExcelUploadEnrollment activeTab={activeTab} onUploadSuccess={loadTabData} />;
+      ? <ExcelUploadEmployee activeTab={activeTab} onUploadSuccess={loadTabData} compact />
+      : <ExcelUploadEnrollment activeTab={activeTab} onUploadSuccess={loadTabData} compact />;
 
   const pageNums = Array.from({ length: totalPages }, (_, i) => i + 1)
     .filter(p => p === 1 || p === totalPages || Math.abs(p - currentPage) <= 1)
@@ -132,7 +133,7 @@ export default function DashboardPage() {
     }, []);
 
   return (
-    <div className="flex flex-col font-sans" style={{ minHeight: 'calc(100dvh - 4rem)' }}>
+    <div className="flex flex-col font-sans" style={{ height: 'calc(100dvh - 4rem)' }}>
 
       {/* ── TITLE ROW: Large dataset name + AY selector + actions ── */}
       <div className="flex items-center justify-between pb-3">
@@ -212,51 +213,51 @@ export default function DashboardPage() {
           )}
         </div>
 
-        {/* Right: Clear AY + Import button */}
-        <div className="flex items-center gap-2">
-          {activeAY && (
+      </div>
+
+      {/* ── VIEW TABS ── */}
+      <div className="border-b border-neutral-200 dark:border-neutral-700">
+        <div className="flex">
+          {[
+            { id: 'visuals',  label: 'Visuals' },
+            { id: 'table',    label: 'Data Sheet' },
+          ].map(tab => (
             <button
-              onClick={handleDeleteAY}
-              disabled={isDeleting}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-lg border border-transparent hover:border-red-200 dark:hover:border-red-900 disabled:opacity-40 transition-colors"
+              key={tab.id}
+              onClick={() => setViewMode(tab.id)}
+              className="px-5 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors"
+              style={viewMode === tab.id
+                ? { borderColor: LILAC, color: LILAC }
+                : { borderColor: 'transparent', color: '#9ca3af' }
+              }
             >
-              {isDeleting ? <RefreshCcw className="animate-spin" size={11} /> : <Trash2 size={11} />}
-              Clear AY {activeAY}
+              {tab.label}
             </button>
-          )}
-          {UploadButton}
+          ))}
         </div>
       </div>
 
-      {/* ── VIEW TABS: Full-width divider line like Firebase ── */}
-      <div className="border-b border-neutral-200 dark:border-neutral-700">
-        <div className="flex items-center justify-between">
-          <div className="flex">
-            {[
-              { id: 'visuals',  label: 'Visuals' },
-              { id: 'table',    label: 'Data Sheet' },
-            ].map(tab => (
-              <button
-                key={tab.id}
-                onClick={() => setViewMode(tab.id)}
-                className="px-5 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors"
-                style={viewMode === tab.id
-                  ? { borderColor: LILAC, color: LILAC }
-                  : { borderColor: 'transparent', color: '#9ca3af' }
-                }
-              >
-                {tab.label}
-              </button>
-            ))}
-          </div>
-          <div className="flex items-center gap-3 pb-2 text-[11px] font-medium text-neutral-400 dark:text-neutral-500">
-            <span>Records: <span className="text-neutral-700 dark:text-neutral-300 font-semibold">{currentInboxData.length}</span></span>
-          </div>
-        </div>
+      {/* ── ACTION BUTTONS (below the line) ── */}
+      <div className="flex items-center justify-end gap-2 py-2.5">
+        <button
+          onClick={() => window.print()}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-neutral-200 dark:border-neutral-700 text-xs font-semibold text-neutral-500 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200 hover:border-neutral-300 dark:hover:border-neutral-500 transition-colors"
+        >
+          <Printer size={13} /> Print
+        </button>
+        {UploadButton}
+        {activeAY && (
+          <button
+            onClick={() => setClearModalOpen(true)}
+            className="p-1.5 rounded-lg border border-neutral-200 dark:border-neutral-700 text-neutral-500 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200 hover:border-neutral-300 dark:hover:border-neutral-500 transition-colors"
+          >
+            <MoreVertical size={15} />
+          </button>
+        )}
       </div>
 
       {/* ── CONTENT BOX ── */}
-      <div className="flex-1 flex flex-col min-h-0 bg-white dark:bg-neutral-900 border border-t-0 border-neutral-200 dark:border-neutral-700 rounded-b-lg overflow-hidden">
+      <div className="flex-1 flex flex-col min-h-0 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-lg overflow-hidden">
         {loading ? (
           <LoadingState label={sector.label} />
         ) : !activeAY ? (
@@ -279,13 +280,13 @@ export default function DashboardPage() {
             pageNums={pageNums}
           />
         ) : (
-          <div className="flex-1 flex flex-col min-h-0 overflow-y-auto">
+          <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
             {activeTab === 'student_enrollment' ? (
-              <StudentEnrollmentVisuals data={currentInboxData} />
+              <StudentEnrollmentVisuals data={currentInboxData} recordsCount={currentInboxData.length} />
             ) : activeTab === 'employee_information' ? (
-              <EmployeeVisuals data={currentInboxData} />
+              <EmployeeVisuals data={currentInboxData} recordsCount={currentInboxData.length} />
             ) : activeTab === 'student_engagement' ? (
-              <StudentEngagementVisuals data={currentInboxData} />
+              <StudentEngagementVisuals data={currentInboxData} recordsCount={currentInboxData.length} />
             ) : (
               <div className="flex flex-col items-center justify-center h-full gap-3 text-neutral-400">
                 <AlertCircle size={32} />
@@ -295,6 +296,36 @@ export default function DashboardPage() {
           </div>
         )}
       </div>
+
+      {/* ── CLEAR AY MODAL ── */}
+      {clearModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setClearModalOpen(false)}>
+          <div className="bg-white dark:bg-neutral-900 rounded-xl shadow-2xl p-6 w-80 flex flex-col gap-4" onClick={e => e.stopPropagation()}>
+            <div className="flex flex-col gap-1">
+              <h3 className="text-sm font-bold text-neutral-900 dark:text-neutral-100">Clear AY {activeAY}</h3>
+              <p className="text-xs text-neutral-500 dark:text-neutral-400">
+                This will permanently delete all {currentInboxData.length.toLocaleString()} records for Academic Year {activeAY}. This cannot be undone.
+              </p>
+            </div>
+            <div className="flex items-center justify-end gap-2">
+              <button
+                onClick={() => setClearModalOpen(false)}
+                className="px-3 py-1.5 rounded-lg text-xs font-semibold text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => { setClearModalOpen(false); handleDeleteAY(); }}
+                disabled={isDeleting}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-white bg-red-500 hover:bg-red-600 disabled:opacity-50 transition-colors"
+              >
+                {isDeleting ? <RefreshCcw className="animate-spin" size={11} /> : <Trash2 size={11} />}
+                Clear AY {activeAY}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

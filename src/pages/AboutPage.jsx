@@ -1,12 +1,12 @@
 import { MessageCircle, BarChart3, ShieldCheck, Zap, Info, ArrowRight, CalendarDays } from 'lucide-react';
 import giaLogoColored from '../assets/GIA Logo - Colored.svg';
 
-const LILAC        = '#a680cf';
-const LILAC_LIGHT  = '#b89bde';
-const LILAC_DARK   = '#7a55a0';
-const LILAC_BG     = '#faf8fd';
-const LILAC_BORDER = '#e5d8f3';
-const LOGO_GRADIENT = `linear-gradient(to bottom, ${LILAC_LIGHT}, ${LILAC_DARK})`;
+const LILAC        = '#a673d8';
+const LILAC_LIGHT  = '#b07ade';
+const LILAC_DARK   = '#7350a8';
+const LILAC_BG     = '#f9f5fd';
+const LILAC_BORDER = '#dfc2f3';
+const LOGO_GRADIENT = 'linear-gradient(to right, #A673D8, #DD6E6B, #A5DF6A, #73DAE1)';
 
 export default function AboutPage({ onGoToDashboard, onNewChat }) {
   return (
@@ -61,7 +61,7 @@ export default function AboutPage({ onGoToDashboard, onNewChat }) {
               </span>
             </div>
             <div className="flex items-center gap-2">
-              {['#A580CE', '#D07A7B', '#A6D07A', '#7AD0CF'].map(color => (
+              {['#A673D8', '#DD6E6B', '#A5DF6A', '#73DAE1'].map(color => (
                 <div key={color} className="w-3 h-3 rounded-full" style={{ backgroundColor: color }} />
               ))}
             </div>
@@ -105,7 +105,7 @@ export default function AboutPage({ onGoToDashboard, onNewChat }) {
               <h2 className="font-montserrat text-p4-2xl font-semibold text-neutral-900 dark:text-neutral-100 tracking-tight leading-tight">
                 <em>Who</em> is GIA?
               </h2>
-              <div className="w-12 h-1 rounded-full mt-3" style={{ backgroundColor: LILAC }} />
+              <div className="w-12 h-1 rounded-full mt-3" style={{ background: 'linear-gradient(to right, #A673D8, #DD6E6B, #A5DF6A, #73DAE1)' }} />
             </div>
             <p className="text-p4-sm text-neutral-600 dark:text-neutral-300 font-medium leading-relaxed">
               <span className="text-neutral-900 dark:text-neutral-100 font-semibold">GIA (GADC Information Assistant)</span>{' '}
