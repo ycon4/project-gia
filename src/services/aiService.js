@@ -711,3 +711,5 @@ export const formatAggregationTable = (aggregatedData, keyLabel = 'Category', va
   });
   return table;
 };
+
+// Ycon was here
