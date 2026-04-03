@@ -47,17 +47,24 @@ export default function AboutPage({ onGoToDashboard, onNewChat }) {
           </div>
 
           {/* Right: GIA logotype */}
-          <div className="shrink-0 flex items-center select-none">
-            <img
-              src={giaLogoColored}
-              alt="GIA Logo"
-              className="w-24 h-24 shrink-0 -translate-y-1"
-            />
-            <span
-              className="font-montserrat text-p4-4xl font-bold leading-none -ml-2 text-neutral-900 dark:text-neutral-100 self-center"
-            >
-              Gia
-            </span>
+          <div className="shrink-0 flex flex-col items-center gap-3 select-none">
+            <div className="flex items-center">
+              <img
+                src={giaLogoColored}
+                alt="GIA Logo"
+                className="w-24 h-24 shrink-0 -translate-y-1"
+              />
+              <span
+                className="font-montserrat text-p4-4xl font-bold leading-none -ml-2 text-neutral-900 dark:text-neutral-100 self-center"
+              >
+                Gia
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              {['#A580CE', '#D07A7B', '#A6D07A', '#7AD0CF'].map(color => (
+                <div key={color} className="w-3 h-3 rounded-full" style={{ backgroundColor: color }} />
+              ))}
+            </div>
           </div>
         </div>
       </section>
