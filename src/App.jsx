@@ -6,7 +6,7 @@ import {
   CalendarDays, PanelLeftClose, PanelLeft, SquarePen, Trash2, MessageSquare,
   Moon, Sun, ChevronUp, Pencil, X,
 } from 'lucide-react';
-import HomePage from './pages/HomePage';
+import AboutPage from './pages/AboutPage';
 import DashboardPage from './pages/DashboardPage';
 import ChatPage from './pages/ChatPage';
 import ChatsPage from './pages/ChatsPage';
@@ -27,7 +27,7 @@ function App() {
 
   const [user, setUser] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
-  const [activeSection, setActiveSection] = useState('home');
+  const [activeSection, setActiveSection] = useState('chat');
   const [activeEvent, setActiveEvent] = useState(null);
 
   const [dbData, setDbData] = useState({});
@@ -303,7 +303,7 @@ function App() {
         ) : (
           <main className="flex-1 overflow-y-auto px-8 py-8">
             <div className="transition-all duration-500 ease-in-out">
-              {activeSection === 'home' && <HomePage onGoToDashboard={() => setActiveSection('data')} onNewChat={handleNewChat} />}
+              {activeSection === 'home' && <AboutPage onGoToDashboard={() => setActiveSection('data')} onNewChat={handleNewChat} />}
               {activeSection === 'event' && (
                 <EventsPage
                   events={events}
@@ -362,10 +362,10 @@ function Sidebar({
   user, displayName, onEditProfile,
 }) {
   const navItems = [
-    { id: 'home',  label: 'Home',      icon: HomeIcon      },
+    { id: 'home',  label: 'About',     icon: HomeIcon      },
     { id: 'event', label: 'Events',    icon: CalendarDays  },
     { id: 'data',  label: 'Dashboard', icon: BarChart3     },
-    { id: 'chats', label: 'Chats',      icon: MessageCircle },
+    { id: 'chats', label: 'Chats',     icon: MessageCircle },
   ];
 
   return (
@@ -383,7 +383,7 @@ function Sidebar({
             <button
               onClick={() => setActiveSection('home')}
               className="shrink-0 flex items-center justify-center p-1 rounded-md hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-all"
-              title="GIA Home"
+              title="GIA About"
             >
               <div style={{ width: 24, height: 24, background: '#a680cf', WebkitMaskImage: `url(${giaLogo})`, maskImage: `url(${giaLogo})`, WebkitMaskSize: 'contain', maskSize: 'contain', WebkitMaskRepeat: 'no-repeat', maskRepeat: 'no-repeat', WebkitMaskPosition: 'center', maskPosition: 'center' }} />
             </button>
@@ -415,6 +415,13 @@ function Sidebar({
 
         {/* Nav items */}
         <nav className="px-1 py-3 space-y-1 shrink-0">
+          <SideNavItem
+            open={open}
+            onClick={onNewChat}
+            icon={<SquarePen size={16} />}
+            label="New Chat"
+            newChat
+          />
           {navItems.map(item => (
             <SideNavItem
               key={item.id}
@@ -425,13 +432,6 @@ function Sidebar({
               label={item.label}
             />
           ))}
-          <SideNavItem
-            open={open}
-            onClick={onNewChat}
-            icon={<SquarePen size={16} />}
-            label="New Chat"
-            newChat
-          />
         </nav>
 
         {/* Recents — only when expanded */}

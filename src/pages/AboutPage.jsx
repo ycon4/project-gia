@@ -1,5 +1,5 @@
 import { MessageCircle, BarChart3, ShieldCheck, Zap, Info, ArrowRight, CalendarDays } from 'lucide-react';
-import giaLogo from '../assets/GIA Logo.svg';
+import giaLogoColored from '../assets/GIA Logo - Colored.svg';
 
 const LILAC        = '#a680cf';
 const LILAC_LIGHT  = '#b89bde';
@@ -8,7 +8,7 @@ const LILAC_BG     = '#faf8fd';
 const LILAC_BORDER = '#e5d8f3';
 const LOGO_GRADIENT = `linear-gradient(to bottom, ${LILAC_LIGHT}, ${LILAC_DARK})`;
 
-export default function HomePage({ onGoToDashboard, onNewChat }) {
+export default function AboutPage({ onGoToDashboard, onNewChat }) {
   return (
     <div className="max-w-5xl mx-auto space-y-12 pb-20 animate-in fade-in duration-700">
 
@@ -48,25 +48,15 @@ export default function HomePage({ onGoToDashboard, onNewChat }) {
 
           {/* Right: GIA logotype */}
           <div className="shrink-0 flex items-center select-none">
-            <div
-              className="w-24 h-24 shrink-0"
-              style={{
-                background: LOGO_GRADIENT,
-                WebkitMaskImage: `url(${giaLogo})`,
-                maskImage: `url(${giaLogo})`,
-                WebkitMaskSize: 'contain',
-                maskSize: 'contain',
-                WebkitMaskRepeat: 'no-repeat',
-                maskRepeat: 'no-repeat',
-                WebkitMaskPosition: 'center',
-                maskPosition: 'center',
-              }}
+            <img
+              src={giaLogoColored}
+              alt="GIA Logo"
+              className="w-24 h-24 shrink-0 -translate-y-1"
             />
             <span
-              className="font-montserrat text-[6rem] font-bold leading-none -ml-2"
-              style={{ background: LOGO_GRADIENT, WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent' }}
+              className="font-montserrat text-p4-4xl font-bold leading-none -ml-2 text-neutral-900 dark:text-neutral-100 self-center"
             >
-              IA
+              Gia
             </span>
           </div>
         </div>
