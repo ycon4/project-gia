@@ -13,13 +13,13 @@ import {
 
 // ─── CONSTANTS ────────────────────────────────────────────────────────────────
 const SECTOR_COLORS = {
-  Student: '#6366f1',
-  Faculty: '#f59e0b',
-  Staff:   '#10b981',
-  Guest:   '#ec4899',
+  Student: '#a673d8',
+  Faculty: '#dd6e6b',
+  Staff:   '#a5df6a',
+  Guest:   '#73dae1',
 };
 
-const GENDER_COLORS = { Male: '#3b82f6', Female: '#f472b6' };
+const GENDER_COLORS = { Male: '#73dae1', Female: '#a673d8' };
 
 const SECTOR_ICONS = {
   Student: GraduationCap,
@@ -116,7 +116,7 @@ function KPICard({ label, value, sub, accent = '#a673d8', icon: Icon, change }) 
         )}
       </div>
       {/* Value */}
-      <span className="text-3xl font-black text-neutral-900 dark:text-neutral-100 leading-none">{value}</span>
+      <span className="text-3xl font-black leading-none text-neutral-900 dark:text-neutral-100">{value}</span>
       {/* Label + sub */}
       <div>
         <p className="text-[9px] font-black text-neutral-500 uppercase tracking-widest">{label}</p>
@@ -524,13 +524,13 @@ export default function GeneralDashboard({ events = [], attendanceData = [], com
           </p>
         </div>
 
-        <div className="space-y-6 pt-6 pb-20">
+        <div className="flex flex-col gap-6 pt-6 pb-20">
 
         {/* ── KPI STRIP ── */}
-        <div className={`grid gap-4 ${compact ? 'grid-cols-2' : 'grid-cols-2 md:grid-cols-4'}`}>
-          <KPICard label="Total Participants"  value={stats.total.toLocaleString()}  icon={Users}         accent="#a673d8"
+        <div className={`grid gap-6 ${compact ? 'grid-cols-2' : 'grid-cols-2 md:grid-cols-4'}`}>
+          <KPICard label="Total Participants"  value={stats.total.toLocaleString()}  icon={Users}         accent="#dd6e6b"
             sub={`${events.length} event(s) total`}       change={stats.changes.total} />
-          <KPICard label="Female Participants" value={stats.female.toLocaleString()} icon={UserCircle}    accent="#dd6e6b"
+          <KPICard label="Female Participants" value={stats.female.toLocaleString()} icon={UserCircle}    accent="#a673d8"
             sub={`${stats.femalePct}% of total`}           change={stats.changes.female} />
           <KPICard label="Male Participants"   value={stats.male.toLocaleString()}   icon={User}          accent="#73dae1"
             sub={`${pct(stats.male, stats.total)}% of total`} change={stats.changes.male} />
@@ -547,8 +547,8 @@ export default function GeneralDashboard({ events = [], attendanceData = [], com
               <h3 className="text-base font-black leading-none text-neutral-900 dark:text-neutral-100">Participation Trend</h3>
             </div>
             <div className="flex items-center gap-4">
-              <div className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full inline-block" style={{ background: '#a673d8' }} /><span className="text-[9px] font-bold text-neutral-400 uppercase tracking-wider">Total</span></div>
-              <div className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full inline-block" style={{ background: '#dd6e6b' }} /><span className="text-[9px] font-bold text-neutral-400 uppercase tracking-wider">Female</span></div>
+              <div className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full inline-block" style={{ background: '#dd6e6b' }} /><span className="text-[9px] font-bold text-neutral-400 uppercase tracking-wider">Total</span></div>
+              <div className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full inline-block" style={{ background: '#a673d8' }} /><span className="text-[9px] font-bold text-neutral-400 uppercase tracking-wider">Female</span></div>
               <div className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full inline-block" style={{ background: '#73dae1' }} /><span className="text-[9px] font-bold text-neutral-400 uppercase tracking-wider">Male</span></div>
             </div>
           </div>
@@ -561,12 +561,12 @@ export default function GeneralDashboard({ events = [], attendanceData = [], com
               <AreaChart data={stats.eventChart} margin={{ top: 10, right: 24, left: 0, bottom: 0 }}>
                 <defs>
                   <linearGradient id="gTotal" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%"  stopColor="#a673d8" stopOpacity={0.35} />
-                    <stop offset="95%" stopColor="#a673d8" stopOpacity={0} />
-                  </linearGradient>
-                  <linearGradient id="gFemale" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%"  stopColor="#dd6e6b" stopOpacity={0.35} />
                     <stop offset="95%" stopColor="#dd6e6b" stopOpacity={0} />
+                  </linearGradient>
+                  <linearGradient id="gFemale" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%"  stopColor="#a673d8" stopOpacity={0.35} />
+                    <stop offset="95%" stopColor="#a673d8" stopOpacity={0} />
                   </linearGradient>
                   <linearGradient id="gMale" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%"  stopColor="#73dae1" stopOpacity={0.30} />
@@ -585,8 +585,8 @@ export default function GeneralDashboard({ events = [], attendanceData = [], com
                   itemStyle={{ fontWeight: 700 }}
                   cursor={{ stroke: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)', strokeWidth: 1 }}
                 />
-                <Area type="monotone" dataKey="Total"  stroke="#a673d8" strokeWidth={2} fill="url(#gTotal)"  dot={{ r: 3, fill: '#a673d8', strokeWidth: 0 }} activeDot={{ r: 5, fill: '#a673d8' }} />
-                <Area type="monotone" dataKey="Female" stroke="#dd6e6b" strokeWidth={2} fill="url(#gFemale)" dot={{ r: 3, fill: '#dd6e6b', strokeWidth: 0 }} activeDot={{ r: 5, fill: '#dd6e6b' }} />
+                <Area type="monotone" dataKey="Total"  stroke="#dd6e6b" strokeWidth={2} fill="url(#gTotal)"  dot={{ r: 3, fill: '#dd6e6b', strokeWidth: 0 }} activeDot={{ r: 5, fill: '#dd6e6b' }} />
+                <Area type="monotone" dataKey="Female" stroke="#a673d8" strokeWidth={2} fill="url(#gFemale)" dot={{ r: 3, fill: '#a673d8', strokeWidth: 0 }} activeDot={{ r: 5, fill: '#a673d8' }} />
                 <Area type="monotone" dataKey="Male"   stroke="#73dae1" strokeWidth={2} fill="url(#gMale)"   dot={{ r: 3, fill: '#73dae1', strokeWidth: 0 }} activeDot={{ r: 5, fill: '#73dae1' }} />
               </AreaChart>
             </ResponsiveContainer>
@@ -594,7 +594,7 @@ export default function GeneralDashboard({ events = [], attendanceData = [], com
         </div>
 
         {/* ── ROW 1: Gender Pie + Sector Pie ── */}
-        <div className={`grid gap-4 ${compact ? 'grid-cols-1' : 'grid-cols-1 md:grid-cols-2'}`}>
+        <div className={`grid gap-6 ${compact ? 'grid-cols-1' : 'grid-cols-1 md:grid-cols-2'}`}>
 
           {/* Gender Pie */}
           <div className="bg-white dark:bg-neutral-900 p-4 rounded-2xl border border-neutral-200 dark:border-neutral-700 shadow-sm">
@@ -660,7 +660,7 @@ export default function GeneralDashboard({ events = [], attendanceData = [], com
           </div>
         </div>
 
-        <div className={`grid gap-4 ${compact ? 'grid-cols-1' : 'grid-cols-1 md:grid-cols-2'}`}>
+        <div className={`grid gap-6 ${compact ? 'grid-cols-1' : 'grid-cols-1 md:grid-cols-2'}`}>
 
         {/* ── ROW 2: Sex-Disaggregated by Sector (grouped bar) ── */}
         <div className="bg-white dark:bg-neutral-900 p-4 rounded-2xl border border-neutral-200 dark:border-neutral-700 shadow-sm">
@@ -703,8 +703,8 @@ export default function GeneralDashboard({ events = [], attendanceData = [], com
                     <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
                   </linearGradient>
                   <linearGradient id="gFemale" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%"  stopColor="#f472b6" stopOpacity={0.15}/>
-                    <stop offset="95%" stopColor="#f472b6" stopOpacity={0}/>
+                    <stop offset="5%"  stopColor="#a673d8" stopOpacity={0.15}/>
+                    <stop offset="95%" stopColor="#a673d8" stopOpacity={0}/>
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
@@ -714,8 +714,8 @@ export default function GeneralDashboard({ events = [], attendanceData = [], com
                 <Legend iconType="circle" iconSize={8}
                   formatter={v => <span style={{ fontSize: 10, fontWeight: 700 }}>{v}</span>} />
                 <Area type="monotone" dataKey="Total"  stroke="#6366f1" strokeWidth={2} fill="url(#gTotal)"  dot={{ r: 3 }} />
-                <Area type="monotone" dataKey="Male"   stroke="#3b82f6" strokeWidth={2} fill="none" dot={{ r: 3 }} />
-                <Area type="monotone" dataKey="Female" stroke="#f472b6" strokeWidth={2} fill="url(#gFemale)" dot={{ r: 3 }} />
+                <Area type="monotone" dataKey="Male"   stroke="#73dae1" strokeWidth={2} fill="none" dot={{ r: 3 }} />
+                <Area type="monotone" dataKey="Female" stroke="#a673d8" strokeWidth={2} fill="url(#gFemale)" dot={{ r: 3 }} />
               </AreaChart>
             </ResponsiveContainer>
           )}
@@ -734,7 +734,7 @@ export default function GeneralDashboard({ events = [], attendanceData = [], com
         </div>
 
         {/* ── ROW 4: Session SDD + Office/College SDD ── */}
-        <div className={`grid gap-4 ${compact ? 'grid-cols-1' : 'grid-cols-1 md:grid-cols-2'}`}>
+        <div className={`grid gap-6 ${compact ? 'grid-cols-1' : 'grid-cols-1 md:grid-cols-2'}`}>
 
           {/* Session SDD (Male vs Female) */}
           <div className="bg-white dark:bg-neutral-900 p-4 rounded-2xl border border-neutral-200 dark:border-neutral-700 shadow-sm">
@@ -792,8 +792,8 @@ export default function GeneralDashboard({ events = [], attendanceData = [], com
                         </span>
                       </div>
                       <div className="h-3 bg-slate-50 rounded-sm overflow-hidden flex">
-                        <div className="h-full bg-rose-400" style={{ width: `${femaleShare * 100}%` }} />
-                        <div className="h-full bg-indigo-400" style={{ width: `${(1 - femaleShare) * 100}%` }} />
+                        <div className="h-full" style={{ width: `${femaleShare * 100}%`, backgroundColor: '#a673d8' }} />
+                        <div className="h-full" style={{ width: `${(1 - femaleShare) * 100}%`, backgroundColor: '#73dae1' }} />
                       </div>
                     </div>
                   );
@@ -921,11 +921,11 @@ export default function GeneralDashboard({ events = [], attendanceData = [], com
                       </td>
                       <td className="px-4 py-3 text-xs font-black text-neutral-900 dark:text-neutral-100">{ev.total}</td>
                       <td className="px-4 py-3 text-xs font-bold" style={{ color: '#73dae1' }}>{ev.male}</td>
-                      <td className="px-4 py-3 text-xs font-bold" style={{ color: '#dd6e6b' }}>{ev.female}</td>
+                      <td className="px-4 py-3 text-xs font-bold" style={{ color: '#a673d8' }}>{ev.female}</td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
                           <div className="w-16 h-1.5 bg-neutral-100 dark:bg-neutral-800 rounded-full overflow-hidden">
-                            <div className="h-full rounded-full" style={{ width: `${ev.femalePct}%`, backgroundColor: '#dd6e6b' }} />
+                            <div className="h-full rounded-full" style={{ width: `${ev.femalePct}%`, backgroundColor: '#a673d8' }} />
                           </div>
                           <span className="text-[10px] font-black text-neutral-700 dark:text-neutral-300">{ev.femalePct}%</span>
                         </div>
