@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   LineChart, Line, PieChart, Pie, Cell, Legend, FunnelChart, Funnel,
@@ -8,7 +8,7 @@ import {
   Users, TrendingUp, Target, FileText,
   Calendar, Filter, Printer, Download, RefreshCcw,
   BookOpen, Briefcase, UserCircle, GraduationCap, Building2,
-  ChevronDown, Award, BarChart2, Layers
+  ChevronDown, Award, BarChart2, Layers, User, Accessibility
 } from 'lucide-react';
 
 // ─── CONSTANTS ────────────────────────────────────────────────────────────────
@@ -66,18 +66,62 @@ function getSessionName(row) {
   return row?.session_name || row?.session || 'Unknown';
 }
 
+// ─── DARK MODE HOOK ───────────────────────────────────────────────────────────
+function useIsDark() {
+  const [dark, setDark] = useState(() => document.documentElement.classList.contains('dark'));
+  useEffect(() => {
+    const el = document.documentElement;
+    const obs = new MutationObserver(() => setDark(el.classList.contains('dark')));
+    obs.observe(el, { attributes: true, attributeFilter: ['class'] });
+    return () => obs.disconnect();
+  }, []);
+  return dark;
+}
+
 // ─── SUB-COMPONENTS ───────────────────────────────────────────────────────────
 
 /** KPI card */
-function KPICard({ label, value, sub, accent = '#6366f1', icon: Icon }) {
+function KPICard({ label, value, sub, accent = '#a673d8', icon: Icon, change }) {
+  const [hovered, setHovered] = useState(false);
+  const isDark = useIsDark();
+  const hasChange = change !== null && change !== undefined;
+  const isPos = hasChange && change > 0;
+  const isNeg = hasChange && change < 0;
+
   return (
-    <div className="bg-white rounded-2xl border border-slate-100 p-5 flex flex-col gap-2 shadow-sm">
-      <div className="flex items-center justify-between">
-        <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{label}</span>
-        {Icon && <Icon size={16} style={{ color: accent }} />}
+    <div
+      className="rounded-2xl border bg-white dark:bg-[#1a1a1a] p-5 flex flex-col gap-4 cursor-default transition-all duration-300 select-none"
+      style={{
+        borderColor: hovered ? accent + '60' : (isDark ? '#2a2a2a' : '#e5e5e5'),
+        boxShadow: hovered ? `0 4px 20px ${accent}18` : 'none',
+      }}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+    >
+      {/* Icon + badge row */}
+      <div className="flex items-start justify-between">
+        <div className="p-3 rounded-xl transition-all duration-300"
+          style={{ backgroundColor: hovered ? accent + '35' : accent + '18' }}>
+          {Icon && <Icon size={26} style={{ color: accent }} strokeWidth={1.8} />}
+        </div>
+        {hasChange && (
+          <span className={`text-[10px] font-black px-2.5 py-1 rounded-full flex items-center gap-1 ${
+            isPos ? 'text-emerald-500 dark:text-emerald-400' : isNeg ? 'text-red-500 dark:text-red-400' : 'text-neutral-400'
+          }`}
+            style={{
+              backgroundColor: isPos ? 'rgba(52,211,153,0.12)' : isNeg ? 'rgba(248,113,113,0.12)' : 'rgba(115,115,115,0.10)',
+            }}>
+            {isPos ? '▲' : isNeg ? '▼' : '─'} {Math.abs(change).toFixed(1)}%
+          </span>
+        )}
       </div>
-      <span className="text-3xl font-black text-slate-900">{value}</span>
-      {sub && <span className="text-[9px] font-bold text-slate-400 uppercase">{sub}</span>}
+      {/* Value */}
+      <span className="text-3xl font-black text-neutral-900 dark:text-neutral-100 leading-none">{value}</span>
+      {/* Label + sub */}
+      <div>
+        <p className="text-[9px] font-black text-neutral-500 uppercase tracking-widest">{label}</p>
+        {sub && <p className="text-[10px] text-neutral-400 dark:text-neutral-600 mt-0.5">{sub}</p>}
+      </div>
     </div>
   );
 }
@@ -85,28 +129,30 @@ function KPICard({ label, value, sub, accent = '#6366f1', icon: Icon }) {
 /** Section header */
 function SectionTitle({ children }) {
   return (
-    <h3 className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-4">{children}</h3>
+    <h3 className="text-[9px] font-black text-neutral-400 dark:text-neutral-500 uppercase tracking-widest mb-4">{children}</h3>
   );
 }
 
 /** Horizontal progress bar row */
-function RankRow({ rank, name, count, total, color = '#6366f1' }) {
+function RankRow({ rank, name, count, total, color = '#a673d8' }) {
   const width = total ? (count / total) * 100 : 0;
   return (
     <div className="flex items-center gap-3 py-1.5">
-      <span className="text-[9px] font-black text-slate-300 w-4 text-right">{rank}</span>
-      <span className="text-[10px] font-bold text-slate-700 flex-1 truncate">{name}</span>
-      <div className="w-28 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+      <span className="text-[9px] font-black text-neutral-300 dark:text-neutral-600 w-4 text-right">{rank}</span>
+      <span className="text-[10px] font-bold text-neutral-700 dark:text-neutral-300 flex-1 truncate">{name}</span>
+      <div className="w-28 h-1.5 bg-neutral-100 dark:bg-neutral-800 rounded-full overflow-hidden">
         <div className="h-full rounded-full" style={{ width: `${width}%`, background: color }} />
       </div>
-      <span className="text-[10px] font-black text-slate-900 w-8 text-right">{count}</span>
-      <span className="text-[9px] text-slate-400 w-10 text-right">{pct(count, total)}%</span>
+      <span className="text-[10px] font-black text-neutral-900 dark:text-neutral-100 w-8 text-right">{count}</span>
+      <span className="text-[9px] text-neutral-400 dark:text-neutral-500 w-10 text-right">{pct(count, total)}%</span>
     </div>
   );
 }
 
 // ─── MAIN COMPONENT ───────────────────────────────────────────────────────────
-export default function GeneralDashboard({ events = [], attendanceData = [] }) {
+export default function GeneralDashboard({ events = [], attendanceData = [], compact = false }) {
+
+  const isDark = useIsDark();
 
   // ── Filter state ──
   const [dateRange, setDateRange]       = useState({ start: '', end: '' });
@@ -308,6 +354,50 @@ export default function GeneralDashboard({ events = [], attendanceData = [] }) {
             pwdYes > 0 ? `${pwdYes} participant(s) were recorded as PWD.` : 'No PWD participants were recorded in this period.'
           }`;
 
+    // ── Event-by-event chart data (sorted by date) ──
+    const eventChart = events
+      .map(ev => {
+        const evData = filtered.filter(d => String(d.eventId) === String(ev.id));
+        const m = evData.reduce((a, d) => a + (sexKey(d.sex) === 'Male'   ? 1 : 0), 0);
+        const f = evData.reduce((a, d) => a + (sexKey(d.sex) === 'Female' ? 1 : 0), 0);
+        const label = ev.title.length > 18 ? ev.title.slice(0, 17) + '…' : ev.title;
+        return { name: label, Total: evData.length, Male: m, Female: f, _date: ev.startDate || ev.date || '' };
+      })
+      .filter(e => e.Total > 0)
+      .sort((a, b) => a._date.localeCompare(b._date));
+
+    // ── Previous-period percentage change ──
+    let changes = { total: null, female: null, male: null, pwd: null };
+    if (dateRange.start) {
+      const startMs = new Date(dateRange.start).getTime();
+      const endMs = dateRange.end
+        ? new Date(new Date(dateRange.end).setHours(23, 59, 59)).getTime()
+        : Date.now();
+      const duration = endMs - startMs;
+      const prevEndMs = startMs - 1;
+      const prevStartMs = prevEndMs - duration;
+      const prev = attendanceData.filter(item => {
+        const rawTs = item?.createdAt ?? item?.timestamp;
+        const d = rawTs?.toDate ? rawTs.toDate() : new Date(rawTs);
+        const ms = d.getTime();
+        if (ms < prevStartMs || ms > prevEndMs) return false;
+        if (selectedSector !== 'All' && item.sector !== selectedSector) return false;
+        if (selectedEvent !== 'All' && String(item.eventId) !== String(selectedEvent)) return false;
+        return true;
+      });
+      const pTotal  = prev.length;
+      const pFemale = prev.reduce((a, d) => a + (sexKey(d.sex) === 'Female' ? 1 : 0), 0);
+      const pMale   = prev.reduce((a, d) => a + (sexKey(d.sex) === 'Male'   ? 1 : 0), 0);
+      const pPwd    = prev.reduce((a, d) => a + ((d.pwd_status ?? '').toString().trim() === 'Yes' ? 1 : 0), 0);
+      const chg = (cur, p) => p > 0 ? +((cur - p) / p * 100).toFixed(1) : null;
+      changes = {
+        total:  chg(total,  pTotal),
+        female: chg(female, pFemale),
+        male:   chg(male,   pMale),
+        pwd:    chg(pwdYes, pPwd),
+      };
+    }
+
     return {
       total,
       male,
@@ -334,8 +424,10 @@ export default function GeneralDashboard({ events = [], attendanceData = [] }) {
       topSectorFemalePct,
       topSession,
       trendDelta,
+      changes,
+      eventChart,
     };
-  }, [filtered, events, attendanceData]);
+  }, [filtered, events, attendanceData, dateRange, selectedSector, selectedEvent]);
 
   // ── Print handler ──
   const handlePrint = () => window.print();
@@ -349,7 +441,7 @@ export default function GeneralDashboard({ events = [], attendanceData = [] }) {
 
   // ─── RENDER ────────────────────────────────────────────────────────────────
   return (
-    <>
+    <div className="flex flex-col h-full">
       {/* ── PRINT STYLES (injected inline so no separate CSS file needed) ── */}
       <style>{`
         @media print {
@@ -362,98 +454,153 @@ export default function GeneralDashboard({ events = [], attendanceData = [] }) {
         }
       `}</style>
 
-      <div className="space-y-6 pb-20 animate-in fade-in duration-500" id="gad-report" ref={reportRef}>
+      {/* ── FILTER BAR — fixed header, never scrolls ── */}
+      <div className="print-hide shrink-0 h-12 px-8 border-b border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-[#121212] flex items-center gap-4">
+
+          {/* Date range */}
+          <div className="flex items-center gap-2 text-[10px] font-bold">
+            <Calendar size={12} className="text-neutral-400 dark:text-neutral-500 shrink-0" />
+            <input type="date"
+              className="bg-transparent outline-none text-[10px] font-bold text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-200 transition-colors cursor-pointer [color-scheme:light] dark:[color-scheme:dark]"
+              value={dateRange.start}
+              onChange={e => setDateRange(p => ({ ...p, start: e.target.value }))} />
+            <span className="text-neutral-300 dark:text-neutral-700">—</span>
+            <input type="date"
+              className="bg-transparent outline-none text-[10px] font-bold text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-200 transition-colors cursor-pointer [color-scheme:light] dark:[color-scheme:dark]"
+              value={dateRange.end}
+              onChange={e => setDateRange(p => ({ ...p, end: e.target.value }))} />
+          </div>
+
+          <span className="text-neutral-300 dark:text-neutral-800 select-none">|</span>
+
+          {/* Sector */}
+          <div className="relative flex items-center gap-1.5">
+            <Filter size={11} className="text-neutral-400 dark:text-neutral-500 shrink-0" />
+            <select
+              className="appearance-none bg-transparent outline-none text-[10px] font-bold text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-200 transition-colors cursor-pointer pr-4 [color-scheme:light] dark:[color-scheme:dark]"
+              value={selectedSector} onChange={e => setSelectedSector(e.target.value)}>
+              <option value="All">All Sectors</option>
+              {['Student','Faculty','Staff','Guest'].map(s => <option key={s} value={s}>{s}</option>)}
+            </select>
+            <ChevronDown size={10} className="absolute right-0 text-neutral-400 dark:text-neutral-600 pointer-events-none" />
+          </div>
+
+          <span className="text-neutral-300 dark:text-neutral-800 select-none">|</span>
+
+          {/* Event */}
+          <div className="relative flex items-center gap-1.5">
+            <Layers size={11} className="text-neutral-400 dark:text-neutral-500 shrink-0" />
+            <select
+              className="appearance-none bg-transparent outline-none text-[10px] font-bold text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-200 transition-colors cursor-pointer pr-4 max-w-[200px] [color-scheme:light] dark:[color-scheme:dark]"
+              value={selectedEvent} onChange={e => setSelectedEvent(e.target.value)}>
+              <option value="All">All Events</option>
+              {events.map(ev => <option key={ev.id} value={ev.id}>{ev.title}</option>)}
+            </select>
+            <ChevronDown size={10} className="absolute right-0 text-neutral-400 dark:text-neutral-600 pointer-events-none" />
+          </div>
+
+          {/* Reset */}
+          <button onClick={resetFilters}
+            className="flex items-center gap-1.5 text-[10px] font-black uppercase text-neutral-400 dark:text-neutral-600 hover:text-neutral-900 dark:hover:text-neutral-300 transition-colors">
+            <RefreshCcw size={11} /> Reset
+          </button>
+
+          <button onClick={handlePrint}
+            className="ml-auto flex items-center gap-2 text-neutral-600 dark:text-neutral-500 hover:text-neutral-900 dark:hover:text-white px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-neutral-200 dark:hover:bg-gia-700/30 transition-colors">
+            <Printer size={13} /> Print / Export
+          </button>
+      </div>
+
+      {/* ── SCROLLABLE CONTENT ── */}
+      <div className="flex-1 overflow-y-auto px-8 pb-8" id="gad-report" ref={reportRef}>
 
         {/* ── PRINT HEADER (only visible when printing) ── */}
         <div className="hidden print:block mb-6 border-b pb-4">
           <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Gender and Development Office</p>
           <h1 className="text-2xl font-black text-slate-900 uppercase">GAD Event Participation Report</h1>
-          <p className="text-[10px] text-slate-500 mt-1">
+          <p className="text-[10px] text-neutral-500 dark:text-neutral-400 mt-1">
             Generated: {new Date().toLocaleDateString('en-PH', { dateStyle: 'long' })}
             {dateRange.start && ` | Period: ${dateRange.start} to ${dateRange.end || 'present'}`}
           </p>
         </div>
 
-        {/* ── FILTER BAR ── */}
-        <div className="print-hide bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex flex-wrap items-center gap-3">
-          {/* Date range */}
-          <div className="flex items-center gap-2 bg-slate-50 px-3 py-2 rounded-xl border text-[10px] font-bold">
-            <Calendar size={13} className="text-slate-400" />
-            <input type="date" className="bg-transparent outline-none text-[10px] font-bold"
-              value={dateRange.start}
-              onChange={e => setDateRange(p => ({ ...p, start: e.target.value }))} />
-            <span className="text-slate-300">→</span>
-            <input type="date" className="bg-transparent outline-none text-[10px] font-bold"
-              value={dateRange.end}
-              onChange={e => setDateRange(p => ({ ...p, end: e.target.value }))} />
-          </div>
-
-          {/* Sector */}
-          <div className="flex items-center gap-2 bg-slate-50 px-3 py-2 rounded-xl border text-[10px] font-bold">
-            <Filter size={13} className="text-slate-400" />
-            <select className="bg-transparent outline-none text-[10px] font-bold"
-              value={selectedSector} onChange={e => setSelectedSector(e.target.value)}>
-              <option value="All">All Sectors</option>
-              {['Student','Faculty','Staff','Guest'].map(s => <option key={s} value={s}>{s}</option>)}
-            </select>
-          </div>
-
-          {/* Event */}
-          <div className="flex items-center gap-2 bg-slate-50 px-3 py-2 rounded-xl border text-[10px] font-bold">
-            <Layers size={13} className="text-slate-400" />
-            <select className="bg-transparent outline-none text-[10px] font-bold"
-              value={selectedEvent} onChange={e => setSelectedEvent(e.target.value)}>
-              <option value="All">All Events</option>
-              {events.map(ev => <option key={ev.id} value={ev.id}>{ev.title}</option>)}
-            </select>
-          </div>
-
-          <button onClick={resetFilters}
-            className="flex items-center gap-1.5 bg-slate-100 px-3 py-2 rounded-xl text-[10px] font-black uppercase text-slate-500 hover:bg-slate-200 transition-colors">
-            <RefreshCcw size={12} /> Reset
-          </button>
-
-          <button onClick={handlePrint}
-            className="ml-auto flex items-center gap-2 bg-slate-900 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-600 transition-colors">
-            <Printer size={14} /> Print / Export
-          </button>
-        </div>
+        <div className="space-y-6 pt-6 pb-20">
 
         {/* ── KPI STRIP ── */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <KPICard label="Total Participants" value={stats.total.toLocaleString()} icon={Users} accent="#6366f1"
-            sub={`${events.length} event(s) total`} />
-          <KPICard label="Female Participants" value={stats.female.toLocaleString()} icon={Award} accent="#ec4899"
-            sub={`${stats.femalePct}% of total`} />
-          <KPICard label="Male Participants" value={stats.male.toLocaleString()} icon={Award} accent="#3b82f6"
-            sub={`${pct(stats.male, stats.total)}% of total`} />
-          <KPICard
-            label="PWD Participants"
-            value={stats.pwdYes.toLocaleString()}
-            icon={Target}
-            accent="#10b981"
-            sub={`${stats.pwdYesPct}% of total`}
-          />
+        <div className={`grid gap-4 ${compact ? 'grid-cols-2' : 'grid-cols-2 md:grid-cols-4'}`}>
+          <KPICard label="Total Participants"  value={stats.total.toLocaleString()}  icon={Users}         accent="#a673d8"
+            sub={`${events.length} event(s) total`}       change={stats.changes.total} />
+          <KPICard label="Female Participants" value={stats.female.toLocaleString()} icon={UserCircle}    accent="#dd6e6b"
+            sub={`${stats.femalePct}% of total`}           change={stats.changes.female} />
+          <KPICard label="Male Participants"   value={stats.male.toLocaleString()}   icon={User}          accent="#73dae1"
+            sub={`${pct(stats.male, stats.total)}% of total`} change={stats.changes.male} />
+          <KPICard label="PWD Participants"    value={stats.pwdYes.toLocaleString()} icon={Accessibility} accent="#a5df6a"
+            sub={`${stats.pwdYesPct}% of total`}           change={stats.changes.pwd} />
         </div>
 
-
-        {/* ── NARRATIVE ── */}
-        <div className="bg-white p-8 rounded-2xl border border-slate-100 shadow-sm relative overflow-hidden">
-          <div className="absolute -right-6 -bottom-6 text-slate-50"><FileText size={140} /></div>
-          <div className="relative z-10">
-            <SectionTitle>Executive Summary</SectionTitle>
-            <p className="text-base font-medium text-slate-700 leading-relaxed italic">"{stats.narrative}"</p>
+        {/* ── PARTICIPATION TREND CHART ── */}
+        <div className="rounded-2xl overflow-hidden border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-[#121212]">
+          {/* Card header */}
+          <div className="flex items-center justify-between px-6 pt-5 pb-3">
+            <div>
+              <p className="text-[9px] font-black uppercase tracking-widest mb-0.5 text-neutral-400 dark:text-neutral-600">Overview</p>
+              <h3 className="text-base font-black leading-none text-neutral-900 dark:text-neutral-100">Participation Trend</h3>
+            </div>
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full inline-block" style={{ background: '#a673d8' }} /><span className="text-[9px] font-bold text-neutral-400 uppercase tracking-wider">Total</span></div>
+              <div className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full inline-block" style={{ background: '#dd6e6b' }} /><span className="text-[9px] font-bold text-neutral-400 uppercase tracking-wider">Female</span></div>
+              <div className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full inline-block" style={{ background: '#73dae1' }} /><span className="text-[9px] font-bold text-neutral-400 uppercase tracking-wider">Male</span></div>
+            </div>
           </div>
+
+          {/* Chart — event-by-event (always has data when events exist) */}
+          {stats.eventChart.length === 0 ? (
+            <div className="flex items-center justify-center h-40 text-neutral-400 dark:text-neutral-600 text-xs italic">No event data yet</div>
+          ) : (
+            <ResponsiveContainer width="100%" height={220}>
+              <AreaChart data={stats.eventChart} margin={{ top: 10, right: 24, left: 0, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="gTotal" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%"  stopColor="#a673d8" stopOpacity={0.35} />
+                    <stop offset="95%" stopColor="#a673d8" stopOpacity={0} />
+                  </linearGradient>
+                  <linearGradient id="gFemale" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%"  stopColor="#dd6e6b" stopOpacity={0.35} />
+                    <stop offset="95%" stopColor="#dd6e6b" stopOpacity={0} />
+                  </linearGradient>
+                  <linearGradient id="gMale" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%"  stopColor="#73dae1" stopOpacity={0.30} />
+                    <stop offset="95%" stopColor="#73dae1" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.06)'} />
+                <XAxis dataKey="name" axisLine={false} tickLine={false}
+                  tick={{ fontSize: 9, fontWeight: 700, fill: isDark ? '#525252' : '#9ca3af' }}
+                  interval={0} />
+                <YAxis allowDecimals={false} axisLine={false} tickLine={false}
+                  tick={{ fontSize: 9, fill: isDark ? '#525252' : '#9ca3af' }} width={28} />
+                <Tooltip
+                  contentStyle={{ background: isDark ? '#1e1e22' : '#ffffff', border: `1px solid ${isDark ? '#2a2a2e' : '#e5e7eb'}`, borderRadius: 12, fontSize: 11, color: isDark ? '#e5e5e5' : '#171717' }}
+                  labelStyle={{ fontWeight: 900, fontSize: 10, marginBottom: 4 }}
+                  itemStyle={{ fontWeight: 700 }}
+                  cursor={{ stroke: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)', strokeWidth: 1 }}
+                />
+                <Area type="monotone" dataKey="Total"  stroke="#a673d8" strokeWidth={2} fill="url(#gTotal)"  dot={{ r: 3, fill: '#a673d8', strokeWidth: 0 }} activeDot={{ r: 5, fill: '#a673d8' }} />
+                <Area type="monotone" dataKey="Female" stroke="#dd6e6b" strokeWidth={2} fill="url(#gFemale)" dot={{ r: 3, fill: '#dd6e6b', strokeWidth: 0 }} activeDot={{ r: 5, fill: '#dd6e6b' }} />
+                <Area type="monotone" dataKey="Male"   stroke="#73dae1" strokeWidth={2} fill="url(#gMale)"   dot={{ r: 3, fill: '#73dae1', strokeWidth: 0 }} activeDot={{ r: 5, fill: '#73dae1' }} />
+              </AreaChart>
+            </ResponsiveContainer>
+          )}
         </div>
 
         {/* ── ROW 1: Gender Pie + Sector Pie ── */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className={`grid gap-4 ${compact ? 'grid-cols-1' : 'grid-cols-1 md:grid-cols-2'}`}>
 
           {/* Gender Pie */}
-          <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
+          <div className="bg-white dark:bg-neutral-900 p-4 rounded-2xl border border-neutral-200 dark:border-neutral-700 shadow-sm">
             <SectionTitle>Gender Distribution</SectionTitle>
             {stats.total === 0 ? (
-              <p className="text-center text-slate-300 text-xs py-10">No data</p>
+              <p className="text-center text-neutral-300 dark:text-neutral-600 text-xs py-10">No data</p>
             ) : (
               <>
                 <ResponsiveContainer width="100%" height={220}>
@@ -472,7 +619,7 @@ export default function GeneralDashboard({ events = [], attendanceData = [] }) {
                   {stats.genderPie.map(g => (
                     <div key={g.name} className="text-center">
                       <div className="text-xl font-black" style={{ color: g.color }}>{g.value}</div>
-                      <div className="text-[9px] font-black text-slate-400 uppercase">{g.name}</div>
+                      <div className="text-[9px] font-black text-neutral-400 dark:text-neutral-500 uppercase">{g.name}</div>
                       <div className="text-[9px] text-slate-400">{pct(g.value, stats.total)}%</div>
                     </div>
                   ))}
@@ -482,10 +629,10 @@ export default function GeneralDashboard({ events = [], attendanceData = [] }) {
           </div>
 
           {/* Sector Pie */}
-          <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
+          <div className="bg-white dark:bg-neutral-900 p-4 rounded-2xl border border-neutral-200 dark:border-neutral-700 shadow-sm">
             <SectionTitle>Sector Breakdown</SectionTitle>
             {stats.total === 0 ? (
-              <p className="text-center text-slate-300 text-xs py-10">No data</p>
+              <p className="text-center text-neutral-300 dark:text-neutral-600 text-xs py-10">No data</p>
             ) : (
               <>
                 <ResponsiveContainer width="100%" height={220}>
@@ -504,7 +651,7 @@ export default function GeneralDashboard({ events = [], attendanceData = [] }) {
                   {stats.sectorPie.map(s => (
                     <div key={s.name} className="text-center">
                       <div className="text-xl font-black" style={{ color: s.color }}>{s.value}</div>
-                      <div className="text-[9px] font-black text-slate-400 uppercase">{s.name}</div>
+                      <div className="text-[9px] font-black text-neutral-400 dark:text-neutral-500 uppercase">{s.name}</div>
                     </div>
                   ))}
                 </div>
@@ -513,10 +660,10 @@ export default function GeneralDashboard({ events = [], attendanceData = [] }) {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className={`grid gap-4 ${compact ? 'grid-cols-1' : 'grid-cols-1 md:grid-cols-2'}`}>
 
         {/* ── ROW 2: Sex-Disaggregated by Sector (grouped bar) ── */}
-        <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
+        <div className="bg-white dark:bg-neutral-900 p-4 rounded-2xl border border-neutral-200 dark:border-neutral-700 shadow-sm">
           <SectionTitle>Sex-Disaggregated Data by Sector</SectionTitle>
           <ResponsiveContainer width="100%" height={260}>
             <BarChart data={stats.sectorData} barGap={4}>
@@ -534,8 +681,8 @@ export default function GeneralDashboard({ events = [], attendanceData = [] }) {
             </BarChart>
           </ResponsiveContainer>
 
-          <p className="mt-3 text-[9px] font-bold text-slate-400">
-            Largest sector: <span className="text-slate-700">{stats.topSector}</span> •{" "}
+          <p className="mt-3 text-[9px] font-bold text-neutral-400 dark:text-neutral-500">
+            Largest sector: <span className="text-neutral-700 dark:text-neutral-300">{stats.topSector}</span> •{" "}
             Female {stats.sectorData.find(s => s.sector === stats.topSector)?.Female ?? 0} / Male{" "}
             {stats.sectorData.find(s => s.sector === stats.topSector)?.Male ?? 0} •{" "}
             {stats.topSectorFemalePct}% female
@@ -543,10 +690,10 @@ export default function GeneralDashboard({ events = [], attendanceData = [] }) {
         </div>
 
         {/* ── ROW 3: Monthly Trend (Area) ── */}
-        <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm print-page-break">
+        <div className="bg-white dark:bg-neutral-900 p-4 rounded-2xl border border-neutral-200 dark:border-neutral-700 shadow-sm print-page-break">
           <SectionTitle>Monthly Attendance Trend</SectionTitle>
           {stats.trend.length === 0 ? (
-            <p className="text-center text-slate-300 text-xs py-10">No trend data</p>
+            <p className="text-center text-neutral-300 dark:text-neutral-600 text-xs py-10">No trend data</p>
           ) : (
             <ResponsiveContainer width="100%" height={240}>
               <AreaChart data={stats.trend}>
@@ -574,7 +721,7 @@ export default function GeneralDashboard({ events = [], attendanceData = [] }) {
           )}
 
           {stats.trend.length > 1 && (
-            <p className="mt-3 text-[9px] font-bold text-slate-400">
+            <p className="mt-3 text-[9px] font-bold text-neutral-400 dark:text-neutral-500">
               Trend direction (Total):{" "}
               <span className={stats.trendDelta >= 0 ? 'text-emerald-600' : 'text-rose-600'}>
                 {stats.trendDelta >= 0 ? '+' : ''}{stats.trendDelta}
@@ -587,14 +734,14 @@ export default function GeneralDashboard({ events = [], attendanceData = [] }) {
         </div>
 
         {/* ── ROW 4: Session SDD + Office/College SDD ── */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className={`grid gap-4 ${compact ? 'grid-cols-1' : 'grid-cols-1 md:grid-cols-2'}`}>
 
           {/* Session SDD (Male vs Female) */}
-          <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
+          <div className="bg-white dark:bg-neutral-900 p-4 rounded-2xl border border-neutral-200 dark:border-neutral-700 shadow-sm">
             <SectionTitle>Session Attendance SDD</SectionTitle>
 
             {stats.sessionGenderData.length === 0 ? (
-              <p className="text-center text-slate-300 text-xs py-10">No session data</p>
+              <p className="text-center text-neutral-300 dark:text-neutral-600 text-xs py-10">No session data</p>
             ) : (
               <>
                 <ResponsiveContainer width="100%" height={260}>
@@ -619,8 +766,8 @@ export default function GeneralDashboard({ events = [], attendanceData = [] }) {
                   </BarChart>
                 </ResponsiveContainer>
 
-                <p className="mt-3 text-[9px] font-bold text-slate-400">
-                  Top gate: <span className="text-slate-700">{stats.sessionGenderData[0].name}</span> •{" "}
+                <p className="mt-3 text-[9px] font-bold text-neutral-400 dark:text-neutral-500">
+                  Top gate: <span className="text-neutral-700 dark:text-neutral-300">{stats.sessionGenderData[0].name}</span> •{" "}
                   {stats.sessionGenderData[0].Female} Female / {stats.sessionGenderData[0].Male} Male
                 </p>
               </>
@@ -628,10 +775,10 @@ export default function GeneralDashboard({ events = [], attendanceData = [] }) {
           </div>
 
           {/* Office/College SDD Ranking */}
-          <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
+          <div className="bg-white dark:bg-neutral-900 p-4 rounded-2xl border border-neutral-200 dark:border-neutral-700 shadow-sm">
             <SectionTitle>Top Units / Colleges (Male vs Female)</SectionTitle>
             {stats.unitGenderRanking.length === 0 ? (
-              <p className="text-center text-slate-300 text-xs py-10">No data</p>
+              <p className="text-center text-neutral-300 dark:text-neutral-600 text-xs py-10">No data</p>
             ) : (
               <div className="space-y-3">
                 {stats.unitGenderRanking.slice(0, 8).map((u, i) => {
@@ -640,7 +787,7 @@ export default function GeneralDashboard({ events = [], attendanceData = [] }) {
                     <div key={u.name}>
                       <div className="flex justify-between text-[10px] font-bold mb-1">
                         <span className="truncate pr-3">{u.name}</span>
-                        <span className="text-slate-500">
+                        <span className="text-neutral-500 dark:text-neutral-400">
                           {u.total} • F {u.female} / M {u.male}
                         </span>
                       </div>
@@ -659,7 +806,7 @@ export default function GeneralDashboard({ events = [], attendanceData = [] }) {
         {/* ── ROW 5: Additional SDD breakdowns ── */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {/* Age SDD */}
-          <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
+          <div className="bg-white dark:bg-neutral-900 p-4 rounded-2xl border border-neutral-200 dark:border-neutral-700 shadow-sm">
             <SectionTitle>Age Distribution (SDD)</SectionTitle>
             <div className="h-[260px]">
               {stats.total === 0 ? (
@@ -678,13 +825,13 @@ export default function GeneralDashboard({ events = [], attendanceData = [] }) {
                 </ResponsiveContainer>
               )}
             </div>
-            <p className="mt-3 text-[9px] font-bold text-slate-400">
-              Top age band: <span className="text-slate-700">{stats.topAgeBand}</span>
+            <p className="mt-3 text-[9px] font-bold text-neutral-400 dark:text-neutral-500">
+              Top age band: <span className="text-neutral-700 dark:text-neutral-300">{stats.topAgeBand}</span>
             </p>
           </div>
 
           {/* Employment SDD */}
-          <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
+          <div className="bg-white dark:bg-neutral-900 p-4 rounded-2xl border border-neutral-200 dark:border-neutral-700 shadow-sm">
             <SectionTitle>Employment Status (SDD)</SectionTitle>
             <div className="h-[260px]">
               {stats.employmentGenderData.length === 0 ? (
@@ -710,13 +857,13 @@ export default function GeneralDashboard({ events = [], attendanceData = [] }) {
                 </ResponsiveContainer>
               )}
             </div>
-            <p className="mt-3 text-[9px] font-bold text-slate-400">
-              Top status: <span className="text-slate-700">{stats.topEmployment}</span>
+            <p className="mt-3 text-[9px] font-bold text-neutral-400 dark:text-neutral-500">
+              Top status: <span className="text-neutral-700 dark:text-neutral-300">{stats.topEmployment}</span>
             </p>
           </div>
 
           {/* PWD SDD */}
-          <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm print-page-break">
+          <div className="bg-white dark:bg-neutral-900 p-4 rounded-2xl border border-neutral-200 dark:border-neutral-700 shadow-sm print-page-break">
             <SectionTitle>PWD Status (SDD)</SectionTitle>
             <div className="h-[260px]">
               {stats.pwdGenderData.length === 0 ? (
@@ -735,58 +882,76 @@ export default function GeneralDashboard({ events = [], attendanceData = [] }) {
                 </ResponsiveContainer>
               )}
             </div>
-            <p className="mt-3 text-[9px] font-bold text-slate-400">
-              PWD “Yes”: <span className="text-slate-700">{stats.pwdYes}</span> • {stats.pwdYesPct}%
+            <p className="mt-3 text-[9px] font-bold text-neutral-400 dark:text-neutral-500">
+              PWD “Yes”: <span className="text-neutral-700 dark:text-neutral-300">{stats.pwdYes}</span> • {stats.pwdYesPct}%
             </p>
           </div>
         </div>
 
         {/* ── EVENT COMPARISON TABLE ── */}
-        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden print-page-break">
-          <div className="p-5 border-b">
-            <SectionTitle>Event-by-Event Comparison</SectionTitle>
+        <div className="bg-white dark:bg-neutral-900 rounded-2xl border border-neutral-200 dark:border-neutral-700 overflow-hidden print-page-break">
+          <div className="px-5 py-4 border-b border-neutral-100 dark:border-neutral-800">
+            <p className="text-[9px] font-black text-neutral-400 dark:text-neutral-500 uppercase tracking-widest">Event-by-Event Comparison</p>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-left">
-              <thead className="bg-slate-50">
-                <tr>
+              <thead>
+                <tr className="bg-neutral-50 dark:bg-neutral-800/60">
                   {['Event','Date','Status','Total','Male','Female','% Female','Top Unit'].map(h => (
-                    <th key={h} className="px-4 py-3 text-[9px] font-black text-slate-400 uppercase tracking-wider">{h}</th>
+                    <th key={h} className="px-4 py-3 text-[9px] font-black text-neutral-400 dark:text-neutral-500 uppercase tracking-wider whitespace-nowrap">{h}</th>
                   ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-50">
+              <tbody className="divide-y divide-neutral-100 dark:divide-neutral-800">
                 {stats.eventTable.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="text-center text-xs text-slate-300 py-10">No events with participants in this filter range</td>
+                    <td colSpan={8} className="text-center text-xs text-neutral-300 dark:text-neutral-600 py-10 italic">No events with participants in this filter range</td>
                   </tr>
                 ) : (
                   stats.eventTable.map(ev => (
-                    <tr key={ev.id} className="hover:bg-slate-50/50 transition-colors">
-                      <td className="px-4 py-3 text-xs font-bold text-slate-800">{ev.title}</td>
-                      <td className="px-4 py-3 text-[10px] text-slate-500">{ev.date}</td>
+                    <tr key={ev.id} className="hover:bg-neutral-50 dark:hover:bg-neutral-800/40 transition-colors">
+                      <td className="px-4 py-3 text-xs font-bold text-neutral-800 dark:text-neutral-200 max-w-[180px] truncate">{ev.title}</td>
+                      <td className="px-4 py-3 text-[10px] text-neutral-400 dark:text-neutral-500 whitespace-nowrap">{ev.date}</td>
                       <td className="px-4 py-3">
                         <span className={`text-[9px] font-black px-2 py-0.5 rounded-full uppercase ${
-                          ev.status === 'Done' ? 'bg-emerald-100 text-emerald-700' : 'bg-blue-100 text-blue-700'
+                          ev.status === 'Done'
+                            ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400'
+                            : 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400'
                         }`}>{ev.status}</span>
                       </td>
-                      <td className="px-4 py-3 text-xs font-black text-slate-900">{ev.total}</td>
-                      <td className="px-4 py-3 text-xs font-bold text-blue-600">{ev.male}</td>
-                      <td className="px-4 py-3 text-xs font-bold text-pink-500">{ev.female}</td>
+                      <td className="px-4 py-3 text-xs font-black text-neutral-900 dark:text-neutral-100">{ev.total}</td>
+                      <td className="px-4 py-3 text-xs font-bold" style={{ color: '#73dae1' }}>{ev.male}</td>
+                      <td className="px-4 py-3 text-xs font-bold" style={{ color: '#dd6e6b' }}>{ev.female}</td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
-                          <div className="w-16 h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                            <div className="h-full bg-pink-400 rounded-full" style={{ width: `${ev.femalePct}%` }} />
+                          <div className="w-16 h-1.5 bg-neutral-100 dark:bg-neutral-800 rounded-full overflow-hidden">
+                            <div className="h-full rounded-full" style={{ width: `${ev.femalePct}%`, backgroundColor: '#dd6e6b' }} />
                           </div>
-                          <span className="text-[10px] font-black text-slate-700">{ev.femalePct}%</span>
+                          <span className="text-[10px] font-black text-neutral-700 dark:text-neutral-300">{ev.femalePct}%</span>
                         </div>
                       </td>
-                      <td className="px-4 py-3 text-[10px] text-slate-500 truncate max-w-[120px]">{ev.topUnit}</td>
+                      <td className="px-4 py-3 text-[10px] text-neutral-500 dark:text-neutral-400 max-w-[140px] truncate">{ev.topUnit}</td>
                     </tr>
                   ))
                 )}
               </tbody>
             </table>
+          </div>
+        </div>
+
+        {/* ── EXECUTIVE SUMMARY ── */}
+        <div className="flex items-start gap-6 pb-4">
+          {!compact && (
+            <div className="shrink-0 flex flex-col items-center gap-1 pt-1">
+              <span className="text-5xl font-black leading-none" style={{ color: '#a5df6a' }}>
+                {stats.femalePct}%
+              </span>
+              <span className="text-[8px] font-black uppercase tracking-widest text-neutral-400 dark:text-neutral-500 text-center">Female<br/>Composition</span>
+            </div>
+          )}
+          <div className="flex-1 min-w-0">
+            <p className="text-[9px] font-black text-neutral-400 dark:text-neutral-500 uppercase tracking-widest mb-2">Executive Summary</p>
+            <p className="font-medium text-neutral-600 dark:text-neutral-400 leading-relaxed italic text-sm">"{stats.narrative}"</p>
           </div>
         </div>
 
@@ -796,28 +961,9 @@ export default function GeneralDashboard({ events = [], attendanceData = [] }) {
           <span>Page 1</span>
         </div>
 
-        {/* ── FOOTER / NARRATIVE ── */}
-      <div className="bg-slate-900 text-white p-8 rounded-[32px] shadow-xl shadow-slate-200">
-        <div className="flex flex-col md:flex-row justify-between items-center gap-6">
-          <div className="space-y-2">
-            <div className="flex items-center gap-2">
-              <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-              <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Executive Narrative</h4>
-            </div>
-            <p className="text-slate-300 text-sm leading-relaxed max-w-2xl">
-              Currently viewing data for <span className="text-white font-bold">{selectedEvent === 'All' ? 'all registered events' : 'a specific activity'}</span>. 
-              The gender distribution shows a <span className="text-pink-400 font-bold">{pct(stats.female, stats.total)}% female</span> participation rate. 
-              {stats.total > 0 && ` Most active unit recorded is ${stats.unitRanking[0]?.name}.`}
-            </p>
-          </div>
-          <div className="bg-slate-800 p-4 rounded-2xl border border-slate-700">
-             <p className="text-[9px] font-black uppercase text-slate-500 mb-1 text-center">Inclusion Score (PWD)</p>
-             <div className="text-2xl font-black text-emerald-400">{stats.pwdYesPct}%</div>
-          </div>
-        </div>
-      </div> 
 
-      </div>
-    </>
+        </div>{/* end space-y-6 */}
+      </div>{/* end scrollable content */}
+    </div>
   );
 }

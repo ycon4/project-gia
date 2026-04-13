@@ -36,7 +36,7 @@ const SECTORS = {
 
 const ROWS_OPTIONS = [10, 25, 50];
 
-export default function DashboardPage() {
+export default function DistributionPage() {
   const [allSectorData, setAllSectorData] = useState([]);
   const [loading, setLoading]             = useState(true);
   const [activeTab, setActiveTab]         = useState('student_enrollment');

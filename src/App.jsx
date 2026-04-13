@@ -7,7 +7,7 @@ import {
   Moon, Sun, ChevronUp, Pencil, X,
 } from 'lucide-react';
 import AboutPage from './pages/AboutPage';
-import DashboardPage from './pages/DashboardPage';
+import DistributionPage from './pages/DistributionPage';
 import ChatPage from './pages/ChatPage';
 import ChatsPage from './pages/ChatsPage';
 import EventsPage from './pages/EventsPage';
@@ -300,28 +300,27 @@ function App() {
               onNewChat={handleNewChat}
             />
           </main>
+        ) : activeSection === 'event' ? (
+          <main className="flex-1 min-h-0 flex overflow-hidden">
+            <EventsPage
+              events={events}
+              attendance={attendance}
+              onCreateEvent={handleCreateEvent}
+              onUpdateEvent={handleUpdateEvent}
+              onDeleteEvent={handleDeleteEvent}
+            />
+          </main>
         ) : (
           <main className="flex-1 overflow-y-auto px-8 py-8">
             <div className="transition-all duration-500 ease-in-out">
               {activeSection === 'home' && <AboutPage onGoToDashboard={() => setActiveSection('data')} onNewChat={handleNewChat} />}
-              {activeSection === 'event' && (
-                <EventsPage
-                  events={events}
-                  attendance={attendance}
-                  activeEvent={activeEvent}
-                  setActiveEvent={setActiveEvent}
-                  onCreateEvent={handleCreateEvent}
-                  onUpdateEvent={handleUpdateEvent}
-                  onDeleteEvent={handleDeleteEvent}
-                />
-              )}
-              {activeSection === 'data' && <DashboardPage />}
+              {activeSection === 'data' && <DistributionPage />}
             </div>
           </main>
         )}
       </div>
 
-      {!isRegisterMode && activeSection !== 'data' && (
+      {!isRegisterMode && activeSection !== 'data' && activeSection !== 'event' && (
         <FloatingChatButton
           onClick={handleNewChat}
           isOnChatPage={activeSection === 'chat' || activeSection === 'chats'}
@@ -364,7 +363,7 @@ function Sidebar({
   const navItems = [
     { id: 'home',  label: 'About',     icon: HomeIcon      },
     { id: 'event', label: 'Events',    icon: CalendarDays  },
-    { id: 'data',  label: 'Dashboard', icon: BarChart3     },
+    { id: 'data',  label: 'Distribution', icon: BarChart3     },
     { id: 'chats', label: 'Chats',     icon: MessageCircle },
   ];
 
