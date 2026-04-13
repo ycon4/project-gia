@@ -79,6 +79,7 @@ const EVENTS = [
     description: 'A two-day training on gender sensitivity, GAD concepts, and mainstreaming strategies for MSU-IIT faculty and staff.',
     status: 'Done',
     startDate: '2025-01-15',
+    targetParticipants: 40,
     hasPreReg: true,
     sessions: ['Day 1 Attendance', 'Day 2 Attendance'],
     formConfig: { sex: true, office_college: true, pwd_status: true, sector: true, age: true },
@@ -99,6 +100,7 @@ const EVENTS = [
     description: 'A symposium celebrating Women\'s Month with panel discussions on gender equality, women in leadership, and inclusive development.',
     status: 'Done',
     startDate: '2025-03-08',
+    targetParticipants: 60,
     hasPreReg: true,
     sessions: ['Morning Session', 'Afternoon Session'],
     formConfig: { sex: true, office_college: true, pwd_status: true, sector: true, age: true },
@@ -117,8 +119,9 @@ const EVENTS = [
   {
     title: 'GAD Capability Building Workshop',
     description: 'A three-day capability building workshop for GAD focal point persons, covering gender analysis, GAD planning, and budgeting.',
-    status: 'Active',
+    status: 'Done',
     startDate: '2025-06-20',
+    targetParticipants: 50,
     hasPreReg: true,
     sessions: ['Day 1 Attendance', 'Day 2 Attendance', 'Day 3 Attendance'],
     formConfig: { sex: true, office_college: true, pwd_status: true, sector: true, age: true },
@@ -135,6 +138,45 @@ const EVENTS = [
       // Pre-reg — 5 Female, 2 Male
       ...Array.from({ length: 5  }, (_, i) => ({ sex: 'Female', session: 'Pre-Registration', date: '2025-06-19', idx: i + 34 })),
       ...Array.from({ length: 2  }, (_, i) => ({ sex: 'Male',   session: 'Pre-Registration', date: '2025-06-19', idx: i + 39 })),
+    ],
+  },
+  {
+    title: 'Anti-Sexual Harassment Seminar',
+    description: 'A half-day seminar raising awareness on Republic Act 7877 and the university\'s policies on preventing sexual harassment in the workplace and academe.',
+    status: 'Done',
+    startDate: '2025-09-10',
+    targetParticipants: 80,
+    hasPreReg: true,
+    sessions: ['Morning Session'],
+    formConfig: { sex: true, office_college: true, pwd_status: true, sector: true, age: true },
+    participants: [
+      // Morning — 22 Female, 14 Male
+      ...Array.from({ length: 22 }, (_, i) => ({ sex: 'Female', session: 'Morning Session',   date: '2025-09-10', idx: i })),
+      ...Array.from({ length: 14 }, (_, i) => ({ sex: 'Male',   session: 'Morning Session',   date: '2025-09-10', idx: i + 22 })),
+      // Pre-reg — 10 Female, 6 Male
+      ...Array.from({ length: 10 }, (_, i) => ({ sex: 'Female', session: 'Pre-Registration',  date: '2025-09-09', idx: i + 36 })),
+      ...Array.from({ length: 6  }, (_, i) => ({ sex: 'Male',   session: 'Pre-Registration',  date: '2025-09-09', idx: i + 46 })),
+    ],
+  },
+  {
+    title: 'GAD Planning and Budgeting Forum 2026',
+    description: 'An annual forum for college-level GAD focal points to review accomplishments, align plans with national frameworks, and finalize the GAD budget proposal for 2026.',
+    status: 'Active',
+    startDate: '2026-02-12',
+    targetParticipants: 45,
+    hasPreReg: true,
+    sessions: ['Day 1 Attendance', 'Day 2 Attendance'],
+    formConfig: { sex: true, office_college: true, pwd_status: true, sector: true, age: true },
+    participants: [
+      // Day 1 — 12 Female, 7 Male
+      ...Array.from({ length: 12 }, (_, i) => ({ sex: 'Female', session: 'Day 1 Attendance', date: '2026-02-12', idx: i })),
+      ...Array.from({ length: 7  }, (_, i) => ({ sex: 'Male',   session: 'Day 1 Attendance', date: '2026-02-12', idx: i + 12 })),
+      // Day 2 — 10 Female, 5 Male
+      ...Array.from({ length: 10 }, (_, i) => ({ sex: 'Female', session: 'Day 2 Attendance', date: '2026-02-13', idx: i + 19 })),
+      ...Array.from({ length: 5  }, (_, i) => ({ sex: 'Male',   session: 'Day 2 Attendance', date: '2026-02-13', idx: i + 29 })),
+      // Pre-reg — 7 Female, 4 Male
+      ...Array.from({ length: 7  }, (_, i) => ({ sex: 'Female', session: 'Pre-Registration', date: '2026-02-11', idx: i + 34 })),
+      ...Array.from({ length: 4  }, (_, i) => ({ sex: 'Male',   session: 'Pre-Registration', date: '2026-02-11', idx: i + 41 })),
     ],
   },
 ];

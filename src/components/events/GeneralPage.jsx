@@ -129,7 +129,10 @@ function KPICard({ label, value, sub, accent = '#a673d8', icon: Icon, change }) 
 /** Section header */
 function SectionTitle({ children }) {
   return (
-    <h3 className="text-[9px] font-black text-neutral-400 dark:text-neutral-500 uppercase tracking-widest mb-4">{children}</h3>
+    <div className="mb-4">
+      <p className="text-[9px] font-black uppercase tracking-widest mb-0.5 text-neutral-400 dark:text-neutral-600">Analytics</p>
+      <h3 className="text-base font-black leading-none text-neutral-900 dark:text-neutral-100">{children}</h3>
+    </div>
   );
 }
 
@@ -361,7 +364,8 @@ export default function GeneralDashboard({ events = [], attendanceData = [], com
         const m = evData.reduce((a, d) => a + (sexKey(d.sex) === 'Male'   ? 1 : 0), 0);
         const f = evData.reduce((a, d) => a + (sexKey(d.sex) === 'Female' ? 1 : 0), 0);
         const label = ev.title.length > 18 ? ev.title.slice(0, 17) + '…' : ev.title;
-        return { name: label, Total: evData.length, Male: m, Female: f, _date: ev.startDate || ev.date || '' };
+        const target = ev.targetParticipants ? Number(ev.targetParticipants) : null;
+        return { name: label, Total: evData.length, Male: m, Female: f, Target: target, _date: ev.startDate || ev.date || '' };
       })
       .filter(e => e.Total > 0)
       .sort((a, b) => a._date.localeCompare(b._date));
@@ -526,6 +530,12 @@ export default function GeneralDashboard({ events = [], attendanceData = [], com
 
         <div className="flex flex-col gap-6 pt-6 pb-20">
 
+        {/* ── PAGE TITLE ── */}
+        <div>
+          <p className="text-[9px] font-black uppercase tracking-widest text-neutral-400 dark:text-neutral-600 mb-0.5">MSU-IIT GAD Office</p>
+          <h1 className="text-2xl font-black leading-none text-neutral-900 dark:text-neutral-100">Events Dashboard</h1>
+        </div>
+
         {/* ── KPI STRIP ── */}
         <div className={`grid gap-6 ${compact ? 'grid-cols-2' : 'grid-cols-2 md:grid-cols-4'}`}>
           <KPICard label="Total Participants"  value={stats.total.toLocaleString()}  icon={Users}         accent="#dd6e6b"
@@ -550,6 +560,7 @@ export default function GeneralDashboard({ events = [], attendanceData = [], com
               <div className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full inline-block" style={{ background: '#dd6e6b' }} /><span className="text-[9px] font-bold text-neutral-400 uppercase tracking-wider">Total</span></div>
               <div className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full inline-block" style={{ background: '#a673d8' }} /><span className="text-[9px] font-bold text-neutral-400 uppercase tracking-wider">Female</span></div>
               <div className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full inline-block" style={{ background: '#73dae1' }} /><span className="text-[9px] font-bold text-neutral-400 uppercase tracking-wider">Male</span></div>
+              <div className="flex items-center gap-1.5"><span className="w-5 inline-block border-t-2 border-dashed" style={{ borderColor: '#a5df6a' }} /><span className="text-[9px] font-bold text-neutral-400 uppercase tracking-wider">Target</span></div>
             </div>
           </div>
 
@@ -588,108 +599,152 @@ export default function GeneralDashboard({ events = [], attendanceData = [], com
                 <Area type="monotone" dataKey="Total"  stroke="#dd6e6b" strokeWidth={2} fill="url(#gTotal)"  dot={{ r: 3, fill: '#dd6e6b', strokeWidth: 0 }} activeDot={{ r: 5, fill: '#dd6e6b' }} />
                 <Area type="monotone" dataKey="Female" stroke="#a673d8" strokeWidth={2} fill="url(#gFemale)" dot={{ r: 3, fill: '#a673d8', strokeWidth: 0 }} activeDot={{ r: 5, fill: '#a673d8' }} />
                 <Area type="monotone" dataKey="Male"   stroke="#73dae1" strokeWidth={2} fill="url(#gMale)"   dot={{ r: 3, fill: '#73dae1', strokeWidth: 0 }} activeDot={{ r: 5, fill: '#73dae1' }} />
+                <Area type="monotone" dataKey="Target" stroke="#a5df6a" strokeWidth={2} strokeDasharray="5 4" fill="none" dot={{ r: 3, fill: '#a5df6a', strokeWidth: 0 }} activeDot={{ r: 5, fill: '#a5df6a' }} connectNulls />
               </AreaChart>
             </ResponsiveContainer>
           )}
         </div>
 
         {/* ── ROW 1: Gender Pie + Sector Pie ── */}
-        <div className={`grid gap-6 ${compact ? 'grid-cols-1' : 'grid-cols-1 md:grid-cols-2'}`}>
+        {/* ── PIE CHARTS (left) + SDD BAR (right) ── */}
+        <div className={`grid gap-6 ${compact ? 'grid-cols-1' : 'grid-cols-3'}`}>
 
-          {/* Gender Pie */}
-          <div className="bg-white dark:bg-neutral-900 p-4 rounded-2xl border border-neutral-200 dark:border-neutral-700 shadow-sm">
-            <SectionTitle>Gender Distribution</SectionTitle>
-            {stats.total === 0 ? (
-              <p className="text-center text-neutral-300 dark:text-neutral-600 text-xs py-10">No data</p>
-            ) : (
-              <>
-                <ResponsiveContainer width="100%" height={220}>
-                  <PieChart>
-                    <Pie data={stats.genderPie} dataKey="value" cx="50%" cy="50%" outerRadius={80} innerRadius={45}>
-                      {stats.genderPie.map((entry, i) => (
-                        <Cell key={i} fill={entry.color} />
-                      ))}
-                    </Pie>
-                    <Tooltip formatter={(v, n) => [`${v} (${pct(v, stats.total)}%)`, n]} />
-                    <Legend iconType="circle" iconSize={8}
-                      formatter={v => <span style={{ fontSize: 10, fontWeight: 700 }}>{v}</span>} />
-                  </PieChart>
-                </ResponsiveContainer>
-                <div className="flex justify-around mt-2">
-                  {stats.genderPie.map(g => (
-                    <div key={g.name} className="text-center">
-                      <div className="text-xl font-black" style={{ color: g.color }}>{g.value}</div>
-                      <div className="text-[9px] font-black text-neutral-400 dark:text-neutral-500 uppercase">{g.name}</div>
-                      <div className="text-[9px] text-slate-400">{pct(g.value, stats.total)}%</div>
-                    </div>
-                  ))}
+          {/* Left column: Gender + Sector pies stacked */}
+          <div className="col-span-1 flex flex-col gap-6">
+
+            {/* Gender Pie */}
+            <div className="bg-white dark:bg-neutral-900 rounded-2xl border border-neutral-200 dark:border-neutral-700 shadow-sm overflow-hidden flex-1">
+              <div className="px-4 pt-4 pb-0">
+                <SectionTitle>Gender Distribution</SectionTitle>
+              </div>
+              {stats.total === 0 ? (
+                <p className="text-center text-neutral-300 dark:text-neutral-600 text-xs py-6">No data</p>
+              ) : (
+                <div className="flex items-center">
+                  <div className="flex flex-col gap-4 px-4 pb-4 shrink-0">
+                    {stats.genderPie.map(g => (
+                      <div key={g.name}>
+                        <div className="flex items-center gap-1.5 mb-0.5">
+                          <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: g.color }} />
+                          <span className="text-[9px] font-black text-neutral-400 dark:text-neutral-500 uppercase tracking-widest">{g.name}</span>
+                        </div>
+                        <div className="text-2xl font-black text-neutral-900 dark:text-neutral-100 leading-none">{g.value}</div>
+                        <div className="text-[10px] text-neutral-400 dark:text-neutral-500 mt-0.5">{pct(g.value, stats.total)}%</div>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="flex-1 min-w-0 aspect-square">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart margin={{ top: 6, right: 6, bottom: 6, left: 6 }}>
+                        <Pie data={stats.genderPie} dataKey="value" cx="50%" cy="50%" outerRadius="88%" innerRadius="52%" paddingAngle={4} cornerRadius={6} stroke="none">
+                          {stats.genderPie.map((entry, i) => (
+                            <Cell key={i} fill={entry.color} stroke="none" />
+                          ))}
+                        </Pie>
+                        <Tooltip formatter={(v, n) => [`${v} (${pct(v, stats.total)}%)`, n]} />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
                 </div>
-              </>
-            )}
+              )}
+            </div>
+
+            {/* Sector Pie */}
+            <div className="bg-white dark:bg-neutral-900 rounded-2xl border border-neutral-200 dark:border-neutral-700 shadow-sm overflow-hidden flex-1">
+              <div className="px-4 pt-4 pb-0">
+                <SectionTitle>Sector Breakdown</SectionTitle>
+              </div>
+              {stats.total === 0 ? (
+                <p className="text-center text-neutral-300 dark:text-neutral-600 text-xs py-6">No data</p>
+              ) : (
+                <div className="flex items-center">
+                  <div className="flex flex-col gap-3 px-4 pb-4 shrink-0">
+                    {stats.sectorPie.map(s => (
+                      <div key={s.name}>
+                        <div className="flex items-center gap-1.5 mb-0.5">
+                          <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: s.color }} />
+                          <span className="text-[9px] font-black text-neutral-400 dark:text-neutral-500 uppercase tracking-widest">{s.name}</span>
+                        </div>
+                        <div className="text-xl font-black text-neutral-900 dark:text-neutral-100 leading-none">{s.value}</div>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="flex-1 min-w-0 aspect-square">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart margin={{ top: 6, right: 6, bottom: 6, left: 6 }}>
+                        <Pie data={stats.sectorPie} dataKey="value" cx="50%" cy="50%" outerRadius="88%" innerRadius="52%" paddingAngle={4} cornerRadius={6} stroke="none">
+                          {stats.sectorPie.map((entry, i) => (
+                            <Cell key={i} fill={entry.color} stroke="none" />
+                          ))}
+                        </Pie>
+                        <Tooltip formatter={(v, n) => [`${v} (${pct(v, stats.total)}%)`, n]} />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
 
-          {/* Sector Pie */}
-          <div className="bg-white dark:bg-neutral-900 p-4 rounded-2xl border border-neutral-200 dark:border-neutral-700 shadow-sm">
-            <SectionTitle>Sector Breakdown</SectionTitle>
-            {stats.total === 0 ? (
+          {/* Right column: Top Units */}
+          <div className="col-span-2 bg-white dark:bg-neutral-900 p-4 rounded-2xl border border-neutral-200 dark:border-neutral-700 shadow-sm flex flex-col">
+            <SectionTitle>Top Units / Colleges</SectionTitle>
+            {stats.unitGenderRanking.length === 0 ? (
               <p className="text-center text-neutral-300 dark:text-neutral-600 text-xs py-10">No data</p>
             ) : (
               <>
-                <ResponsiveContainer width="100%" height={220}>
-                  <PieChart>
-                    <Pie data={stats.sectorPie} dataKey="value" cx="50%" cy="50%" outerRadius={80} innerRadius={45}>
-                      {stats.sectorPie.map((entry, i) => (
-                        <Cell key={i} fill={entry.color} />
-                      ))}
-                    </Pie>
-                    <Tooltip formatter={(v, n) => [`${v} (${pct(v, stats.total)}%)`, n]} />
-                    <Legend iconType="circle" iconSize={8}
-                      formatter={v => <span style={{ fontSize: 10, fontWeight: 700 }}>{v}</span>} />
-                  </PieChart>
-                </ResponsiveContainer>
-                <div className="flex justify-around flex-wrap gap-2 mt-2">
-                  {stats.sectorPie.map(s => (
-                    <div key={s.name} className="text-center">
-                      <div className="text-xl font-black" style={{ color: s.color }}>{s.value}</div>
-                      <div className="text-[9px] font-black text-neutral-400 dark:text-neutral-500 uppercase">{s.name}</div>
-                    </div>
-                  ))}
+                <div className="flex-1 flex flex-col justify-between">
+                  {stats.unitGenderRanking.slice(0, 8).map((u) => {
+                    const femaleShare = u.total ? u.female / u.total : 0;
+                    return (
+                      <div key={u.name}>
+                        <div className="flex justify-between mb-1">
+                          <span className="text-sm font-bold text-neutral-500 dark:text-neutral-400 truncate pr-3">{u.name}</span>
+                          <span className="text-[10px] font-bold text-neutral-400 dark:text-neutral-500 shrink-0">
+                            {u.total} • F {u.female} / M {u.male}
+                          </span>
+                        </div>
+                        <div className="h-4 bg-neutral-100 dark:bg-neutral-800 rounded-full overflow-hidden flex">
+                          <div className="h-full transition-all" style={{ width: `${femaleShare * 100}%`, backgroundColor: '#a673d8' }} />
+                          <div className="h-full transition-all" style={{ width: `${(1 - femaleShare) * 100}%`, backgroundColor: '#73dae1' }} />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+                {/* Support text */}
+                <div className="mt-4 pt-3 border-t border-neutral-100 dark:border-neutral-800 grid grid-cols-3 gap-3">
+                  {(() => {
+                    const top = stats.unitGenderRanking[0];
+                    const topFemale = [...stats.unitGenderRanking].sort((a,b) => b.female - a.female)[0];
+                    const topMale   = [...stats.unitGenderRanking].sort((a,b) => b.male   - a.male  )[0];
+                    return (
+                      <>
+                        <div>
+                          <p className="text-[8px] font-black uppercase tracking-widest text-neutral-400 dark:text-neutral-600 mb-0.5">Most Participants</p>
+                          <p className="text-[10px] font-bold text-neutral-700 dark:text-neutral-300 truncate">{top?.name}</p>
+                          <p className="text-[9px] text-neutral-400 dark:text-neutral-500">{top?.total} total</p>
+                        </div>
+                        <div>
+                          <p className="text-[8px] font-black uppercase tracking-widest mb-0.5" style={{ color: '#a673d8' }}>Highest Female</p>
+                          <p className="text-[10px] font-bold text-neutral-700 dark:text-neutral-300 truncate">{topFemale?.name}</p>
+                          <p className="text-[9px] text-neutral-400 dark:text-neutral-500">{topFemale?.female} F ({pct(topFemale?.female, topFemale?.total)}%)</p>
+                        </div>
+                        <div>
+                          <p className="text-[8px] font-black uppercase tracking-widest mb-0.5" style={{ color: '#73dae1' }}>Highest Male</p>
+                          <p className="text-[10px] font-bold text-neutral-700 dark:text-neutral-300 truncate">{topMale?.name}</p>
+                          <p className="text-[9px] text-neutral-400 dark:text-neutral-500">{topMale?.male} M ({pct(topMale?.male, topMale?.total)}%)</p>
+                        </div>
+                      </>
+                    );
+                  })()}
                 </div>
               </>
             )}
           </div>
         </div>
 
-        <div className={`grid gap-6 ${compact ? 'grid-cols-1' : 'grid-cols-1 md:grid-cols-2'}`}>
-
-        {/* ── ROW 2: Sex-Disaggregated by Sector (grouped bar) ── */}
-        <div className="bg-white dark:bg-neutral-900 p-4 rounded-2xl border border-neutral-200 dark:border-neutral-700 shadow-sm">
-          <SectionTitle>Sex-Disaggregated Data by Sector</SectionTitle>
-          <ResponsiveContainer width="100%" height={260}>
-            <BarChart data={stats.sectorData} barGap={4}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-              <XAxis dataKey="sector" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 700 }} />
-              <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10 }} />
-              <Tooltip
-                contentStyle={{ borderRadius: 12, border: 'none', fontSize: 11 }}
-                formatter={(v, n) => [v, n]}
-              />
-              <Legend iconType="circle" iconSize={8}
-                formatter={v => <span style={{ fontSize: 10, fontWeight: 700 }}>{v}</span>} />
-              <Bar dataKey="Male"   fill={GENDER_COLORS.Male}   barSize={24} radius={[4,4,0,0]} />
-              <Bar dataKey="Female" fill={GENDER_COLORS.Female} barSize={24} radius={[4,4,0,0]} />
-            </BarChart>
-          </ResponsiveContainer>
-
-          <p className="mt-3 text-[9px] font-bold text-neutral-400 dark:text-neutral-500">
-            Largest sector: <span className="text-neutral-700 dark:text-neutral-300">{stats.topSector}</span> •{" "}
-            Female {stats.sectorData.find(s => s.sector === stats.topSector)?.Female ?? 0} / Male{" "}
-            {stats.sectorData.find(s => s.sector === stats.topSector)?.Male ?? 0} •{" "}
-            {stats.topSectorFemalePct}% female
-          </p>
-        </div>
-
-        {/* ── ROW 3: Monthly Trend (Area) ── */}
+        {/* ── Monthly Trend (Area) ── */}
         <div className="bg-white dark:bg-neutral-900 p-4 rounded-2xl border border-neutral-200 dark:border-neutral-700 shadow-sm print-page-break">
           <SectionTitle>Monthly Attendance Trend</SectionTitle>
           {stats.trend.length === 0 ? (
@@ -729,8 +784,6 @@ export default function GeneralDashboard({ events = [], attendanceData = [], com
               net change from first to last month
             </p>
           )}
-        </div>
-
         </div>
 
         {/* ── ROW 4: Session SDD + Office/College SDD ── */}
@@ -774,32 +827,26 @@ export default function GeneralDashboard({ events = [], attendanceData = [], com
             )}
           </div>
 
-          {/* Office/College SDD Ranking */}
+          {/* SDD by Sector */}
           <div className="bg-white dark:bg-neutral-900 p-4 rounded-2xl border border-neutral-200 dark:border-neutral-700 shadow-sm">
-            <SectionTitle>Top Units / Colleges (Male vs Female)</SectionTitle>
-            {stats.unitGenderRanking.length === 0 ? (
-              <p className="text-center text-neutral-300 dark:text-neutral-600 text-xs py-10">No data</p>
-            ) : (
-              <div className="space-y-3">
-                {stats.unitGenderRanking.slice(0, 8).map((u, i) => {
-                  const femaleShare = u.total ? u.female / u.total : 0;
-                  return (
-                    <div key={u.name}>
-                      <div className="flex justify-between text-[10px] font-bold mb-1">
-                        <span className="truncate pr-3">{u.name}</span>
-                        <span className="text-neutral-500 dark:text-neutral-400">
-                          {u.total} • F {u.female} / M {u.male}
-                        </span>
-                      </div>
-                      <div className="h-3 bg-slate-50 rounded-sm overflow-hidden flex">
-                        <div className="h-full" style={{ width: `${femaleShare * 100}%`, backgroundColor: '#a673d8' }} />
-                        <div className="h-full" style={{ width: `${(1 - femaleShare) * 100}%`, backgroundColor: '#73dae1' }} />
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
+            <SectionTitle>Sex-Disaggregated Data by Sector</SectionTitle>
+            <ResponsiveContainer width="100%" height={260}>
+              <BarChart data={stats.sectorData} barGap={4}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                <XAxis dataKey="sector" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 700 }} />
+                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10 }} />
+                <Tooltip contentStyle={{ borderRadius: 12, border: 'none', fontSize: 11 }} formatter={(v, n) => [v, n]} />
+                <Legend iconType="circle" iconSize={8} formatter={v => <span style={{ fontSize: 10, fontWeight: 700 }}>{v}</span>} />
+                <Bar dataKey="Male"   fill={GENDER_COLORS.Male}   barSize={24} radius={[4,4,0,0]} />
+                <Bar dataKey="Female" fill={GENDER_COLORS.Female} barSize={24} radius={[4,4,0,0]} />
+              </BarChart>
+            </ResponsiveContainer>
+            <p className="mt-3 text-[9px] font-bold text-neutral-400 dark:text-neutral-500">
+              Largest sector: <span className="text-neutral-700 dark:text-neutral-300">{stats.topSector}</span> •{" "}
+              Female {stats.sectorData.find(s => s.sector === stats.topSector)?.Female ?? 0} / Male{" "}
+              {stats.sectorData.find(s => s.sector === stats.topSector)?.Male ?? 0} •{" "}
+              {stats.topSectorFemalePct}% female
+            </p>
           </div>
         </div>
 

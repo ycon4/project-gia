@@ -1,5 +1,5 @@
 import React, { useMemo, useRef, useEffect, useState } from 'react';
-import { Users, TrendingUp, BarChart3, Percent, Building2, Venus, Mars } from 'lucide-react';
+import { Users, TrendingUp, BarChart3, Percent, Building2, Venus, Mars, Target } from 'lucide-react';
 import Chart from 'chart.js/auto';
 
 // --- Constants ---
@@ -55,7 +55,7 @@ const GenderFigure = ({ percent, color, label, Icon }) => {
 };
 
 // --- Main Component ---
-export const EventAnalyticsDashboard = ({ attendanceData = [], filteredAttendance = [], selectedSession = '' }) => {
+export const EventAnalyticsDashboard = ({ attendanceData = [], filteredAttendance = [], activeEvent = null, selectedSession = '', statsOnly = false, chartsOnly = false }) => {
   const [activeChart, setActiveChart] = useState('gender');
   const canvasRefs = { sector: useRef(null), age: useRef(null), emp: useRef(null) };
 
@@ -244,17 +244,33 @@ export const EventAnalyticsDashboard = ({ attendanceData = [], filteredAttendanc
 
   const GIA_LILAC = '#a673d8';
 
+  const targetNum = activeEvent?.targetParticipants ? Number(activeEvent.targetParticipants) : null;
+
   return (
-    <div className="space-y-4 mt-4">
-      {/* Stat Cards - always visible */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+    <div className="space-y-6">
+      {/* Stat Cards — 2x2 grid: Total+Target top, Female+Male bottom */}
+      {!chartsOnly && <div className="grid grid-cols-2 gap-6">
+        {/* Row 1 */}
         <StatCard label="Total" value={stats.total} sub={selectedSession} Icon={Users} colorClass="text-sky-600" bgClass="bg-sky-50 dark:bg-sky-950/20" />
+        {targetNum ? (
+          <StatCard
+            label="Target"
+            value={targetNum}
+            sub={stats.total >= targetNum ? '✓ Goal reached' : `${targetNum - stats.total} remaining`}
+            Icon={Target}
+            colorClass="text-[#a5df6a]"
+            bgClass="bg-[#a5df6a]/10"
+          />
+        ) : (
+          <StatCard label="Target" value="—" sub="Not set" Icon={Target} colorClass="text-neutral-400" bgClass="bg-neutral-100 dark:bg-neutral-800" />
+        )}
+        {/* Row 2 */}
         <StatCard label="Female" value={`${stats.femalePct}%`} sub={`${stats.female} pax`} Icon={Percent} colorClass="text-rose-500" bgClass="bg-rose-50 dark:bg-rose-950/20" />
         <StatCard label="Male" value={`${stats.malePct}%`} sub={`${stats.male} pax`} Icon={Percent} colorClass="text-gia-600 dark:text-gia-400" bgClass="bg-gia-50 dark:bg-gia-950/20" />
-        <StatCard label="Turnout" value={`${stats.fidelity}%`} sub={`${stats.preReg} pre-reg`} Icon={TrendingUp} colorClass="text-emerald-600" bgClass="bg-emerald-50 dark:bg-emerald-950/20" />
-      </div>
+      </div>}
 
       {/* Chart Selector Tabs */}
+      {!statsOnly &&
       <div className="bg-white dark:bg-neutral-900 rounded-2xl border border-neutral-200 dark:border-neutral-700 overflow-hidden shadow-sm">
         {/* Tab bar */}
         <div className="border-b border-neutral-200 dark:border-neutral-700 flex overflow-x-auto">
@@ -439,6 +455,7 @@ export const EventAnalyticsDashboard = ({ attendanceData = [], filteredAttendanc
           )}
         </div>
       </div>
+      }
     </div>
   );
 };

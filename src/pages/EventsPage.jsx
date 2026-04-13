@@ -42,6 +42,7 @@ export default function EventsPage({
     title: '', description: '', status: 'Active',
     sessions: ['Day 1 Attendance'],
     hasPreReg: true,
+    targetParticipants: '',
     formConfig: { sex: true, office_college: true, pwd_status: true, sector: true }
   });
 
@@ -90,6 +91,7 @@ export default function EventsPage({
 
   const openCreate = () => {
     setNewEvent({ title:'', description:'', status:'Active', sessions:['Day 1 Attendance'], hasPreReg:true,
+      targetParticipants: '',
       formConfig:{ sex:true, office_college:true, pwd_status:true, sector:true } });
     setIsEditing(false);
     setShowCreateModal(true);
@@ -154,18 +156,34 @@ export default function EventsPage({
               </div>
             ) : (
               <>
-                <SessionQRManager
-                  activeEvent={activeEvent}
-                  selectedSession={selectedSession}
-                  onSessionChange={setSelectedSession}
-                  registrationUrl={`${window.location.origin}/register/${activeEvent.id}?session=${encodeURIComponent(selectedSession)}`}
-                />
+                {/* Top row: QR left, stat cards right */}
+                <div className="grid grid-cols-3 gap-6 items-stretch min-h-[320px]">
+                  <div className="col-span-1 flex">
+                    <SessionQRManager
+                      activeEvent={activeEvent}
+                      selectedSession={selectedSession}
+                      onSessionChange={setSelectedSession}
+                      registrationUrl={`${window.location.origin}/register/${activeEvent.id}?session=${encodeURIComponent(selectedSession)}`}
+                    />
+                  </div>
+                  <div className="col-span-2">
+                    <EventAnalyticsDashboard
+                      attendanceData={attendanceData}
+                      filteredAttendance={filteredAttendance}
+                      activeEvent={activeEvent}
+                      selectedSession={selectedSession}
+                      statsOnly={true}
+                    />
+                  </div>
+                </div>
 
+                {/* Full-width charts */}
                 <EventAnalyticsDashboard
                   attendanceData={attendanceData}
                   filteredAttendance={filteredAttendance}
                   activeEvent={activeEvent}
                   selectedSession={selectedSession}
+                  chartsOnly={true}
                 />
 
                 {/* Session tabs */}
@@ -428,6 +446,12 @@ export default function EventsPage({
                       className="w-full border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 rounded-xl p-3 outline-none focus:ring-2 focus:ring-gia-500 text-sm font-medium"
                       value={newEvent.endDate || ''} onChange={e => setNewEvent({...newEvent, endDate: e.target.value})} />
                   </div>
+                </div>
+                <div>
+                  <label className="block text-[10px] font-black text-neutral-500 dark:text-neutral-400 mb-1 uppercase tracking-widest">Target Participants</label>
+                  <input type="number" min="1" placeholder="e.g. 100"
+                    className="w-full border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 rounded-xl p-3 outline-none focus:ring-2 focus:ring-gia-500 text-sm font-medium"
+                    value={newEvent.targetParticipants || ''} onChange={e => setNewEvent({...newEvent, targetParticipants: e.target.value})} />
                 </div>
               </div>
 
