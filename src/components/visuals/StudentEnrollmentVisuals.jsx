@@ -14,6 +14,20 @@ const COLORS  = {
   palette: [LILAC, LILAC_2, BLUE, '#f43f5e', '#f59e0b', '#10b981'],
 };
 
+// Normalizes a single record so both old (pre-2026) and new field names work.
+const normalizeEnrollmentRecord = (r) => ({
+  ...r,
+  stud_college:         r.stud_college         || r.college         || 'Not Specified',
+  stud_program:         r.stud_program          || r.program         || 'Not Specified',
+  stud_yrlevel:         r.stud_yrlevel          || r.year_level      || 'Not Specified',
+  studethnic:           r.studethnic            || r.ethnicity       || 'Not Specified',
+  studreligion:         r.studreligion          || r.religion        || 'Not Specified',
+  studid:               r.studid                || r.student_id      || 'N/A',
+  studgender:           r.studgender            || r.sex             || 'Unknown',
+  currentadd_prov:      r.currentadd_prov       || r.place_of_origin || 'Not Specified',
+  is_first_gen_learner: r.is_first_gen_learner  || r['_first_generation?'] || 'No',
+});
+
 export default function StudentEnrollmentVisuals({ data, recordsCount = 0 }) {
   const [activeChart, setActiveChart] = useState(0);
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -27,11 +41,15 @@ export default function StudentEnrollmentVisuals({ data, recordsCount = 0 }) {
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
+  // Normalize all records once so old and new schemas both work
+  const normalizedData = useMemo(() => (data || []).map(normalizeEnrollmentRecord), [data]);
+
   const processSDD = (key, topN = null) => {
-    const counts = data.reduce((acc, curr) => {
+    const counts = normalizedData.reduce((acc, curr) => {
       const val = curr[key] || 'Not Specified';
       if (!acc[val]) acc[val] = { name: val, Male: 0, Female: 0, total: 0 };
-      acc[val][curr.sex === 'Female' ? 'Female' : 'Male']++;
+      const gender = curr.studgender || '';
+      acc[val][gender === 'Female' ? 'Female' : 'Male']++;
       acc[val].total++;
       return acc;
     }, {});
@@ -40,30 +58,31 @@ export default function StudentEnrollmentVisuals({ data, recordsCount = 0 }) {
   };
 
   const stats = useMemo(() => {
-    if (!data || data.length === 0) return null;
-    const college   = processSDD('college');
-    const yearLevel = processSDD('year_level').sort((a, b) => a.name.localeCompare(b.name));
+    if (!normalizedData || normalizedData.length === 0) return null;
+    const college   = processSDD('stud_college');
+    const yearLevel = processSDD('stud_yrlevel').sort((a, b) => a.name.localeCompare(b.name));
     const incomeOrder = ["low income", "lower-middle", "middle", "upper-middle", "high income"];
     const incomeRaw   = processSDD('income_PSA_category');
     const income      = incomeOrder.map(label => incomeRaw.find(r => r.name === label) || { name: label, Male: 0, Female: 0 });
     const vulnerabilities = [
-      { id: '_pwd?',             label: 'PWD'        },
-      { id: '_solo_parent?',     label: 'Solo Parent' },
-      { id: '_ip_member?',       label: 'IP Member'   },
-      { id: '_working_student?', label: 'Working'     },
-      { id: '_4ps_beneficiary?', label: '4Ps'         },
-      { id: '_ofw_dependent?',   label: 'OFW Dep'     },
+      { id: '_pwd?',                label: 'PWD'                  },
+      { id: '_solo_parent?',        label: 'Solo Parent'          },
+      { id: '_ip_member?',          label: 'IP Member'            },
+      { id: '_working_student?',    label: 'Working'              },
+      { id: 'is_child_lgbtq',       label: 'Child of LGBTQ+'      },
+      { id: 'is_child_pdl',         label: 'Child of PDL'         },
+      { id: 'is_child_solo_parent', label: 'Child of Solo Parent' },
     ].map(v => {
-      const filtered = data.filter(d => d[v.id] === 'Yes');
-      return { name: v.label, Female: filtered.filter(d => d.sex === 'Female').length, Male: filtered.filter(d => d.sex === 'Male').length };
+      const filtered = normalizedData.filter(d => d[v.id] === 'Yes');
+      return { name: v.label, Female: filtered.filter(d => d.studgender === 'Female').length, Male: filtered.filter(d => d.studgender === 'Male').length };
     });
-    const programs  = processSDD('program', 10);
-    const ethnicity = processSDD('ethnicity', 5);
-    const religion  = processSDD('religion', 5);
-    const origin    = processSDD('place_of_origin', 5);
-    const firstGen  = processSDD('_first_generation?');
+    const programs  = processSDD('stud_program', 10);
+    const ethnicity = processSDD('studethnic', 5);
+    const religion  = processSDD('studreligion', 5);
+    const origin    = processSDD('currentadd_prov', 5);
+    const firstGen  = processSDD('is_first_gen_learner');
     return { college, yearLevel, income, vulnerabilities, programs, ethnicity, religion, origin, firstGen };
-  }, [data]);
+  }, [normalizedData]);
 
   if (!stats) return null;
 
@@ -202,7 +221,7 @@ export default function StudentEnrollmentVisuals({ data, recordsCount = 0 }) {
     },
     {
       title: "Regional Origin",
-      desc:  "Top provinces/cities where students are currently originating from.",
+      desc:  "Top provinces where students are currently residing.",
       render: () => (
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={stats.origin} layout="vertical">

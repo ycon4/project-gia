@@ -66,6 +66,7 @@ export default function ExcelUpload({ activeTab, onUploadSuccess, compact = fals
           const baseData = {
             ...row,
             sex: normalizeSex(row.sex || row['Sex'] || row['Gender']),
+            studgender: normalizeSex(row.studgender || row['Gender'] || row.sex || row['Sex']),
             academicYear: targetAY, // THE KEY: Matches the 'activeAY' filter in Dashboard
             uploadTimestamp: new Date().toISOString(),
             sourceFile: selectedFile.name
@@ -75,12 +76,18 @@ export default function ExcelUpload({ activeTab, onUploadSuccess, compact = fals
           if (activeTab === 'student_enrollment') {
             return {
               ...baseData,
-              student_id: row.student_id || row['Student ID'] || 'N/A',
+              studid: row.studid || row.student_id || row['Student ID'] || 'N/A',
               income_PSA_category: row.income_PSA_category || row['Income Category'] || 'Not Specified',
               '_pwd?': normalizeBoolean(row['_pwd?'] || row['PWD']),
               '_solo_parent?': normalizeBoolean(row['_solo_parent?'] || row['Solo Parent']),
               '_ip_member?': normalizeBoolean(row['_ip_member?'] || row['IP Member']),
               '_working_student?': normalizeBoolean(row['_working_student?'] || row['Working Student']),
+              is_first_gen_learner: normalizeBoolean(row.is_first_gen_learner || row['_first_generation?'] || row['First Gen']),
+              is_indigenous: normalizeBoolean(row.is_indigenous || row['Indigenous']),
+              is_pwd: normalizeBoolean(row.is_pwd || row['PWD']),
+              is_child_lgbtq: normalizeBoolean(row.is_child_lgbtq || row['Child LGBTQ+']),
+              is_child_pdl: normalizeBoolean(row.is_child_pdl || row['Child PDL']),
+              is_child_solo_parent: normalizeBoolean(row.is_child_solo_parent || row['Child Solo Parent']),
             };
           }
           return baseData;

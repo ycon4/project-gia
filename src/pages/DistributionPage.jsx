@@ -20,7 +20,7 @@ const SECTORS = {
   student_enrollment: {
     label: 'Student Enrollment',
     icon: <Users size={16} />,
-    headers: ['student_id', 'sex', 'income_PSA_category', 'ethnicity', 'college', 'program', 'year_level'],
+    headers: ['studid', 'studgender', 'income_PSA_category', 'studethnic', 'stud_college', 'stud_program', 'stud_yrlevel'],
   },
   employee_information: {
     label: 'Employee Info',
@@ -98,9 +98,20 @@ export default function DistributionPage() {
     [...new Set(allSectorData.map(i => i.academicYear))].filter(Boolean).sort().reverse(),
   [allSectorData]);
 
-  const currentInboxData = useMemo(() =>
-    allSectorData.filter(i => i.academicYear === activeAY),
-  [allSectorData, activeAY]);
+  const currentInboxData = useMemo(() => {
+    const filtered = allSectorData.filter(i => i.academicYear === activeAY);
+    if (activeTab !== 'student_enrollment') return filtered;
+    // Normalize old field names to new schema so both old and new AY records display correctly
+    return filtered.map(r => ({
+      ...r,
+      studid:               r.studid               || r.student_id      || 'N/A',
+      studgender:           r.studgender            || r.sex             || 'Unknown',
+      studethnic:           r.studethnic            || r.ethnicity       || 'Not Specified',
+      stud_college:         r.stud_college          || r.college         || 'Not Specified',
+      stud_program:         r.stud_program          || r.program         || 'Not Specified',
+      stud_yrlevel:         r.stud_yrlevel          || r.year_level      || 'Not Specified',
+    }));
+  }, [allSectorData, activeAY, activeTab]);
 
   const filteredData = useMemo(() =>
     currentInboxData.filter(row =>

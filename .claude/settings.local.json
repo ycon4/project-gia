@@ -6,7 +6,9 @@
       "Bash(npx tailwindcss:*)",
       "Read(//c//**)",
       "Bash(del \"c:\\\\Users\\\\Admin\\\\Documents\\\\Thesis\\\\GIA Project\\\\project-gia\\\\tw-test.css\")",
-      "Bash(npm run:*)"
+      "Bash(npm run:*)",
+      "Bash(dir \"c:/Users/Admin/Documents/Thesis/GIA Project/project-gia\" /b)",
+      "WebSearch"
     ]
   }
 }
