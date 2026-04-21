@@ -14,6 +14,37 @@ const COLORS  = {
   palette: [LILAC, LILAC_2, BLUE, '#f43f5e', '#f59e0b', '#10b981'],
 };
 
+// Darker cyan used only for Male text in light-mode tooltips (original is too bright to read)
+const MALE_TEXT_LIGHT = '#0e7490';
+
+function CustomTooltip({ active, payload, label }) {
+  if (!active || !payload || !payload.length) return null;
+  const isDark = document.documentElement.classList.contains('dark');
+  return (
+    <div style={{
+      backgroundColor: isDark ? '#1f2937' : '#ffffff',
+      border: `1px solid ${isDark ? '#374151' : '#e5e7eb'}`,
+      borderRadius: 8,
+      padding: '10px 14px',
+      boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
+    }}>
+      {label && (
+        <p style={{ color: isDark ? '#f3f4f6' : '#111827', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>
+          {label}
+        </p>
+      )}
+      {payload.map((entry, i) => {
+        const textColor = entry.dataKey === 'Male' && !isDark ? MALE_TEXT_LIGHT : entry.color;
+        return (
+          <p key={i} style={{ color: textColor, fontSize: 13, margin: '2px 0' }}>
+            {entry.name} : {entry.value}
+          </p>
+        );
+      })}
+    </div>
+  );
+}
+
 // Normalizes a single record so both old (pre-2026) and new field names work.
 const normalizeEnrollmentRecord = (r) => ({
   ...r,
@@ -61,9 +92,6 @@ export default function StudentEnrollmentVisuals({ data, recordsCount = 0 }) {
     if (!normalizedData || normalizedData.length === 0) return null;
     const college   = processSDD('stud_college');
     const yearLevel = processSDD('stud_yrlevel').sort((a, b) => a.name.localeCompare(b.name));
-    const incomeOrder = ["low income", "lower-middle", "middle", "upper-middle", "high income"];
-    const incomeRaw   = processSDD('income_PSA_category');
-    const income      = incomeOrder.map(label => incomeRaw.find(r => r.name === label) || { name: label, Male: 0, Female: 0 });
     const vulnerabilities = [
       { id: '_pwd?',                label: 'PWD'                  },
       { id: '_solo_parent?',        label: 'Solo Parent'          },
@@ -81,7 +109,7 @@ export default function StudentEnrollmentVisuals({ data, recordsCount = 0 }) {
     const religion  = processSDD('studreligion', 5);
     const origin    = processSDD('currentadd_prov', 5);
     const firstGen  = processSDD('is_first_gen_learner');
-    return { college, yearLevel, income, vulnerabilities, programs, ethnicity, religion, origin, firstGen };
+    return { college, yearLevel, vulnerabilities, programs, ethnicity, religion, origin, firstGen };
   }, [normalizedData]);
 
   if (!stats) return null;
@@ -96,7 +124,7 @@ export default function StudentEnrollmentVisuals({ data, recordsCount = 0 }) {
             <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#e5e7eb" />
             <XAxis type="number" hide />
             <YAxis dataKey="name" type="category" width={150} fontSize={10} fontWeight={600} axisLine={false} tickLine={false} />
-            <Tooltip cursor={{ fill: `${LILAC}10` }} />
+            <Tooltip cursor={{ fill: `${LILAC}10` }} content={<CustomTooltip />} />
             <Legend verticalAlign="top" align="right" />
             <Bar dataKey="Male"   stackId="a" fill={COLORS.Male}   barSize={18} />
             <Bar dataKey="Female" stackId="a" fill={COLORS.Female} radius={[0,4,4,0]} barSize={18} />
@@ -113,26 +141,10 @@ export default function StudentEnrollmentVisuals({ data, recordsCount = 0 }) {
             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
             <XAxis dataKey="name" fontSize={11} fontWeight="bold" />
             <YAxis fontSize={10} />
-            <Tooltip />
+            <Tooltip content={<CustomTooltip />} />
             <Legend />
             <Bar dataKey="Male"   fill={COLORS.Male}   radius={[4,4,0,0]} />
             <Bar dataKey="Female" fill={COLORS.Female} radius={[4,4,0,0]} />
-          </BarChart>
-        </ResponsiveContainer>
-      ),
-    },
-    {
-      title: "Income PSA Category",
-      desc:  "Economic clustering using the PSA classification.",
-      render: () => (
-        <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={stats.income} layout="vertical">
-            <XAxis type="number" hide />
-            <YAxis dataKey="name" type="category" fontSize={9} width={90} />
-            <Tooltip />
-            <Legend />
-            <Bar dataKey="Male"   stackId="a" fill={COLORS.Male}   />
-            <Bar dataKey="Female" stackId="a" fill={COLORS.Female} radius={[0,4,4,0]} />
           </BarChart>
         </ResponsiveContainer>
       ),
@@ -146,7 +158,7 @@ export default function StudentEnrollmentVisuals({ data, recordsCount = 0 }) {
             <CartesianGrid strokeDasharray="3 3" vertical={false} />
             <XAxis dataKey="name" fontSize={11} fontWeight="black" />
             <YAxis />
-            <Tooltip />
+            <Tooltip content={<CustomTooltip />} />
             <Legend />
             <Bar dataKey="Male"   fill={COLORS.Male}   radius={[4,4,0,0]} />
             <Bar dataKey="Female" fill={COLORS.Female} radius={[4,4,0,0]} />
@@ -162,7 +174,7 @@ export default function StudentEnrollmentVisuals({ data, recordsCount = 0 }) {
           <BarChart data={stats.programs} layout="vertical">
             <YAxis dataKey="name" type="category" width={160} fontSize={8} />
             <XAxis type="number" hide />
-            <Tooltip />
+            <Tooltip content={<CustomTooltip />} />
             <Legend />
             <Bar dataKey="Male"   stackId="a" fill={COLORS.Male}   barSize={12} />
             <Bar dataKey="Female" stackId="a" fill={COLORS.Female} barSize={12} />
@@ -179,7 +191,7 @@ export default function StudentEnrollmentVisuals({ data, recordsCount = 0 }) {
             <Pie data={stats.ethnicity} dataKey="total" nameKey="name" innerRadius={70} outerRadius={110}>
               {stats.ethnicity.map((_, i) => <Cell key={i} fill={COLORS.palette[i % COLORS.palette.length]} />)}
             </Pie>
-            <Tooltip />
+            <Tooltip content={<CustomTooltip />} />
             <Legend />
           </PieChart>
         </ResponsiveContainer>
@@ -194,7 +206,7 @@ export default function StudentEnrollmentVisuals({ data, recordsCount = 0 }) {
             <CartesianGrid strokeDasharray="3 3" vertical={false} />
             <XAxis dataKey="name" fontSize={9} />
             <YAxis />
-            <Tooltip />
+            <Tooltip content={<CustomTooltip />} />
             <Legend />
             <Bar dataKey="Female" fill={COLORS.Female} stackId="a" radius={[4,4,0,0]} />
             <Bar dataKey="Male"   fill={COLORS.Male}   stackId="a" radius={[4,4,0,0]} />
@@ -211,7 +223,7 @@ export default function StudentEnrollmentVisuals({ data, recordsCount = 0 }) {
             <CartesianGrid strokeDasharray="3 3" vertical={false} />
             <XAxis dataKey="name" fontSize={11} />
             <YAxis />
-            <Tooltip />
+            <Tooltip content={<CustomTooltip />} />
             <Legend />
             <Bar dataKey="Male"   fill={COLORS.Male}   stackId="a" radius={[4,4,0,0]} />
             <Bar dataKey="Female" fill={COLORS.Female} stackId="a" radius={[4,4,0,0]} />
@@ -227,7 +239,7 @@ export default function StudentEnrollmentVisuals({ data, recordsCount = 0 }) {
           <BarChart data={stats.origin} layout="vertical">
             <YAxis dataKey="name" type="category" fontSize={9} width={90} />
             <XAxis type="number" hide />
-            <Tooltip />
+            <Tooltip content={<CustomTooltip />} />
             <Bar dataKey="total" fill={LILAC} radius={[0,4,4,0]} barSize={22} />
           </BarChart>
         </ResponsiveContainer>

@@ -6,6 +6,10 @@ const API_URL = typeof window !== 'undefined' && window.location.hostname === 'l
   ? 'http://localhost:3001/api/chat'
   : '/api/chat';
 
+const PARSE_INTENT_URL = typeof window !== 'undefined' && window.location.hostname === 'localhost'
+  ? 'http://localhost:3001/api/parse-intent'
+  : '/api/parse-intent';
+
 // ─────────────────────────────────────────────────────────────
 // HELPERS
 // ─────────────────────────────────────────────────────────────
@@ -99,13 +103,20 @@ const FIELD_ALIASES = {
   'disabled': '_pwd?',
   'solo parent': '_solo_parent?',
   'single parent': '_solo_parent?',
+  'has solo parent': '_solo_parent?',
+  'have solo parent': '_solo_parent?',
+  'with solo parent': '_solo_parent?',
   'ip member': '_ip_member?',
+  'ip': '_ip_member?',
   'lumad': '_ip_member?',
   'working student': '_working_student?',
   'working': '_working_student?',
   'first generation': 'is_first_gen_learner',
+  '1st generation': 'is_first_gen_learner',
+  '1st gen': 'is_first_gen_learner',
   'firstgen': 'is_first_gen_learner',
   'first gen learner': 'is_first_gen_learner',
+  '1st gen learner': 'is_first_gen_learner',
   'indigenous': 'is_indigenous',
   'child lgbtq': 'is_child_lgbtq',
   'lgbtq': 'is_child_lgbtq',
@@ -155,7 +166,7 @@ const FIELD_TO_COLLECTION = {
 
 const BOOLEAN_FIELD_LABELS = {
   '_pwd?':               'PWD',
-  '_solo_parent?':       'Solo Parent',
+  '_solo_parent?':       'Has Solo Parent',
   '_ip_member?':         'IP Member',
   '_working_student?':   'Working Student',
   is_first_gen_learner:  'First-Generation Learner',
@@ -174,12 +185,19 @@ const BOOLEAN_FIELD_ALIASES_MAP = {
   'disabled':           '_pwd?',
   'solo parent':        '_solo_parent?',
   'single parent':      '_solo_parent?',
+  'has solo parent':    '_solo_parent?',
+  'have solo parent':   '_solo_parent?',
+  'with solo parent':   '_solo_parent?',
   'ip member':          '_ip_member?',
+  'ip':                 '_ip_member?',
   'lumad':              '_ip_member?',
   'working student':    '_working_student?',
   'first generation':   'is_first_gen_learner',
+  '1st generation':     'is_first_gen_learner',
+  '1st gen':            'is_first_gen_learner',
   'firstgen':           'is_first_gen_learner',
   'first gen learner':  'is_first_gen_learner',
+  '1st gen learner':    'is_first_gen_learner',
   'indigenous':         'is_indigenous',
   'child lgbtq':        'is_child_lgbtq',
   'lgbtq':              'is_child_lgbtq',
@@ -210,7 +228,7 @@ const DATA_KEYWORDS = [
   'attendance', 'attended', 'present', 'absent',
   'event', 'seminar', 'workshop', 'training',
   'pwd', 'disability', 'solo parent', 'single parent',
-  'working student', 'first generation', 'first gen learner',
+  'working student', 'first generation', '1st generation', '1st gen', 'first gen learner',
   'indigenous', 'lumad', 'ip member', 'lgbtq', 'pdl', 'child pdl', 'child lgbtq',
   'male', 'female', 'sex', 'gender', 'distribution', 'breakdown',
   'compare', 'comparison', 'versus', ' vs ', 'compared to', 'difference',
@@ -317,9 +335,20 @@ const parseQuery = (message) => {
   // ── Multi-condition boolean detection ─────────────────────
   // Scan ALL boolean aliases in one pass so cross-field questions
   // like "PWD students in CEBA with solo parent households" work.
+  // Short single-word aliases that need word-boundary matching to avoid
+  // false positives inside longer words (e.g. 'ip' inside 'script').
+  // Multi-word aliases (e.g. 'solo parent') use includes() so plurals still match.
+  const WORD_BOUNDARY_ALIASES = new Set(['ip', 'pwd', 'pdl']);
   const detectedBooleans = new Set();
   for (const [alias, field] of Object.entries(BOOLEAN_FIELD_ALIASES_MAP)) {
-    if (lower.includes(alias)) detectedBooleans.add(field);
+    let matched;
+    if (WORD_BOUNDARY_ALIASES.has(alias)) {
+      const escaped = alias.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      matched = new RegExp(`\\b${escaped}\\b`, 'i').test(lower);
+    } else {
+      matched = lower.includes(alias);
+    }
+    if (matched) detectedBooleans.add(field);
   }
   for (const field of detectedBooleans) {
     intent.andFilters.push({ field, value: 'Yes' });
@@ -492,7 +521,7 @@ const computeMultiFilter = (docs, andFilters, wantsSexBreakdown, sexField) => {
 const computeAnswer = (intent, dbData) => {
   const {
     collection, groupField, filterValue, filterValues,
-    academicYears, wantsSexBreakdown, wantsComparison
+    academicYears, wantsSexBreakdown, wantsComparison, wantsAll,
   } = intent;
 
   if (!collection || !dbData[collection]) {
@@ -514,6 +543,10 @@ const computeAnswer = (intent, dbData) => {
         studgender:           r.studgender            || r.sex             || 'Unknown',
         currentadd_prov:      r.currentadd_prov       || r.place_of_origin || 'Not Specified',
         is_first_gen_learner: r.is_first_gen_learner  || r['_first_generation?'] || 'No',
+        '_pwd?':              r['_pwd?']              || r.is_pwd              || 'No',
+        '_solo_parent?':      r['_solo_parent?']      || r.is_solo_parent      || 'No',
+        '_ip_member?':        r['_ip_member?']        || r.is_ip_member        || 'No',
+        '_working_student?':  r['_working_student?']  || r.is_working_student  || 'No',
       }))
     : rawDocs;
 
@@ -523,11 +556,19 @@ const computeAnswer = (intent, dbData) => {
     : allDocs[0]?.gender !== undefined ? 'gender'
     : null;
 
+  // Default to most recent AY when none specified — prevents mixing records
+  // across academic years (data sheet always scopes to one AY, GIA should too)
+  const allYears = [...new Set(allDocs.map(d => d.academicYear).filter(Boolean))].sort();
+  const latestYear = allYears[allYears.length - 1] ?? null;
+  const resolvedYears = academicYears.length > 0
+    ? academicYears
+    : (latestYear ? [latestYear] : []);
+
   // ── Multi-condition AND filter (cross-field intersection) ─────
   // Triggered when the query mentions 2+ conditions simultaneously
   // e.g. "PWD students in CEBA who are also solo parents"
   const { andFilters = [] } = intent;
-  if (andFilters.length > 1) {
+  if (andFilters.length >= 1) {
     // Year-by-year comparison with multi-filter
     if (wantsComparison && academicYears.length > 0) {
       const yearsToUse = academicYears.length === 1
@@ -545,14 +586,41 @@ const computeAnswer = (intent, dbData) => {
 
     // Single period multi-filter
     let docs = allDocs;
-    if (academicYears.length === 1) {
-      const ay = allDocs.filter(d => d.academicYear === academicYears[0]);
+    if (resolvedYears.length === 1) {
+      const ay = allDocs.filter(d => d.academicYear === resolvedYears[0]);
       docs = ay.length > 0 ? ay : allDocs;
     }
+
+    // College breakdown: user asked "from what colleges" / "by college" / "per college"
+    const wantsCollegeGrouping = groupField === 'stud_college' || wantsAll;
+    if (wantsCollegeGrouping) {
+      const colleges = [...new Set(docs.map(d => d.stud_college).filter(Boolean))].sort();
+      const collegeResults = {};
+      let grandTotal = 0;
+      colleges.forEach(college => {
+        const collegeDocs = docs.filter(d => d.stud_college === college);
+        const c = computeMultiFilter(collegeDocs, andFilters, wantsSexBreakdown, sexField);
+        if (c.totalRecords > 0) {
+          collegeResults[college] = c;
+          grandTotal += c.totalRecords;
+        }
+      });
+      return {
+        collection: displayName,
+        academicYear: resolvedYears[0] || 'All Years',
+        isMultiFilter: true,
+        isGroupedByCollege: true,
+        andFilters,
+        sexField,
+        grandTotal,
+        collegeResults,
+      };
+    }
+
     const computed = computeMultiFilter(docs, andFilters, wantsSexBreakdown, sexField);
     return {
       collection: displayName,
-      academicYear: academicYears[0] || 'All Years',
+      academicYear: resolvedYears[0] || 'All Years',
       isComparison: false,
       isMultiFilter: true,
       andFilters,
@@ -567,8 +635,8 @@ const computeAnswer = (intent, dbData) => {
     const collegeResults = {};
     filterValues.forEach(collegeName => {
       let docs = allDocs;
-      if (academicYears.length === 1) {
-        const filtered = allDocs.filter(d => d.academicYear === academicYears[0]);
+      if (resolvedYears.length === 1) {
+        const filtered = allDocs.filter(d => d.academicYear === resolvedYears[0]);
         docs = filtered.length > 0 ? filtered : allDocs;
       }
       const computed = computeForDocs(docs, 'stud_college', collegeName, wantsSexBreakdown, sexField);
@@ -577,7 +645,7 @@ const computeAnswer = (intent, dbData) => {
 
     return {
       collection: displayName,
-      academicYear: academicYears[0] || 'All Years',
+      academicYear: resolvedYears[0] || 'All Years',
       isComparison: true,
       isCollegeComparison: true,
       groupField,
@@ -588,11 +656,10 @@ const computeAnswer = (intent, dbData) => {
   }
 
   // ── Year-by-year comparison ────────────────────────────────
-  if (wantsComparison && academicYears.length > 0) {
-    let yearsToUse = academicYears;
-    if (academicYears.length === 1) {
-      yearsToUse = [...new Set(allDocs.map(d => d.academicYear).filter(Boolean))].sort();
-    }
+  if (wantsComparison && resolvedYears.length > 0) {
+    const yearsToUse = resolvedYears.length === 1
+      ? allYears
+      : resolvedYears;
     const yearResults = {};
     yearsToUse.forEach(year => {
       const yearDocs = allDocs.filter(d => d.academicYear === year);
@@ -605,8 +672,8 @@ const computeAnswer = (intent, dbData) => {
 
   // ── Single query ───────────────────────────────────────────
   let docs = allDocs;
-  if (academicYears.length === 1) {
-    const filtered = allDocs.filter(d => d.academicYear === academicYears[0]);
+  if (resolvedYears.length === 1) {
+    const filtered = allDocs.filter(d => d.academicYear === resolvedYears[0]);
     docs = filtered.length > 0 ? filtered : allDocs;
   }
 
@@ -614,7 +681,7 @@ const computeAnswer = (intent, dbData) => {
 
   return {
     collection: displayName,
-    academicYear: academicYears[0] || 'All Years',
+    academicYear: resolvedYears[0] || 'All Years',
     isComparison: false,
     groupField,
     filterValue,
@@ -634,19 +701,39 @@ const formatResultForAI = (result) => {
   let text = `=== COMPUTED DATA (100% ACCURATE — DO NOT MODIFY THESE NUMBERS) ===\n\n`;
   text += `Dataset: ${result.collection}\n`;
 
-  if (result.isComparison && result.isCollegeComparison) {
-    text += `Mode: College-by-College Comparison\n`;
-    text += `Academic Year: ${result.academicYear}\n\n`;
-    Object.entries(result.collegeResults).forEach(([college, collegeData]) => {
-      text += `--- ${college} (${collegeData.totalRecords} records) ---\n`;
-      Object.entries(collegeData.data).forEach(([category, counts]) => {
-        text += `  ${category}:\n`;
-        Object.entries(counts).forEach(([key, val]) => {
-          text += `    ${key}: ${val}\n`;
+  if (result.isMultiFilter && result.isGroupedByCollege) {
+    const filterLabel = result.andFilters
+      .map(({ field }) => BOOLEAN_FIELD_LABELS[field] || field)
+      .join(' + ');
+    text += `Academic Year: ${result.academicYear}\n`;
+    text += `Filter: ${filterLabel}\n`;
+    text += `Grand Total matching both conditions: ${result.grandTotal}\n\n`;
+    text += `BREAKDOWN BY COLLEGE (sorted highest to lowest):\n`;
+    Object.entries(result.collegeResults)
+      .sort(([, a], [, b]) => b.totalRecords - a.totalRecords)
+      .forEach(([college, collegeData]) => {
+        text += `\n${college}:\n`;
+        Object.entries(collegeData.data).forEach(([, counts]) => {
+          Object.entries(counts).forEach(([key, val]) => {
+            text += `  ${key}: ${val}\n`;
+          });
         });
       });
-      text += `\n`;
-    });
+  } else if (result.isComparison && result.isCollegeComparison) {
+    text += `Mode: College-by-College Comparison\n`;
+    text += `Academic Year: ${result.academicYear}\n\n`;
+    Object.entries(result.collegeResults)
+      .sort(([, a], [, b]) => b.totalRecords - a.totalRecords)
+      .forEach(([college, collegeData]) => {
+        text += `--- ${college} (${collegeData.totalRecords} records) ---\n`;
+        Object.entries(collegeData.data).forEach(([category, counts]) => {
+          text += `  ${category}:\n`;
+          Object.entries(counts).forEach(([key, val]) => {
+            text += `    ${key}: ${val}\n`;
+          });
+        });
+        text += `\n`;
+      });
   } else if (result.isComparison) {
     text += `Mode: Year-by-Year Comparison\n`;
     if (result.filterValue) text += `Filter: ${result.groupField} = "${result.filterValue}"\n`;
@@ -665,13 +752,15 @@ const formatResultForAI = (result) => {
     text += `Academic Year: ${result.academicYear}\n`;
     text += `Total Records in scope: ${result.totalRecords}\n`;
     if (result.filterValue) text += `Filter: ${result.groupField} = "${result.filterValue}"\n`;
-    text += `\nEXACT COUNTS:\n`;
-    Object.entries(result.data).forEach(([category, counts]) => {
-      text += `\n${category}:\n`;
-      Object.entries(counts).forEach(([key, val]) => {
-        text += `  ${key}: ${val}\n`;
+    text += `\nEXACT COUNTS (sorted highest to lowest total):\n`;
+    Object.entries(result.data)
+      .sort(([, a], [, b]) => (b.Total || 0) - (a.Total || 0))
+      .forEach(([category, counts]) => {
+        text += `\n${category}:\n`;
+        Object.entries(counts).forEach(([key, val]) => {
+          text += `  ${key}: ${val}\n`;
+        });
       });
-    });
   }
 
   text += `\n=== END OF COMPUTED DATA ===\n`;
@@ -735,9 +824,47 @@ const fetchWithRetry = async (url, options, retries = 3, delayMs = 3000) => {
 // MAIN EXPORT
 // ─────────────────────────────────────────────────────────────
 
+// ─────────────────────────────────────────────────────────────
+// LLM-BASED INTENT PARSER  (falls back to keyword matching)
+// ─────────────────────────────────────────────────────────────
+
+const parseQueryWithLLM = async (message) => {
+  try {
+    const res = await fetch(PARSE_INTENT_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message }),
+    });
+    if (!res.ok) throw new Error(`parse-intent ${res.status}`);
+    const intent = await res.json();
+    if (typeof intent.isConversational !== 'boolean') throw new Error('invalid shape');
+
+    // Ensure arrays are always present
+    intent.andFilters   = intent.andFilters   || [];
+    intent.filterValues = intent.filterValues || [];
+    intent.academicYears = intent.academicYears || [];
+
+    // Single college + boolean filters → add college to andFilters so the
+    // multi-filter engine intersects correctly (mirrors keyword-matching logic)
+    if (intent.filterValues.length === 1 && intent.andFilters.length > 0) {
+      if (!intent.andFilters.find(f => f.field === 'stud_college')) {
+        intent.andFilters.push({ field: 'stud_college', value: intent.filterValues[0] });
+      }
+    }
+
+    // Multiple colleges always means comparison
+    if (intent.filterValues.length > 1) intent.wantsComparison = true;
+
+    return intent;
+  } catch (e) {
+    console.warn('⚠️ LLM intent parsing failed, falling back to keyword matching:', e.message);
+    return parseQuery(message);
+  }
+};
+
 export const analyzeWithAI = async (userMessage, dbData, _history = []) => {
   try {
-    const intent = parseQuery(userMessage);
+    const intent = await parseQueryWithLLM(userMessage);
 
     // ── Conversational — send directly, no data computation ──
     if (intent.isConversational) {

@@ -40,6 +40,50 @@ const CHART_LABEL = {
 export default function ChatChart({ chartData }) {
   if (!chartData || chartData.error) return null;
 
+  // ── Multi-filter grouped by college → Stacked bar chart ───
+  if (chartData.isMultiFilter && chartData.isGroupedByCollege && chartData.collegeResults) {
+    const entries = Object.entries(chartData.collegeResults)
+      .sort(([, a], [, b]) => b.totalRecords - a.totalRecords);
+    if (entries.length === 0) return null;
+
+    // Union sex keys across ALL colleges — a college with only Male students
+    // would otherwise hide Female bars that appear in other colleges.
+    const allSexKeys = new Set();
+    entries.forEach(([, res]) => {
+      getSexKeys(Object.values(res.data)[0] || {}).forEach(k => allSexKeys.add(k));
+    });
+    const sexKeys = [...allSexKeys];
+    const showKeys = sexKeys.length > 0 ? sexKeys : ['Total'];
+
+    const data = entries.map(([college, res]) => {
+      const counts = Object.values(res.data)[0] || {};
+      const point = { name: abbr(college), Total: res.totalRecords };
+      sexKeys.forEach(k => { point[k] = counts[k] || 0; });
+      return point;
+    });
+
+    return (
+      <div className="mt-4 pt-4 border-t border-purple-100">
+        <p className="text-xs text-gray-400 mb-3 font-semibold uppercase tracking-wider">Breakdown by College</p>
+        <ResponsiveContainer width="100%" height={260}>
+          <BarChart data={data} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
+            <XAxis dataKey="name" tick={{ fontSize: 11 }} />
+            <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
+            <Tooltip contentStyle={CHART_LABEL} />
+            <Legend wrapperStyle={{ fontSize: 12 }} />
+            {showKeys.map((k, i) => (
+              <Bar
+                key={k} dataKey={k} stackId="a" fill={getColor(k, i)}
+                radius={i === showKeys.length - 1 ? [3, 3, 0, 0] : [0, 0, 0, 0]}
+              />
+            ))}
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+    );
+  }
+
   // ── Year comparison → Line chart ──────────────────────────
   if (chartData.isComparison && !chartData.isCollegeComparison && chartData.yearResults) {
     const years = Object.entries(chartData.yearResults);
@@ -79,15 +123,18 @@ export default function ChatChart({ chartData }) {
     const colleges = Object.entries(chartData.collegeResults);
     if (colleges.length < 2) return null;
 
-    const firstValues = Object.values(colleges[0][1].data);
-    const sexKeys = firstValues.length > 0 ? getSexKeys(firstValues[0]) : [];
+    const allCollegeSexKeys = new Set();
+    colleges.forEach(([, res]) => getSexKeys(Object.values(res.data)[0] || {}).forEach(k => allCollegeSexKeys.add(k)));
+    const sexKeys = [...allCollegeSexKeys];
     const showKeys = sexKeys.length > 0 ? sexKeys : ['Total'];
 
-    const data = colleges.map(([college, res]) => {
-      const point = { name: abbr(college), Total: sumAcrossGroups(res.data, 'Total') };
-      sexKeys.forEach(k => { point[k] = sumAcrossGroups(res.data, k); });
-      return point;
-    });
+    const data = colleges
+      .map(([college, res]) => {
+        const point = { name: abbr(college), Total: sumAcrossGroups(res.data, 'Total') };
+        sexKeys.forEach(k => { point[k] = sumAcrossGroups(res.data, k); });
+        return point;
+      })
+      .sort((a, b) => b.Total - a.Total);
 
     return (
       <div className="mt-4 pt-4 border-t border-purple-100">
@@ -153,11 +200,13 @@ export default function ChatChart({ chartData }) {
       const showKeys = sexKeys.length > 0 ? sexKeys : ['Total'];
       const needsRotation = entries.length > 4;
 
-      const data = entries.map(([group, counts]) => {
-        const point = { name: abbr(group), Total: counts.Total || 0 };
-        sexKeys.forEach(k => { point[k] = counts[k] || 0; });
-        return point;
-      });
+      const data = entries
+        .map(([group, counts]) => {
+          const point = { name: abbr(group), Total: counts.Total || 0 };
+          sexKeys.forEach(k => { point[k] = counts[k] || 0; });
+          return point;
+        })
+        .sort((a, b) => b.Total - a.Total);
 
       return (
         <div className="mt-4 pt-4 border-t border-purple-100">

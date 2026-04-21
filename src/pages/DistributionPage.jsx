@@ -4,6 +4,7 @@ import {
   RefreshCcw, Trash2, Printer, FileUp, MoreVertical,
   Database, Users, Briefcase, Zap,
   ChevronLeft, ChevronRight, ChevronDown,
+  ArrowUpDown, ArrowUp, ArrowDown,
 } from 'lucide-react';
 
 import { getAllDocuments, deleteAYData } from '../../firebase/services.js';
@@ -16,11 +17,55 @@ import StudentEngagementVisuals from '../components/visuals/EngagementVisuals.js
 
 const LILAC = '#a673d8';
 
+// Human-readable column labels (keyed by field name)
+const HEADER_LABELS = {
+  studid:               'Student ID',
+  studgender:           'Sex',
+  stud_college:         'College',
+  stud_program:         'Program',
+  stud_yrlevel:         'Year Level',
+  studethnic:           'Ethnicity',
+  studreligion:         'Religion',
+  currentadd_prov:      'Province',
+  income_PSA_category:  'Income Category',
+  is_first_gen_learner: '1st Gen Learner',
+  '_pwd?':              'PWD',
+  '_solo_parent?':      'Has Solo Parent',
+  '_ip_member?':        'IP Member',
+  '_working_student?':  'Working Student',
+  is_indigenous:        'Indigenous',
+  is_child_lgbtq:       'Child of LGBTQ+',
+  is_child_pdl:         'Child of PDL',
+  is_child_solo_parent: 'Child of Solo Parent',
+  employee_id:          'Employee ID',
+  sex:                  'Sex',
+  employee_type:        'Employee Type',
+  administrative_officials: 'Admin Official',
+  plantilla_position:   'Plantilla Position',
+  income_order:         'Income Order',
+  ethnicity:            'Ethnicity',
+  religion:             'Religion',
+  place_of_birth:       'Place of Birth',
+  special_needs:        'Special Needs',
+  student_id:           'Student ID',
+  scholarship_status:   'Scholarship',
+  academic_standing:    'Academic Standing',
+  student_council:      'Student Council',
+  organizations:        'Organizations',
+  publication:          'Publication',
+};
+
 const SECTORS = {
   student_enrollment: {
     label: 'Student Enrollment',
     icon: <Users size={16} />,
-    headers: ['studid', 'studgender', 'income_PSA_category', 'studethnic', 'stud_college', 'stud_program', 'stud_yrlevel'],
+    headers: [
+      'studid', 'studgender', 'stud_college', 'stud_program', 'stud_yrlevel',
+      'studethnic', 'studreligion', 'currentadd_prov', 'income_PSA_category',
+      'is_first_gen_learner', '_pwd?', '_solo_parent?', '_ip_member?',
+      '_working_student?', 'is_indigenous', 'is_child_lgbtq', 'is_child_pdl',
+      'is_child_solo_parent',
+    ],
   },
   employee_information: {
     label: 'Employee Info',
@@ -34,7 +79,15 @@ const SECTORS = {
   },
 };
 
-const ROWS_OPTIONS = [10, 25, 50];
+// Sort comparator — numeric-aware (handles "1st Year" → 1, etc.)
+const smartCompare = (a, b) => {
+  const na = parseInt(a, 10);
+  const nb = parseInt(b, 10);
+  if (!isNaN(na) && !isNaN(nb)) return na - nb;
+  return String(a ?? '').localeCompare(String(b ?? ''));
+};
+
+const ROWS_OPTIONS = [20, 50, 100, 'All'];
 
 export default function DistributionPage() {
   const [allSectorData, setAllSectorData] = useState([]);
@@ -45,15 +98,18 @@ export default function DistributionPage() {
   const [searchTerm, setSearchTerm]       = useState('');
   const [isDeleting, setIsDeleting]       = useState(false);
   const [currentPage, setCurrentPage]     = useState(1);
-  const [rowsPerPage, setRowsPerPage]     = useState(10);
+  const [rowsPerPage, setRowsPerPage]     = useState(20);
   const [datasetOpen, setDatasetOpen]     = useState(false);
   const [ayOpen, setAyOpen]               = useState(false);
   const [clearModalOpen, setClearModalOpen] = useState(false);
+  const [sortCol, setSortCol]             = useState(null);
+  const [sortDir, setSortDir]             = useState('asc');
   const datasetRef                        = useRef(null);
   const ayRef                             = useRef(null);
 
   useEffect(() => { loadTabData(); }, [activeTab]);
   useEffect(() => { setCurrentPage(1); }, [searchTerm, activeAY, activeTab, rowsPerPage]);
+  useEffect(() => { setSortCol(null); setSortDir('asc'); }, [activeTab]);
 
   // Close dropdowns on outside click
   useEffect(() => {
@@ -110,6 +166,12 @@ export default function DistributionPage() {
       stud_college:         r.stud_college          || r.college         || 'Not Specified',
       stud_program:         r.stud_program          || r.program         || 'Not Specified',
       stud_yrlevel:         r.stud_yrlevel          || r.year_level      || 'Not Specified',
+      currentadd_prov:      r.currentadd_prov       || r.place_of_origin || 'Not Specified',
+      is_first_gen_learner: r.is_first_gen_learner  || r['_first_generation?'] || 'No',
+      '_pwd?':              r['_pwd?']              || r.is_pwd              || 'No',
+      '_solo_parent?':      r['_solo_parent?']      || r.is_solo_parent      || 'No',
+      '_ip_member?':        r['_ip_member?']        || r.is_ip_member        || 'No',
+      '_working_student?':  r['_working_student?']  || r.is_working_student  || 'No',
     }));
   }, [allSectorData, activeAY, activeTab]);
 
@@ -119,14 +181,30 @@ export default function DistributionPage() {
     ),
   [currentInboxData, searchTerm]);
 
-  const totalPages    = Math.max(1, Math.ceil(filteredData.length / rowsPerPage));
-  const paginatedData = useMemo(() => {
-    const s = (currentPage - 1) * rowsPerPage;
-    return filteredData.slice(s, s + rowsPerPage);
-  }, [filteredData, currentPage, rowsPerPage]);
+  const sortedData = useMemo(() => {
+    if (!sortCol) return filteredData;
+    return [...filteredData].sort((a, b) => {
+      const cmp = smartCompare(a[sortCol], b[sortCol]);
+      return sortDir === 'asc' ? cmp : -cmp;
+    });
+  }, [filteredData, sortCol, sortDir]);
 
-  const showingFrom = filteredData.length === 0 ? 0 : (currentPage - 1) * rowsPerPage + 1;
-  const showingTo   = Math.min(currentPage * rowsPerPage, filteredData.length);
+  const effectiveRows = rowsPerPage === 'All' ? sortedData.length || 1 : rowsPerPage;
+  const totalPages    = Math.max(1, Math.ceil(sortedData.length / effectiveRows));
+  const paginatedData = useMemo(() => {
+    if (rowsPerPage === 'All') return sortedData;
+    const s = (currentPage - 1) * rowsPerPage;
+    return sortedData.slice(s, s + rowsPerPage);
+  }, [sortedData, currentPage, rowsPerPage]);
+
+  const showingFrom = sortedData.length === 0 ? 0 : (currentPage - 1) * effectiveRows + 1;
+  const showingTo   = Math.min(currentPage * effectiveRows, sortedData.length);
+
+  const handleSort = (col) => {
+    if (sortCol === col) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
+    else { setSortCol(col); setSortDir('asc'); }
+    setCurrentPage(1);
+  };
   const sector      = SECTORS[activeTab];
 
   const UploadButton = activeTab === 'student_engagement'
@@ -277,7 +355,7 @@ export default function DistributionPage() {
           <TableView
             sector={sector}
             paginatedData={paginatedData}
-            filteredData={filteredData}
+            filteredData={sortedData}
             searchTerm={searchTerm}
             setSearchTerm={setSearchTerm}
             activeAY={activeAY}
@@ -289,6 +367,9 @@ export default function DistributionPage() {
             rowsPerPage={rowsPerPage}
             setRowsPerPage={setRowsPerPage}
             pageNums={pageNums}
+            sortCol={sortCol}
+            sortDir={sortDir}
+            onSort={handleSort}
           />
         ) : (
           <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
@@ -347,6 +428,7 @@ function TableView({
   activeAY, showingFrom, showingTo,
   currentPage, setCurrentPage, totalPages,
   rowsPerPage, setRowsPerPage, pageNums,
+  sortCol, sortDir, onSort,
 }) {
   return (
     <div className="flex flex-col flex-1 min-h-0">
@@ -373,11 +455,25 @@ function TableView({
           <thead className="sticky top-0 z-10">
             <tr className="bg-neutral-50 dark:bg-neutral-800">
               <th className="px-4 py-2.5 text-[10px] font-semibold uppercase tracking-widest text-neutral-500 dark:text-neutral-400 border-b border-r border-neutral-200 dark:border-neutral-700 w-10 text-center">#</th>
-              {sector.headers.map(h => (
-                <th key={h} className="px-4 py-2.5 text-[10px] font-semibold uppercase tracking-widest text-neutral-500 dark:text-neutral-400 border-b border-r border-neutral-200 dark:border-neutral-700 whitespace-nowrap last:border-r-0">
-                  {h.replace(/_/g, ' ')}
-                </th>
-              ))}
+              {sector.headers.map(h => {
+                const active = sortCol === h;
+                const Icon = active ? (sortDir === 'asc' ? ArrowUp : ArrowDown) : ArrowUpDown;
+                return (
+                  <th
+                    key={h}
+                    onClick={() => onSort(h)}
+                    className="px-4 py-2.5 text-[10px] font-semibold uppercase tracking-widest border-b border-r border-neutral-200 dark:border-neutral-700 whitespace-nowrap last:border-r-0 cursor-pointer select-none group"
+                    style={{ color: active ? LILAC : undefined }}
+                  >
+                    <span className="flex items-center gap-1.5">
+                      <span className={active ? '' : 'text-neutral-500 dark:text-neutral-400 group-hover:text-neutral-700 dark:group-hover:text-neutral-200 transition-colors'}>
+                        {HEADER_LABELS[h] || h.replace(/_/g, ' ')}
+                      </span>
+                      <Icon size={10} className={active ? '' : 'text-neutral-300 dark:text-neutral-600 group-hover:text-neutral-400 transition-colors'} style={active ? { color: LILAC } : {}} />
+                    </span>
+                  </th>
+                );
+              })}
             </tr>
           </thead>
           <tbody>
@@ -413,7 +509,7 @@ function TableView({
             <span className="text-xs font-medium text-neutral-500 dark:text-neutral-400">Rows per page:</span>
             <select
               value={rowsPerPage}
-              onChange={e => setRowsPerPage(Number(e.target.value))}
+              onChange={e => setRowsPerPage(e.target.value === 'All' ? 'All' : Number(e.target.value))}
               className="text-xs font-medium bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded px-2 py-1 text-neutral-700 dark:text-neutral-300 outline-none cursor-pointer"
             >
               {ROWS_OPTIONS.map(n => <option key={n} value={n}>{n}</option>)}

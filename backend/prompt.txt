@@ -140,7 +140,7 @@ Never expose internal field or collection names. Always use these:
 | year_level | Year Level |
 | _4ps_beneficiary | 4Ps Beneficiary |
 | _pwd | Person with Disability (PWD) |
-| _solo_parent | Solo Parent |
+| _solo_parent | Has Solo Parent |
 | _ip_member | Indigenous People (IP) Member |
 | _ofw_dependent | OFW Dependent |
 | _working_student | Working Student |
