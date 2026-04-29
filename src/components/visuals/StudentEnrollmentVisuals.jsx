@@ -45,6 +45,8 @@ function CustomTooltip({ active, payload, label }) {
   );
 }
 
+const nb = v => (v === 'Yes' || v === true || v === 'yes' || v === 'true' || v === '1' || v === 1) ? 'Yes' : 'No';
+
 // Normalizes a single record so both old (pre-2026) and new field names work.
 const normalizeEnrollmentRecord = (r) => ({
   ...r,
@@ -56,7 +58,11 @@ const normalizeEnrollmentRecord = (r) => ({
   studid:               r.studid                || r.student_id      || 'N/A',
   studgender:           r.studgender            || r.sex             || 'Unknown',
   currentadd_prov:      r.currentadd_prov       || r.place_of_origin || 'Not Specified',
-  is_first_gen_learner: r.is_first_gen_learner  || r['_first_generation?'] || 'No',
+  is_first_gen_learner: nb(r.is_first_gen_learner ?? r['_first_generation?']),
+  '_pwd?':              nb(r['_pwd?'] ?? r.is_pwd),
+  '_solo_parent?':      nb(r['_solo_parent?'] ?? r.is_solo_parent),
+  '_ip_member?':        nb(r['_ip_member?'] ?? r.is_ip_member),
+  '_working_student?':  nb(r['_working_student?'] ?? r.is_working_student),
 });
 
 export default function StudentEnrollmentVisuals({ data, recordsCount = 0 }) {

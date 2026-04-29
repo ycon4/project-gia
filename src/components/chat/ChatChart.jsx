@@ -17,7 +17,7 @@ const abbr = (name) => COLLEGE_ABBR[name] || name;
 
 const SEX_COLORS = {
   Male: '#73DAE1', M: '#73DAE1',
-  Female: '#DD6E6B', F: '#DD6E6B',
+  Female: '#a673d8', F: '#a673d8',
   Unknown: '#9ca3af',
 };
 const PALETTE = ['#8b5cf6', '#06b6d4', '#10b981', '#f59e0b', '#ef4444', '#3b82f6'];

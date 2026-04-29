@@ -157,6 +157,7 @@ export default function DistributionPage() {
   const currentInboxData = useMemo(() => {
     const filtered = allSectorData.filter(i => i.academicYear === activeAY);
     if (activeTab !== 'student_enrollment') return filtered;
+    const nb = v => (v === 'Yes' || v === true || v === 'yes' || v === 'true' || v === '1' || v === 1) ? 'Yes' : 'No';
     // Normalize old field names to new schema so both old and new AY records display correctly
     return filtered.map(r => ({
       ...r,
@@ -167,11 +168,11 @@ export default function DistributionPage() {
       stud_program:         r.stud_program          || r.program         || 'Not Specified',
       stud_yrlevel:         r.stud_yrlevel          || r.year_level      || 'Not Specified',
       currentadd_prov:      r.currentadd_prov       || r.place_of_origin || 'Not Specified',
-      is_first_gen_learner: r.is_first_gen_learner  || r['_first_generation?'] || 'No',
-      '_pwd?':              r['_pwd?']              || r.is_pwd              || 'No',
-      '_solo_parent?':      r['_solo_parent?']      || r.is_solo_parent      || 'No',
-      '_ip_member?':        r['_ip_member?']        || r.is_ip_member        || 'No',
-      '_working_student?':  r['_working_student?']  || r.is_working_student  || 'No',
+      is_first_gen_learner: nb(r.is_first_gen_learner ?? r['_first_generation?']),
+      '_pwd?':              nb(r['_pwd?'] ?? r.is_pwd),
+      '_solo_parent?':      nb(r['_solo_parent?'] ?? r.is_solo_parent),
+      '_ip_member?':        nb(r['_ip_member?'] ?? r.is_ip_member),
+      '_working_student?':  nb(r['_working_student?'] ?? r.is_working_student),
     }));
   }, [allSectorData, activeAY, activeTab]);
 
