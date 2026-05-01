@@ -1,12 +1,21 @@
-import React from 'react';
+import { useState, useRef } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
-import { CalendarCheck, Fingerprint, Link2, ChevronDown, Download, Check } from 'lucide-react';
+import {
+  CalendarCheck, Fingerprint, Link2, ChevronDown,
+  Download, Check, ExternalLink,
+} from 'lucide-react';
 
 export const SessionQRManager = ({ activeEvent, selectedSession, onSessionChange, registrationUrl }) => {
-  const [copied, setCopied] = React.useState(false);
+  const [copied, setCopied] = useState(false);
+  const qrContainerRef = useRef(null);
 
+  const isPreReg = selectedSession === 'Pre-Registration';
+
+  // ── Download QR as high-res PNG ──────────────────────────────────────────
   const downloadQRCode = () => {
-    const svg = document.getElementById('session-qr-code');
+    const svg = qrContainerRef.current?.querySelector('svg');
+    if (!svg) return;
+
     const svgData = new XMLSerializer().serializeToString(svg);
     const canvasSize = 1024;
     const margin = 80;
@@ -18,89 +27,176 @@ export const SessionQRManager = ({ activeEvent, selectedSession, onSessionChange
     const img = new Image();
     img.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svgData)));
     img.onload = () => {
-      ctx.fillStyle = 'white';
+      ctx.fillStyle = '#ffffff';
       ctx.fillRect(0, 0, canvasSize, canvasSize);
       ctx.drawImage(img, margin, margin, qrSize, qrSize);
-      const pngFile = canvas.toDataURL('image/png', 1.0);
       const link = document.createElement('a');
-      link.download = `QR-${selectedSession}-${activeEvent.title}.png`;
-      link.href = pngFile;
+      link.download = `QR_${activeEvent.title}_${selectedSession}.png`
+        .replace(/[^a-z0-9_\-\.]/gi, '_');
+      link.href = canvas.toDataURL('image/png', 1.0);
       link.click();
     };
   };
 
   const handleCopy = () => {
-    navigator.clipboard.writeText(registrationUrl);
+    navigator.clipboard.writeText(registrationUrl).catch(() => { });
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
 
+  // All sessions in order for the selector
+  const allSessions = [
+    ...(activeEvent.hasPreReg ? ['Pre-Registration'] : []),
+    ...(activeEvent.sessions || []),
+  ];
+
   return (
-    <div className="bg-neutral-900 dark:bg-neutral-800 rounded-2xl p-5 text-white flex flex-col gap-4 shadow-xl border border-white/5 w-full">
+    <div className="
+      w-full h-full flex flex-col
+      bg-white dark:bg-neutral-900
+      border border-neutral-200 dark:border-neutral-700/70
+      rounded-2xl overflow-hidden
+      shadow-sm
+    ">
 
-      {/* Header */}
-      <div className="flex items-center justify-between shrink-0">
-        <div>
-          <div className="inline-flex items-center gap-1.5 text-gia-300 mb-0.5">
-            {selectedSession.includes('Pre') ? <CalendarCheck size={12}/> : <Fingerprint size={12}/>}
-            <span className="text-[9px] font-black uppercase tracking-widest opacity-80">Active Gate</span>
-          </div>
-          <h2 className="text-lg font-black tracking-tight uppercase leading-none truncate">
-            {selectedSession}
-          </h2>
+      {/* ── Header ─────────────────────────────────────────────────────────── */}
+      <div className="px-5 pt-5 pb-4 border-b border-neutral-100 dark:border-neutral-800 shrink-0">
+        <div className="flex items-center gap-2 mb-1">
+          {isPreReg
+            ? <CalendarCheck size={12} className="text-gia-500 dark:text-gia-400 shrink-0" />
+            : <Fingerprint size={12} className="text-gia-500 dark:text-gia-400 shrink-0" />
+          }
+          <span className="text-[9px] font-black uppercase tracking-widest text-gia-500 dark:text-gia-400">
+            Active Gate
+          </span>
         </div>
+        <h2 className="text-base font-black text-neutral-900 dark:text-neutral-100 uppercase tracking-tight leading-none truncate">
+          {selectedSession}
+        </h2>
       </div>
 
-      {/* QR Code — fills remaining height */}
-      <div className="group relative flex-1 min-h-0">
-        <div className="bg-white p-3 rounded-2xl border-[3px] border-neutral-700 shadow-md transition-transform group-hover:scale-[1.02] w-full h-full flex items-center justify-center">
-          <QRCodeSVG
-            id="session-qr-code"
-            value={registrationUrl}
-            size={256}
-            style={{ width: '100%', height: 'auto', display: 'block' }}
-            level="H"
-            fgColor="#0f172a"
-            marginSize={0}
-          />
-        </div>
-        <button
-          onClick={downloadQRCode}
-          className="absolute top-1 right-1 bg-gia-600 hover:bg-gia-500 text-white p-1.5 rounded-full shadow-lg border-2 border-neutral-900 dark:border-neutral-800 transition-all active:scale-90 opacity-0 group-hover:opacity-100"
-          title="Download QR as PNG"
-        >
-          <Download size={12} />
-        </button>
-      </div>
-
-      {/* Session selector + copy */}
-      <div className="flex gap-2 shrink-0">
-        <div className="relative flex-1">
-          <select
-            className="w-full bg-white/10 border border-white/10 rounded-xl py-2.5 px-3 pr-8 text-[11px] font-bold text-neutral-200 outline-none focus:ring-1 focus:ring-gia-500 appearance-none cursor-pointer"
-            value={selectedSession}
-            onChange={e => onSessionChange(e.target.value)}
+      {/* ── QR Code ────────────────────────────────────────────────────────── */}
+      <div className="flex-1 min-h-0 px-5 py-4 flex items-center justify-center">
+        <div className="group relative w-full">
+          {/* QR wrapper — white background always so QR is scannable in dark mode */}
+          <div
+            ref={qrContainerRef}
+            className="
+              bg-white rounded-xl border border-neutral-200 dark:border-neutral-700
+              p-4 w-full aspect-square flex items-center justify-center
+              transition-transform duration-200 group-hover:scale-[1.015]
+              shadow-sm
+            "
           >
-            {activeEvent.hasPreReg && <option value="Pre-Registration">Pre-Registration</option>}
-            {activeEvent.sessions?.map(s => <option key={s} value={s}>{s}</option>)}
-          </select>
-          <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-neutral-500 pointer-events-none" />
+            <QRCodeSVG
+              value={registrationUrl}
+              size={512}
+              style={{ width: '100%', height: 'auto', display: 'block' }}
+              level="H"
+              fgColor="#0f172a"
+              marginSize={0}
+            />
+          </div>
+
+          {/* Download button — appears on hover */}
+          <button
+            onClick={downloadQRCode}
+            title="Download QR as PNG"
+            className="
+              absolute top-2 right-2
+              bg-white dark:bg-neutral-800
+              border border-neutral-200 dark:border-neutral-700
+              text-neutral-500 dark:text-neutral-400
+              hover:text-gia-600 dark:hover:text-gia-400
+              hover:border-gia-400 dark:hover:border-gia-600
+              p-1.5 rounded-lg shadow-sm
+              transition-all active:scale-90
+              opacity-0 group-hover:opacity-100
+            "
+          >
+            <Download size={13} />
+          </button>
         </div>
-        <button
-          onClick={handleCopy}
-          className={`p-2.5 rounded-xl transition-all active:scale-95 border ${
-            copied
-              ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-400'
-              : 'bg-white/5 border-white/10 text-white hover:bg-white/10'
-          }`}
-          title="Copy registration link"
-        >
-          {copied ? <Check size={16} /> : <Link2 size={16} />}
-        </button>
       </div>
 
-      {/* URL preview */}
-      <p className="text-[9px] text-neutral-500 font-mono truncate shrink-0">{registrationUrl}</p>
+      {/* ── Session selector + actions ──────────────────────────────────────── */}
+      <div className="px-5 pb-5 space-y-3 shrink-0">
+
+        {/* Session dropdown */}
+        {allSessions.length > 1 && (
+          <div className="relative">
+            <select
+              className="
+                w-full appearance-none
+                bg-neutral-50 dark:bg-neutral-800
+                border border-neutral-200 dark:border-neutral-700
+                text-neutral-800 dark:text-neutral-200
+                rounded-xl px-3 py-2.5 pr-8
+                text-xs font-bold
+                outline-none focus:ring-2 focus:ring-gia-500/30 focus:border-gia-500
+                cursor-pointer transition-colors
+              "
+              value={selectedSession}
+              onChange={e => onSessionChange(e.target.value)}
+            >
+              {allSessions.map(s => (
+                <option key={s} value={s}>{s}</option>
+              ))}
+            </select>
+            <ChevronDown
+              size={13}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 dark:text-neutral-500 pointer-events-none"
+            />
+          </div>
+        )}
+
+        {/* Action row: copy + open */}
+        <div className="flex gap-2">
+          {/* Copy link */}
+          <button
+            onClick={handleCopy}
+            className={`
+              flex-1 flex items-center justify-center gap-2
+              px-3 py-2.5 rounded-xl
+              text-[10px] font-black uppercase tracking-widest
+              border transition-all active:scale-[0.98]
+              ${copied
+                ? 'bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800 text-emerald-600 dark:text-emerald-400'
+                : 'bg-neutral-50 dark:bg-neutral-800 border-neutral-200 dark:border-neutral-700 text-neutral-600 dark:text-neutral-400 hover:border-gia-400 dark:hover:border-gia-600 hover:text-gia-600 dark:hover:text-gia-400'
+              }
+            `}
+            title="Copy registration link"
+          >
+            {copied ? <Check size={13} /> : <Link2 size={13} />}
+            {copied ? 'Copied!' : 'Copy Link'}
+          </button>
+
+          {/* Open in new tab */}
+          <a
+            href={registrationUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="
+              flex items-center justify-center
+              px-3 py-2.5 rounded-xl
+              bg-neutral-50 dark:bg-neutral-800
+              border border-neutral-200 dark:border-neutral-700
+              text-neutral-500 dark:text-neutral-400
+              hover:border-gia-400 dark:hover:border-gia-600
+              hover:text-gia-600 dark:hover:text-gia-400
+              transition-all active:scale-[0.98]
+            "
+            title="Open registration page"
+          >
+            <ExternalLink size={13} />
+          </a>
+        </div>
+
+        {/* URL preview */}
+        <p className="text-[9px] text-neutral-400 dark:text-neutral-600 font-mono truncate leading-none">
+          {registrationUrl}
+        </p>
+      </div>
     </div>
   );
 };

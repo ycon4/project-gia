@@ -5,17 +5,15 @@ import {
 } from 'recharts';
 import { ChevronDown } from 'lucide-react';
 
-const LILAC   = '#a673d8';
+const LILAC = '#a673d8';
 const LILAC_2 = '#b07ade';
-const BLUE    = '#73DAE1';
-const COLORS  = {
-  Male:    BLUE,
-  Female:  '#DD6E6B',
-  palette: [LILAC, LILAC_2, BLUE, '#f43f5e', '#f59e0b', '#10b981'],
+const TEAL = '#14b8a6';
+const AMBER = '#f59e0b';
+const COLORS = {
+  Male: TEAL,
+  Female: AMBER,
+  palette: [LILAC, LILAC_2, TEAL, AMBER, '#10b981', '#f43f5e'],
 };
-
-// Darker cyan used only for Male text in light-mode tooltips (original is too bright to read)
-const MALE_TEXT_LIGHT = '#0e7490';
 
 function CustomTooltip({ active, payload, label }) {
   if (!active || !payload || !payload.length) return null;
@@ -33,14 +31,11 @@ function CustomTooltip({ active, payload, label }) {
           {label}
         </p>
       )}
-      {payload.map((entry, i) => {
-        const textColor = entry.dataKey === 'Male' && !isDark ? MALE_TEXT_LIGHT : entry.color;
-        return (
-          <p key={i} style={{ color: textColor, fontSize: 13, margin: '2px 0' }}>
-            {entry.name} : {entry.value}
-          </p>
-        );
-      })}
+      {payload.map((entry, i) => (
+        <p key={i} style={{ color: entry.color, fontSize: 13, margin: '2px 0' }}>
+          {entry.name} : {entry.value}
+        </p>
+      ))}
     </div>
   );
 }
@@ -50,19 +45,19 @@ const nb = v => (v === 'Yes' || v === true || v === 'yes' || v === 'true' || v =
 // Normalizes a single record so both old (pre-2026) and new field names work.
 const normalizeEnrollmentRecord = (r) => ({
   ...r,
-  stud_college:         r.stud_college         || r.college         || 'Not Specified',
-  stud_program:         r.stud_program          || r.program         || 'Not Specified',
-  stud_yrlevel:         r.stud_yrlevel          || r.year_level      || 'Not Specified',
-  studethnic:           r.studethnic            || r.ethnicity       || 'Not Specified',
-  studreligion:         r.studreligion          || r.religion        || 'Not Specified',
-  studid:               r.studid                || r.student_id      || 'N/A',
-  studgender:           r.studgender            || r.sex             || 'Unknown',
-  currentadd_prov:      r.currentadd_prov       || r.place_of_origin || 'Not Specified',
+  stud_college: r.stud_college || r.college || 'Not Specified',
+  stud_program: r.stud_program || r.program || 'Not Specified',
+  stud_yrlevel: r.stud_yrlevel || r.year_level || 'Not Specified',
+  studethnic: r.studethnic || r.ethnicity || 'Not Specified',
+  studreligion: r.studreligion || r.religion || 'Not Specified',
+  studid: r.studid || r.student_id || 'N/A',
+  studgender: r.studgender || r.sex || 'Unknown',
+  currentadd_prov: r.currentadd_prov || r.place_of_origin || 'Not Specified',
   is_first_gen_learner: nb(r.is_first_gen_learner ?? r['_first_generation?']),
-  '_pwd?':              nb(r['_pwd?'] ?? r.is_pwd),
-  '_solo_parent?':      nb(r['_solo_parent?'] ?? r.is_solo_parent),
-  '_ip_member?':        nb(r['_ip_member?'] ?? r.is_ip_member),
-  '_working_student?':  nb(r['_working_student?'] ?? r.is_working_student),
+  '_pwd?': nb(r['_pwd?'] ?? r.is_pwd),
+  '_solo_parent?': nb(r['_solo_parent?'] ?? r.is_solo_parent),
+  '_ip_member?': nb(r['_ip_member?'] ?? r.is_ip_member),
+  '_working_student?': nb(r['_working_student?'] ?? r.is_working_student),
 });
 
 export default function StudentEnrollmentVisuals({ data, recordsCount = 0 }) {
@@ -96,26 +91,101 @@ export default function StudentEnrollmentVisuals({ data, recordsCount = 0 }) {
 
   const stats = useMemo(() => {
     if (!normalizedData || normalizedData.length === 0) return null;
-    const college   = processSDD('stud_college');
+    const college = processSDD('stud_college');
     const yearLevel = processSDD('stud_yrlevel').sort((a, b) => a.name.localeCompare(b.name));
     const vulnerabilities = [
-      { id: '_pwd?',                label: 'PWD'                  },
-      { id: '_solo_parent?',        label: 'Solo Parent'          },
-      { id: '_ip_member?',          label: 'IP Member'            },
-      { id: '_working_student?',    label: 'Working'              },
-      { id: 'is_child_lgbtq',       label: 'Child of LGBTQ+'      },
-      { id: 'is_child_pdl',         label: 'Child of PDL'         },
+      { id: '_pwd?', label: 'PWD' },
+      { id: '_solo_parent?', label: 'Solo Parent' },
+      { id: '_ip_member?', label: 'IP Member' },
+      { id: '_working_student?', label: 'Working' },
+      { id: 'is_child_lgbtq', label: 'Child of LGBTQ+' },
+      { id: 'is_child_pdl', label: 'Child of PDL' },
       { id: 'is_child_solo_parent', label: 'Child of Solo Parent' },
     ].map(v => {
       const filtered = normalizedData.filter(d => d[v.id] === 'Yes');
       return { name: v.label, Female: filtered.filter(d => d.studgender === 'Female').length, Male: filtered.filter(d => d.studgender === 'Male').length };
     });
-    const programs  = processSDD('stud_program', 10);
+    const programs = processSDD('stud_program', 10);
     const ethnicity = processSDD('studethnic', 5);
-    const religion  = processSDD('studreligion', 5);
-    const origin    = processSDD('currentadd_prov', 5);
-    const firstGen  = processSDD('is_first_gen_learner');
-    return { college, yearLevel, vulnerabilities, programs, ethnicity, religion, origin, firstGen };
+    const religion = processSDD('studreligion', 5);
+    const origin = processSDD('currentadd_prov', 5);
+    const firstGen = processSDD('is_first_gen_learner');
+
+    // NEW CHARTS DATA
+    // 1. Socioeconomic Status - Income Brackets (More balanced ranges)
+    const socioeconomic = (() => {
+      const brackets = {
+        'Below 50k': { name: 'Below ₱50k', Male: 0, Female: 0, total: 0 },
+        '50k-100k': { name: '₱50k - ₱100k', Male: 0, Female: 0, total: 0 },
+        '100k-200k': { name: '₱100k - ₱200k', Male: 0, Female: 0, total: 0 },
+        '200k-300k': { name: '₱200k - ₱300k', Male: 0, Female: 0, total: 0 },
+        '300k-500k': { name: '₱300k - ₱500k', Male: 0, Female: 0, total: 0 },
+        '500k-1M': { name: '₱500k - ₱1M', Male: 0, Female: 0, total: 0 },
+        'Above 1M': { name: 'Above ₱1M', Male: 0, Female: 0, total: 0 },
+        'Not Specified': { name: 'Not Specified', Male: 0, Female: 0, total: 0 },
+      };
+
+      normalizedData.forEach(d => {
+        const mother = parseFloat(d.mother_yrgross_income) || 0;
+        const father = parseFloat(d.father_yrgross_income) || 0;
+        const total = mother + father;
+        const gender = d.studgender === 'Female' ? 'Female' : 'Male';
+
+        let bracket = 'Not Specified';
+        if (total > 0) {
+          if (total < 50000) bracket = 'Below 50k';
+          else if (total < 100000) bracket = '50k-100k';
+          else if (total < 200000) bracket = '100k-200k';
+          else if (total < 300000) bracket = '200k-300k';
+          else if (total < 500000) bracket = '300k-500k';
+          else if (total < 1000000) bracket = '500k-1M';
+          else bracket = 'Above 1M';
+        }
+
+        brackets[bracket][gender]++;
+        brackets[bracket].total++;
+      });
+
+      return Object.values(brackets).filter(b => b.total > 0);
+    })();
+
+    // 2. Disability Types Breakdown
+    const disabilityTypes = (() => {
+      const types = {};
+      normalizedData.forEach(d => {
+        const isPWD = d['_pwd?'] === 'Yes' || d.is_pwd === 'Yes';
+        if (!isPWD) return;
+
+        const aspect = d.pwd_aspect || 'Not Specified';
+        const gender = d.studgender === 'Female' ? 'Female' : 'Male';
+
+        if (!types[aspect]) types[aspect] = { name: aspect, Male: 0, Female: 0, total: 0 };
+        types[aspect][gender]++;
+        types[aspect].total++;
+      });
+
+      return Object.values(types).sort((a, b) => b.total - a.total);
+    })();
+
+    // 3. Indigenous Communities
+    const indigenousCommunities = (() => {
+      const communities = {};
+      normalizedData.forEach(d => {
+        const isIP = d['_ip_member?'] === 'Yes' || d.is_indigenous === 'Yes';
+        if (!isIP) return;
+
+        const group = d.indigenous_group || d.studethnic || 'Not Specified';
+        const gender = d.studgender === 'Female' ? 'Female' : 'Male';
+
+        if (!communities[group]) communities[group] = { name: group, Male: 0, Female: 0, total: 0 };
+        communities[group][gender]++;
+        communities[group].total++;
+      });
+
+      return Object.values(communities).sort((a, b) => b.total - a.total).slice(0, 8);
+    })();
+
+    return { college, yearLevel, vulnerabilities, programs, ethnicity, religion, origin, firstGen, socioeconomic, disabilityTypes, indigenousCommunities };
   }, [normalizedData]);
 
   if (!stats) return null;
@@ -123,7 +193,7 @@ export default function StudentEnrollmentVisuals({ data, recordsCount = 0 }) {
   const charts = [
     {
       title: "Enrollment by College",
-      desc:  "Total student population distribution across colleges disaggregated by sex.",
+      desc: "Total student population distribution across colleges disaggregated by sex.",
       render: () => (
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={stats.college} layout="vertical">
@@ -132,15 +202,15 @@ export default function StudentEnrollmentVisuals({ data, recordsCount = 0 }) {
             <YAxis dataKey="name" type="category" width={150} fontSize={10} fontWeight={600} axisLine={false} tickLine={false} />
             <Tooltip cursor={{ fill: `${LILAC}10` }} content={<CustomTooltip />} />
             <Legend verticalAlign="top" align="right" />
-            <Bar dataKey="Male"   stackId="a" fill={COLORS.Male}   barSize={18} />
-            <Bar dataKey="Female" stackId="a" fill={COLORS.Female} radius={[0,4,4,0]} barSize={18} />
+            <Bar dataKey="Male" stackId="a" fill={COLORS.Male} barSize={18} />
+            <Bar dataKey="Female" stackId="a" fill={COLORS.Female} radius={[0, 4, 4, 0]} barSize={18} />
           </BarChart>
         </ResponsiveContainer>
       ),
     },
     {
       title: "Year Level Distribution",
-      desc:  "Progress of male vs female students per academic year level.",
+      desc: "Progress of male vs female students per academic year level.",
       render: () => (
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={stats.yearLevel}>
@@ -149,15 +219,15 @@ export default function StudentEnrollmentVisuals({ data, recordsCount = 0 }) {
             <YAxis fontSize={10} />
             <Tooltip content={<CustomTooltip />} />
             <Legend />
-            <Bar dataKey="Male"   fill={COLORS.Male}   radius={[4,4,0,0]} />
-            <Bar dataKey="Female" fill={COLORS.Female} radius={[4,4,0,0]} />
+            <Bar dataKey="Male" fill={COLORS.Male} radius={[4, 4, 0, 0]} />
+            <Bar dataKey="Female" fill={COLORS.Female} radius={[4, 4, 0, 0]} />
           </BarChart>
         </ResponsiveContainer>
       ),
     },
     {
       title: "Vulnerability & Support Tracking",
-      desc:  "Sex representation across specific support groups (PWD, 4Ps, Solo Parent, etc.).",
+      desc: "Sex representation across specific support groups (PWD, 4Ps, Solo Parent, etc.).",
       render: () => (
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={stats.vulnerabilities}>
@@ -166,15 +236,15 @@ export default function StudentEnrollmentVisuals({ data, recordsCount = 0 }) {
             <YAxis />
             <Tooltip content={<CustomTooltip />} />
             <Legend />
-            <Bar dataKey="Male"   fill={COLORS.Male}   radius={[4,4,0,0]} />
-            <Bar dataKey="Female" fill={COLORS.Female} radius={[4,4,0,0]} />
+            <Bar dataKey="Male" fill={COLORS.Male} radius={[4, 4, 0, 0]} />
+            <Bar dataKey="Female" fill={COLORS.Female} radius={[4, 4, 0, 0]} />
           </BarChart>
         </ResponsiveContainer>
       ),
     },
     {
       title: "Top 10 Degree Programs",
-      desc:  "Most populated academic programs disaggregated by gender.",
+      desc: "Most populated academic programs disaggregated by gender.",
       render: () => (
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={stats.programs} layout="vertical">
@@ -182,7 +252,7 @@ export default function StudentEnrollmentVisuals({ data, recordsCount = 0 }) {
             <XAxis type="number" hide />
             <Tooltip content={<CustomTooltip />} />
             <Legend />
-            <Bar dataKey="Male"   stackId="a" fill={COLORS.Male}   barSize={12} />
+            <Bar dataKey="Male" stackId="a" fill={COLORS.Male} barSize={12} />
             <Bar dataKey="Female" stackId="a" fill={COLORS.Female} barSize={12} />
           </BarChart>
         </ResponsiveContainer>
@@ -190,7 +260,7 @@ export default function StudentEnrollmentVisuals({ data, recordsCount = 0 }) {
     },
     {
       title: "Cultural Profile — Ethnicity",
-      desc:  "Top 5 ethnic groups represented in the student body.",
+      desc: "Top 5 ethnic groups represented in the student body.",
       render: () => (
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
@@ -205,7 +275,7 @@ export default function StudentEnrollmentVisuals({ data, recordsCount = 0 }) {
     },
     {
       title: "Religious Affiliation",
-      desc:  "Top 5 religious groups recorded in the data.",
+      desc: "Top 5 religious groups recorded in the data.",
       render: () => (
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={stats.religion}>
@@ -214,15 +284,15 @@ export default function StudentEnrollmentVisuals({ data, recordsCount = 0 }) {
             <YAxis />
             <Tooltip content={<CustomTooltip />} />
             <Legend />
-            <Bar dataKey="Female" fill={COLORS.Female} stackId="a" radius={[4,4,0,0]} />
-            <Bar dataKey="Male"   fill={COLORS.Male}   stackId="a" radius={[4,4,0,0]} />
+            <Bar dataKey="Female" fill={COLORS.Female} stackId="a" radius={[4, 4, 0, 0]} />
+            <Bar dataKey="Male" fill={COLORS.Male} stackId="a" radius={[4, 4, 0, 0]} />
           </BarChart>
         </ResponsiveContainer>
       ),
     },
     {
       title: "First Generation Students",
-      desc:  "Students who are the first in their families to attend college.",
+      desc: "Students who are the first in their families to attend college.",
       render: () => (
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={stats.firstGen}>
@@ -231,23 +301,86 @@ export default function StudentEnrollmentVisuals({ data, recordsCount = 0 }) {
             <YAxis />
             <Tooltip content={<CustomTooltip />} />
             <Legend />
-            <Bar dataKey="Male"   fill={COLORS.Male}   stackId="a" radius={[4,4,0,0]} />
-            <Bar dataKey="Female" fill={COLORS.Female} stackId="a" radius={[4,4,0,0]} />
+            <Bar dataKey="Male" fill={COLORS.Male} stackId="a" radius={[4, 4, 0, 0]} />
+            <Bar dataKey="Female" fill={COLORS.Female} stackId="a" radius={[4, 4, 0, 0]} />
           </BarChart>
         </ResponsiveContainer>
       ),
     },
     {
       title: "Regional Origin",
-      desc:  "Top provinces where students are currently residing.",
+      desc: "Top provinces where students are currently residing.",
       render: () => (
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={stats.origin} layout="vertical">
             <YAxis dataKey="name" type="category" fontSize={9} width={90} />
             <XAxis type="number" hide />
             <Tooltip content={<CustomTooltip />} />
-            <Bar dataKey="total" fill={LILAC} radius={[0,4,4,0]} barSize={22} />
+            <Bar dataKey="total" fill={LILAC} radius={[0, 4, 4, 0]} barSize={22} />
           </BarChart>
+        </ResponsiveContainer>
+      ),
+    },
+    {
+      title: "Socioeconomic Distribution",
+      desc: "Combined parental annual income brackets showing household economic status by sex.",
+      render: () => (
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart data={stats.socioeconomic}>
+            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
+            <XAxis dataKey="name" fontSize={10} fontWeight="bold" angle={-15} textAnchor="end" height={60} />
+            <YAxis fontSize={10} />
+            <Tooltip content={<CustomTooltip />} />
+            <Legend />
+            <Bar dataKey="Male" fill={COLORS.Male} stackId="a" radius={[0, 0, 0, 0]} />
+            <Bar dataKey="Female" fill={COLORS.Female} stackId="a" radius={[4, 4, 0, 0]} />
+          </BarChart>
+        </ResponsiveContainer>
+      ),
+    },
+    {
+      title: "Disability Types & Aspects",
+      desc: "Breakdown of specific disability types among PWD students disaggregated by sex.",
+      render: () => (
+        <ResponsiveContainer width="100%" height="100%">
+          {stats.disabilityTypes.length > 0 ? (
+            <BarChart data={stats.disabilityTypes} layout="vertical">
+              <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#e5e7eb" />
+              <XAxis type="number" hide />
+              <YAxis dataKey="name" type="category" width={140} fontSize={10} fontWeight={600} axisLine={false} tickLine={false} />
+              <Tooltip cursor={{ fill: `${LILAC}10` }} content={<CustomTooltip />} />
+              <Legend verticalAlign="top" align="right" />
+              <Bar dataKey="Male" stackId="a" fill={COLORS.Male} barSize={16} />
+              <Bar dataKey="Female" stackId="a" fill={COLORS.Female} radius={[0, 4, 4, 0]} barSize={16} />
+            </BarChart>
+          ) : (
+            <div className="flex items-center justify-center h-full">
+              <p className="text-sm text-neutral-400 dark:text-neutral-500 italic">No PWD data with specified disability types</p>
+            </div>
+          )}
+        </ResponsiveContainer>
+      ),
+    },
+    {
+      title: "Indigenous Communities",
+      desc: "Representation of specific indigenous peoples and cultural groups by sex.",
+      render: () => (
+        <ResponsiveContainer width="100%" height="100%">
+          {stats.indigenousCommunities.length > 0 ? (
+            <BarChart data={stats.indigenousCommunities} layout="vertical">
+              <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#e5e7eb" />
+              <XAxis type="number" hide />
+              <YAxis dataKey="name" type="category" width={120} fontSize={10} fontWeight={600} axisLine={false} tickLine={false} />
+              <Tooltip cursor={{ fill: `${LILAC}10` }} content={<CustomTooltip />} />
+              <Legend verticalAlign="top" align="right" />
+              <Bar dataKey="Male" stackId="a" fill={COLORS.Male} barSize={16} />
+              <Bar dataKey="Female" stackId="a" fill={COLORS.Female} radius={[0, 4, 4, 0]} barSize={16} />
+            </BarChart>
+          ) : (
+            <div className="flex items-center justify-center h-full">
+              <p className="text-sm text-neutral-400 dark:text-neutral-500 italic">No indigenous community data specified</p>
+            </div>
+          )}
         </ResponsiveContainer>
       ),
     },

@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import giaLogo from './assets/GIA Logo.svg';
 import {
@@ -12,11 +12,11 @@ import ChatPage from './pages/ChatPage';
 import ChatsPage from './pages/ChatsPage';
 import EventsPage from './pages/EventsPage';
 import LoginPage from './pages/LoginPage';
-import RegistrationForm from './components/events/RegistrationForm';
+import PublicRegister from './components/events/PublicRegister';
 import FloatingChatButton from './components/FloatingChatButton';
-import { getAllDocuments, saveEvent, updateDocument, deleteDocument } from '../firebase/services';
+import { getAllDocuments, saveEvent, updateDocument, removeEvent } from '../firebase/services';
 import { db, auth } from '../firebase/config';
-import { collection, addDoc, serverTimestamp, getDocs, query, where, deleteDoc, doc } from 'firebase/firestore';
+import { collection, getDocs, query, where, deleteDoc, doc } from 'firebase/firestore';
 import { onAuthStateChanged, signOut, updateProfile } from 'firebase/auth';
 
 function App() {
@@ -37,8 +37,6 @@ function App() {
   const [attendance, setAttendance] = useState([]);
 
   const [isRegisterMode, setIsRegisterMode] = useState(false);
-  const [currentEventId, setCurrentEventId] = useState(null);
-  const [currentSession, setCurrentSession] = useState('General Attendance');
 
   const [conversations, setConversations] = useState([]);
   const [activeConvId, setActiveConvId] = useState(null);
@@ -67,18 +65,10 @@ function App() {
     return unsubscribe;
   }, []);
 
-  // ── Kiosk detection
+  // ── Kiosk detection — just flag the mode, PublicRegister handles its own data fetch
   useEffect(() => {
-    const path = window.location.pathname;
-    const params = new URLSearchParams(window.location.search);
-    const session = params.get('session');
-    if (path.startsWith('/register/')) {
-      const eventId = path.split('/')[2];
-      if (eventId) {
-        setIsRegisterMode(true);
-        setCurrentEventId(eventId);
-        if (session) setCurrentSession(decodeURIComponent(session));
-      }
+    if (window.location.pathname.startsWith('/register/')) {
+      setIsRegisterMode(true);
     }
   }, []);
 
@@ -164,27 +154,13 @@ function App() {
   const handleDeleteEvent = async (id, title) => {
     if (!window.confirm(`Permanently delete "${title}"?`)) return;
     try {
-      await deleteDocument('events', id);
+      // removeEvent deletes the event doc AND all its attendance records in one batch
+      await removeEvent(id);
       setEvents(prev => prev.filter(ev => ev.id !== id));
       if (activeEvent?.id === id) setActiveEvent(null);
-      alert('The event has been successfully removed.');
+      alert('The event and all its attendance records have been removed.');
     } catch {
       alert('Could not delete. Check your Firestore permissions.');
-    }
-  };
-
-  const handleAttendanceSubmit = async (formData) => {
-    try {
-      await addDoc(collection(db, 'attendance'), {
-        ...formData,
-        eventId: currentEventId,
-        session_name: currentSession,
-        createdAt: serverTimestamp(),
-      });
-      loadDatabaseData();
-    } catch (error) {
-      console.error('Attendance submission error:', error);
-      throw error;
     }
   };
 
@@ -210,16 +186,6 @@ function App() {
     }
   };
 
-  const regData = useMemo(() => {
-    if (!isRegisterMode || events.length === 0) return null;
-    const found = events.find(e => String(e.id) === String(currentEventId));
-    return {
-      eventName: found?.title || 'Event Not Found',
-      description: found?.description || '',
-      formConfig: found?.formConfig || {},
-    };
-  }, [isRegisterMode, events, currentEventId]);
-
   if (authLoading) return (
     <div className="min-h-screen bg-gia-50 dark:bg-neutral-950 flex items-center justify-center">
       <div className="text-gia-600 font-bold text-p4-sm animate-pulse tracking-widest uppercase">Loading...</div>
@@ -229,7 +195,7 @@ function App() {
   if (!user && !isRegisterMode) return <LoginPage darkMode={darkMode} />;
 
   return (
-    <div className="flex h-screen bg-neutral-50 dark:bg-neutral-950 overflow-hidden relative">
+    <div className={`flex bg-neutral-50 dark:bg-neutral-950 relative ${isRegisterMode ? 'min-h-screen' : 'h-screen overflow-hidden'}`}>
       {/* Decorative background */}
       <div className="fixed inset-0 pointer-events-none -z-10">
         <div className="absolute top-[-15%] left-[-5%] w-[50%] h-[50%] bg-gia-100/30 dark:bg-gia-900/10 rounded-full blur-[160px]" />
@@ -260,23 +226,13 @@ function App() {
 
       {/* Main content */}
       <div
-        className={`flex flex-col flex-1 min-w-0 min-h-0 transition-[margin] duration-300 ease-in-out ${
-          !isRegisterMode ? (sidebarOpen ? 'ml-56' : 'ml-10') : ''
-        }`}
+        className={`flex flex-col flex-1 min-w-0 transition-[margin] duration-300 ease-in-out ${isRegisterMode ? '' : 'min-h-0'} ${!isRegisterMode ? (sidebarOpen ? 'ml-56' : 'ml-10') : ''
+          }`}
       >
         {isRegisterMode ? (
-          <main className="flex-1 overflow-y-auto p-8">
-            <RegistrationForm
-              eventName={regData?.eventName || 'Loading...'}
-              description={regData?.description}
-              formConfig={regData?.formConfig}
-              selectedSession={currentSession}
-              onSubmit={handleAttendanceSubmit}
-              currentCount={attendance.filter(
-                a => String(a.eventId) === String(currentEventId) && a.session_name === currentSession
-              ).length}
-            />
-          </main>
+          // PublicRegister is fully self-contained — fetches its own event data,
+          // handles loading/not-found/error states, and submits attendance itself.
+          <PublicRegister />
         ) : activeSection === 'chat' ? (
           <ChatPage
             dbData={dbData}
@@ -361,10 +317,10 @@ function Sidebar({
   user, displayName, onEditProfile,
 }) {
   const navItems = [
-    { id: 'home',  label: 'About',     icon: HomeIcon      },
-    { id: 'event', label: 'Events',    icon: CalendarDays  },
-    { id: 'data',  label: 'Distribution', icon: BarChart3     },
-    { id: 'chats', label: 'Chats',     icon: MessageCircle },
+    { id: 'home', label: 'About', icon: HomeIcon },
+    { id: 'event', label: 'Events', icon: CalendarDays },
+    { id: 'data', label: 'Distribution', icon: BarChart3 },
+    { id: 'chats', label: 'Chats', icon: MessageCircle },
   ];
 
   return (
@@ -455,11 +411,10 @@ function Sidebar({
                   <button
                     key={conv.id}
                     onClick={() => onSelectConv(conv)}
-                    className={`w-full text-left px-3 py-2 rounded-lg transition-all duration-100 group flex items-start gap-2 ${
-                      activeConvId === conv.id && activeSection === 'chat'
-                        ? 'bg-neutral-100 dark:bg-neutral-800 text-slate-900 dark:text-neutral-100'
-                        : 'text-neutral-500 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 hover:text-neutral-900 dark:hover:text-neutral-100'
-                    }`}
+                    className={`w-full text-left px-3 py-2 rounded-lg transition-all duration-100 group flex items-start gap-2 ${activeConvId === conv.id && activeSection === 'chat'
+                      ? 'bg-neutral-100 dark:bg-neutral-800 text-slate-900 dark:text-neutral-100'
+                      : 'text-neutral-500 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 hover:text-neutral-900 dark:hover:text-neutral-100'
+                      }`}
                   >
                     <MessageSquare size={12} className="shrink-0 mt-0.5 opacity-40" />
                     <div className="flex-1 min-w-0">

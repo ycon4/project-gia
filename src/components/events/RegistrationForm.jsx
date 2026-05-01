@@ -1,27 +1,27 @@
 import React, { useState } from 'react';
-import { 
-  ShieldCheck, Fingerprint, Send, CheckCircle2, 
-  CalendarCheck, Globe, Info
+import {
+  ShieldCheck, Send, CheckCircle2,
+  CalendarCheck, Info, Sparkles
 } from 'lucide-react';
 
-// --- STABLE STYLES ---
+// --- COMPACT STYLES ALIGNED WITH GIA THEME ---
 const inputClass = `
-  w-full px-4 py-3 bg-white border border-slate-200 rounded-xl 
-  text-slate-700 font-semibold text-sm transition-all duration-300
-  placeholder:text-slate-300 hover:border-indigo-300
-  focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/5 focus:outline-none
-  disabled:bg-slate-50
+  w-full px-3 py-2.5 bg-white border border-neutral-200 rounded-lg 
+  text-neutral-800 font-medium text-sm transition-all
+  placeholder:text-neutral-400 hover:border-gia-400
+  focus:border-gia-500 focus:ring-2 focus:ring-gia-500/20 focus:outline-none
+  disabled:bg-neutral-50
 `;
 
 const labelClass = `
-  block text-[10px] font-black text-slate-500 uppercase tracking-[0.15em] mb-1.5 ml-1
+  block text-[10px] font-black text-neutral-500 uppercase tracking-widest mb-1.5
 `;
 
-export default function RegistrationForm({ 
-  eventName = "Activity Registration", 
+export default function RegistrationForm({
+  eventName = "Activity Registration",
   description = "",
-  onSubmit, 
-  formConfig = {}, 
+  onSubmit,
+  formConfig = {},
   hasPreReg = false,
   selectedSession = "General Attendance"
 }) {
@@ -46,7 +46,7 @@ export default function RegistrationForm({
     return defaults.includes(fieldName);
   };
 
-  const dynamicFields = Object.keys(initialFormState).filter(key => 
+  const dynamicFields = Object.keys(initialFormState).filter(key =>
     isEnabled(key) && key !== 'fullName' && key !== 'sex'
   );
 
@@ -89,13 +89,13 @@ export default function RegistrationForm({
         'College of Computer Studies (CCS)',
         'Other'
       ];
-      
+
       const isManual = formData.office_college !== '' && !colleges.includes(formData.office_college);
 
 
       return (
         <div className="space-y-2">
-          <select 
+          <select
             className={inputClass}
             // If we are typing manually, the dropdown should show "Other"
             value={isManual ? 'Other' : formData.office_college}
@@ -109,7 +109,7 @@ export default function RegistrationForm({
             {colleges.map(opt => <option key={opt} value={opt}>{opt}</option>)}
             <option value="Other">Other (Please Specify)</option>
           </select>
-    
+
           {(isManual || formData.office_college === 'typing...') && (
             <input
               {...commonProps}
@@ -146,12 +146,12 @@ export default function RegistrationForm({
     }
 
     const typeMap = { email: 'email', age: 'number', phone: 'tel' };
-    const placeholderMap = { 
-        fullName: "Juan D. Dela Cruz", 
-        id_number: "2024-XXXX", 
-        phone: "09XXXXXXXXX", 
-        email: "name@example.com",
-        emergency_contact: "Contact Person & No."
+    const placeholderMap = {
+      fullName: "Juan D. Dela Cruz",
+      id_number: "2024-XXXX",
+      phone: "09XXXXXXXXX",
+      email: "name@example.com",
+      emergency_contact: "Contact Person & No."
     };
 
     return <input {...commonProps} type={typeMap[field] || 'text'} placeholder={placeholderMap[field] || ""} />;
@@ -159,15 +159,15 @@ export default function RegistrationForm({
 
   if (submitted) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
-        <div className="bg-white rounded-[40px] shadow-2xl border-t-[12px] border-indigo-600 max-w-md w-full p-12 text-center animate-in zoom-in-95">
-          <div className="w-20 h-20 bg-emerald-50 rounded-full flex items-center justify-center mx-auto mb-6">
-            <CheckCircle2 size={44} className="text-emerald-500" />
+      <div className="min-h-screen bg-gradient-to-br from-neutral-50 to-gia-50/30 flex items-center justify-center p-6">
+        <div className="bg-white rounded-3xl shadow-xl border border-neutral-200 max-w-md w-full p-10 text-center animate-in zoom-in-95">
+          <div className="w-16 h-16 bg-gradient-to-br from-emerald-400 to-emerald-600 rounded-full flex items-center justify-center mx-auto mb-5 shadow-lg shadow-emerald-200">
+            <CheckCircle2 size={32} className="text-white" />
           </div>
-          <h2 className="text-3xl font-black text-slate-900 tracking-tight uppercase">Confirmed</h2>
-          <p className="text-slate-500 mt-3 font-medium leading-relaxed">Your response has been officially documented.</p>
-          <button onClick={() => setSubmitted(false)} className="mt-10 px-8 py-4 bg-slate-900 text-white rounded-2xl font-bold text-xs uppercase tracking-widest hover:bg-indigo-700 transition-all shadow-lg">
-            Return to Form
+          <h2 className="text-2xl font-black text-neutral-900 tracking-tight uppercase">Registration Complete!</h2>
+          <p className="text-neutral-500 mt-2 text-sm font-medium leading-relaxed">Your attendance has been successfully recorded.</p>
+          <button onClick={() => setSubmitted(false)} className="mt-8 px-6 py-3 bg-gia-600 text-white rounded-xl font-bold text-xs uppercase tracking-widest hover:bg-gia-700 transition-all shadow-lg">
+            Register Another
           </button>
         </div>
       </div>
@@ -175,76 +175,125 @@ export default function RegistrationForm({
   }
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] py-12 px-4 font-sans selection:bg-indigo-100">
-      <div className="max-w-2xl mx-auto space-y-6">
-        
-        <div className="bg-white rounded-[32px] shadow-sm border border-slate-200/60 p-10 relative overflow-hidden group">
-          <div className="absolute -top-12 -right-12 text-indigo-600 opacity-[0.05] group-hover:rotate-12 transition-transform duration-700">
-            <Globe size={280} />
-          </div>
-          
+    <div className="min-h-screen bg-gradient-to-br from-neutral-50 to-gia-50/30 py-8 px-4 font-sans selection:bg-gia-100">
+      <div className="max-w-3xl mx-auto space-y-5">
+
+        {/* Header Card - Compact */}
+        <div className="bg-white rounded-2xl shadow-sm border border-neutral-200 p-6 relative overflow-hidden">
+          {/* Decorative gradient */}
+          <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-gia-100/40 to-transparent rounded-full blur-3xl -z-0" />
+
           <div className="relative z-10">
-            <div className={`inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest mb-6 border-2 ${hasPreReg ? 'bg-amber-50 text-amber-700 border-amber-100' : 'bg-indigo-50 text-indigo-700 border-indigo-100'}`}>
-              <div className={`w-1.5 h-1.5 rounded-full animate-pulse ${hasPreReg ? 'bg-amber-500' : 'bg-indigo-500'}`} />
-              {hasPreReg ? "Official Pre-Registration" : "Live Attendance Log"}
+            {/* Session Badge */}
+            <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest mb-3 ${hasPreReg ? 'bg-amber-100 text-amber-700' : 'bg-gia-100 text-gia-700'}`}>
+              <div className={`w-1.5 h-1.5 rounded-full animate-pulse ${hasPreReg ? 'bg-amber-500' : 'bg-gia-500'}`} />
+              {hasPreReg ? "Pre-Registration" : "Attendance"}
             </div>
-            <h1 className="text-4xl font-black text-slate-900 tracking-tight leading-none mb-4 uppercase">{eventName}</h1>
-            <p className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.2em] mt-2">
-              Currently Signing for: <span className="text-slate-900">{selectedSession}</span>
-            </p>
-            {description && <p className="text-slate-500 text-sm font-medium leading-relaxed max-w-lg border-l-4 border-indigo-500 pl-4 py-1 italic">{description}</p>}
+
+            {/* Event Title */}
+            <h1 className="text-2xl font-black text-neutral-900 tracking-tight leading-tight mb-2">{eventName}</h1>
+
+            {/* Session Info */}
+            <div className="flex items-center gap-2 text-xs">
+              <CalendarCheck size={14} className="text-gia-500" />
+              <span className="font-bold text-neutral-600">Session:</span>
+              <span className="font-black text-gia-600">{selectedSession}</span>
+            </div>
+
+            {/* Description */}
+            {description && (
+              <p className="text-neutral-500 text-xs font-medium leading-relaxed mt-3 border-l-2 border-gia-400 pl-3 py-1">
+                {description}
+              </p>
+            )}
           </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-indigo-600/5 p-6 rounded-[28px] border border-indigo-100/50 shadow-inner">
-             <div className="space-y-1">
-                <label className={labelClass}>Full Name <span className="text-indigo-500">*</span></label>
+        {/* Form Card - Compact Grid */}
+        <form onSubmit={handleSubmit} className="bg-white rounded-2xl shadow-sm border border-neutral-200 p-6 space-y-5">
+
+          {/* Required Fields Section */}
+          <div>
+            <div className="flex items-center gap-2 mb-3">
+              <Sparkles size={14} className="text-gia-500" />
+              <h2 className="text-[10px] font-black text-neutral-500 uppercase tracking-widest">Required Information</h2>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <label className={labelClass}>Full Name <span className="text-gia-500">*</span></label>
                 {renderField('fullName')}
-             </div>
-             <div className="space-y-1">
-                <label className={labelClass}>Sex <span className="text-indigo-500">*</span></label>
-                {renderField('sex')}
-             </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-5 px-2">
-            {dynamicFields.map((field) => (
-              <div key={field} className="space-y-1.5">
-                <label className={labelClass}>
-                  {field === 'office_college' ? 'Office / College' : field.replace('_', ' ')} 
-                  <span className="text-indigo-300">*</span>
-                </label>
-                {renderField(field)}
               </div>
-            ))}
+              <div className="space-y-1">
+                <label className={labelClass}>Sex <span className="text-gia-500">*</span></label>
+                {renderField('sex')}
+              </div>
+            </div>
           </div>
 
-          <div className="pt-8">
-            <button 
-              type="submit" 
+          {/* Additional Fields - Compact 2-column grid */}
+          {dynamicFields.length > 0 && (
+            <div className="pt-4 border-t border-neutral-100">
+              <h2 className="text-[10px] font-black text-neutral-500 uppercase tracking-widest mb-3">Additional Details</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-3">
+                {dynamicFields.map((field) => (
+                  <div key={field} className="space-y-1">
+                    <label className={labelClass}>
+                      {field === 'office_college' ? 'Office / College' :
+                        field === 'id_number' ? 'ID Number' :
+                          field === 'home_address' ? 'Home Address' :
+                            field === 'emergency_contact' ? 'Emergency Contact' :
+                              field === 'pwd_status' ? 'PWD Status' :
+                                field === 'ethnic_group' ? 'Ethnic Group' :
+                                  field === 'employment_status' ? 'Employment Status' :
+                                    field === 'year_level' ? 'Year Level' :
+                                      field.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}
+                      <span className="text-gia-400">*</span>
+                    </label>
+                    {renderField(field)}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Submit Button - Compact */}
+          <div className="pt-5 border-t border-neutral-100">
+            <button
+              type="submit"
               disabled={isSubmitting}
-              className="group relative w-full py-5 bg-slate-900 text-white rounded-[20px] font-black text-[11px] uppercase tracking-[0.3em] transition-all hover:bg-indigo-600 active:scale-[0.98] disabled:bg-slate-300 shadow-2xl shadow-indigo-100 overflow-hidden"
+              className="group relative w-full py-3.5 bg-gradient-to-r from-gia-600 to-gia-700 text-white rounded-xl font-black text-xs uppercase tracking-widest transition-all hover:shadow-lg hover:shadow-gia-200 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed overflow-hidden"
             >
-              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
-              <span className="flex items-center justify-center gap-4 relative z-10">
-                {isSubmitting ? 'Recording Entry...' : 'Submit Official Entry'}
-                <Send size={16} className="opacity-70 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
+              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700" />
+              <span className="flex items-center justify-center gap-3 relative z-10">
+                {isSubmitting ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    Recording...
+                  </>
+                ) : (
+                  <>
+                    Submit Registration
+                    <Send size={14} className="group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+                  </>
+                )}
               </span>
             </button>
-            <div className="flex items-center justify-center gap-2 mt-6 text-slate-400">
-               <Info size={12} />
-               <p className="text-[9px] font-bold uppercase tracking-widest">Confidential data handling • MSU-IIT GADC</p>
+
+            {/* Privacy Notice */}
+            <div className="flex items-center justify-center gap-2 mt-4 text-neutral-400">
+              <ShieldCheck size={12} />
+              <p className="text-[9px] font-bold uppercase tracking-widest">Protected by Data Privacy Act • MSU-IIT GADC</p>
             </div>
           </div>
         </form>
 
-        <footer className="text-center pt-8 border-t border-slate-100">
-          <div className="inline-flex items-center gap-3 px-6 py-2.5 bg-white border border-slate-200 rounded-full text-[9px] font-black text-slate-400 uppercase tracking-widest shadow-sm">
-            <ShieldCheck size={16} className="text-emerald-500" /> 
-            Protected by Data Privacy Act
+        {/* Footer Badge */}
+        <div className="text-center pt-2">
+          <div className="inline-flex items-center gap-2 px-4 py-2 bg-white/80 backdrop-blur-sm border border-neutral-200 rounded-full text-[9px] font-bold text-neutral-400 uppercase tracking-widest shadow-sm">
+            <Info size={11} className="text-gia-500" />
+            Confidential Data Handling
           </div>
-        </footer>
+        </div>
       </div>
     </div>
   );

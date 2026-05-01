@@ -3,13 +3,13 @@ import { Users, TrendingUp, BarChart3, Percent, Building2, Venus, Mars, Target }
 import Chart from 'chart.js/auto';
 
 // --- Constants ---
-const PALETTE = ['#4f46e5','#7c3aed','#0891b2','#059669','#d97706','#dc2626','#9333ea','#0ea5e9','#84cc16','#f43f5e'];
+const PALETTE = ['#4f46e5', '#7c3aed', '#0891b2', '#059669', '#d97706', '#dc2626', '#9333ea', '#0ea5e9', '#84cc16', '#f43f5e'];
 
 const CHART_TABS = [
-  { id: 'gender',     label: 'Gender' },
-  { id: 'office',     label: 'Office / College' },
-  { id: 'sector',     label: 'Sector' },
-  { id: 'age',        label: 'Age Distribution' },
+  { id: 'gender', label: 'Gender' },
+  { id: 'office', label: 'Office / College' },
+  { id: 'sector', label: 'Sector' },
+  { id: 'age', label: 'Age Distribution' },
   { id: 'employment', label: 'Employment' },
 ];
 
@@ -121,11 +121,11 @@ export const EventAnalyticsDashboard = ({ attendanceData = [], filteredAttendanc
       if (!isNaN(age)) {
         const band =
           age < 18 ? 'Under 18'
-          : age <= 24 ? '18–24'
-          : age <= 34 ? '25–34'
-          : age <= 44 ? '35–44'
-          : age <= 54 ? '45–54'
-          : '55+';
+            : age <= 24 ? '18–24'
+              : age <= 34 ? '25–34'
+                : age <= 44 ? '35–44'
+                  : age <= 54 ? '45–54'
+                    : '55+';
         counts.age[band] = (counts.age[band] || 0) + 1;
         if (sexKey) {
           if (!ageGender[band]) ageGender[band] = { female: 0, male: 0 };
@@ -248,8 +248,8 @@ export const EventAnalyticsDashboard = ({ attendanceData = [], filteredAttendanc
 
   return (
     <div className="space-y-6">
-      {/* Stat Cards — 2x2 grid: Total+Target top, Female+Male bottom */}
-      {!chartsOnly && <div className="grid grid-cols-2 gap-6">
+      {/* Stat Cards — grid layout changes based on statsOnly prop */}
+      {!chartsOnly && <div className={`grid gap-3 ${statsOnly ? 'grid-cols-1' : 'grid-cols-2 gap-6'}`}>
         {/* Row 1 */}
         <StatCard label="Total" value={stats.total} sub={selectedSession} Icon={Users} colorClass="text-sky-600" bgClass="bg-sky-50 dark:bg-sky-950/20" />
         {targetNum ? (
@@ -271,78 +271,155 @@ export const EventAnalyticsDashboard = ({ attendanceData = [], filteredAttendanc
 
       {/* Chart Selector Tabs */}
       {!statsOnly &&
-      <div className="bg-white dark:bg-neutral-900 rounded-2xl border border-neutral-200 dark:border-neutral-700 overflow-hidden shadow-sm">
-        {/* Tab bar */}
-        <div className="border-b border-neutral-200 dark:border-neutral-700 flex overflow-x-auto">
-          {CHART_TABS.map(tab => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveChart(tab.id)}
-              className="px-5 py-3 text-xs font-semibold border-b-2 -mb-px transition-colors whitespace-nowrap shrink-0"
-              style={activeChart === tab.id
-                ? { borderColor: GIA_LILAC, color: GIA_LILAC }
-                : { borderColor: 'transparent', color: '#9ca3af' }
-              }
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
+        <div className="bg-white dark:bg-neutral-900 rounded-2xl border border-neutral-200 dark:border-neutral-700 overflow-hidden shadow-sm">
+          {/* Tab bar */}
+          <div className="border-b border-neutral-200 dark:border-neutral-700 flex overflow-x-auto">
+            {CHART_TABS.map(tab => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveChart(tab.id)}
+                className="px-5 py-3 text-xs font-semibold border-b-2 -mb-px transition-colors whitespace-nowrap shrink-0"
+                style={activeChart === tab.id
+                  ? { borderColor: GIA_LILAC, color: GIA_LILAC }
+                  : { borderColor: 'transparent', color: '#9ca3af' }
+                }
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
 
-        {/* Chart Content */}
-        <div className="p-5">
-          {/* GENDER */}
-          {activeChart === 'gender' && (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              {/* Sex-Disaggregated Pictograph */}
-              <div>
-                <p className="text-[9px] font-black uppercase tracking-widest text-neutral-400 dark:text-neutral-500 mb-4">Sex-Disaggregated Data</p>
-                <div className="flex justify-around items-center py-6">
-                  <GenderFigure percent={stats.femalePct} color="#ec4899" label="Female" Icon={Venus} />
-                  <div className="text-center">
-                    <div className="text-4xl font-black text-neutral-800 dark:text-neutral-100">{stats.total}</div>
-                    <div className="text-[10px] font-bold text-neutral-400 dark:text-neutral-500">TOTAL</div>
+          {/* Chart Content */}
+          <div className="p-5">
+            {/* GENDER */}
+            {activeChart === 'gender' && (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                {/* Sex-Disaggregated Pictograph */}
+                <div>
+                  <p className="text-[9px] font-black uppercase tracking-widest text-neutral-400 dark:text-neutral-500 mb-4">Sex-Disaggregated Data</p>
+                  <div className="flex justify-around items-center py-6">
+                    <GenderFigure percent={stats.femalePct} color="#ec4899" label="Female" Icon={Venus} />
+                    <div className="text-center">
+                      <div className="text-4xl font-black text-neutral-800 dark:text-neutral-100">{stats.total}</div>
+                      <div className="text-[10px] font-bold text-neutral-400 dark:text-neutral-500">TOTAL</div>
+                    </div>
+                    <GenderFigure percent={stats.malePct} color="#a673d8" label="Male" Icon={Mars} />
                   </div>
-                  <GenderFigure percent={stats.malePct} color="#a673d8" label="Male" Icon={Mars} />
+                </div>
+
+                {/* Butterfly Plot */}
+                <div>
+                  <p className="text-[9px] font-black uppercase tracking-widest text-neutral-400 dark:text-neutral-500 mb-4">Session Attendance: Gender Split</p>
+                  <div className="space-y-4 mt-2">
+                    <div className="flex justify-between text-[8px] font-black uppercase tracking-widest text-neutral-400 dark:text-neutral-500 px-2">
+                      <span className="w-1/3 text-right">Female</span>
+                      <span className="w-1/3 text-center">Session</span>
+                      <span className="w-1/3 text-left">Male</span>
+                    </div>
+                    {Object.entries(stats.sessionSDD)
+                      .sort((a, b) => b[1].total - a[1].total)
+                      .map(([name, counts]) => {
+                        const femaleWidth = (counts.female / stats.maxGenderCount) * 100;
+                        const maleWidth = (counts.male / stats.maxGenderCount) * 100;
+                        return (
+                          <div key={name} className="flex items-center group">
+                            <div className="w-1/3 flex justify-end items-center gap-2">
+                              <span className="text-[10px] font-bold text-neutral-400 group-hover:text-rose-500 transition-colors">{counts.female}</span>
+                              <div className="h-4 bg-neutral-100 dark:bg-neutral-800 w-full max-w-[80px] rounded-l-full overflow-hidden flex justify-end">
+                                <div className="h-full bg-rose-400 transition-all duration-1000 ease-out" style={{ width: `${femaleWidth}%` }} />
+                              </div>
+                            </div>
+                            <div className="w-1/3 px-2 text-center">
+                              <span className="text-[9px] font-black text-neutral-600 dark:text-neutral-400 leading-tight block truncate" title={name}>{name}</span>
+                            </div>
+                            <div className="w-1/3 flex justify-start items-center gap-2">
+                              <div className="h-4 bg-neutral-100 dark:bg-neutral-800 w-full max-w-[80px] rounded-r-full overflow-hidden">
+                                <div className="h-full bg-gia-400 transition-all duration-1000 ease-out" style={{ width: `${maleWidth}%` }} />
+                              </div>
+                              <span className="text-[10px] font-bold text-neutral-400 group-hover:text-gia-500 transition-colors">{counts.male}</span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                  </div>
+                  <div className="mt-6 pt-4 border-t border-neutral-100 dark:border-neutral-800 flex justify-center gap-6">
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 rounded-full bg-rose-400" />
+                      <span className="text-[9px] font-bold text-neutral-400 dark:text-neutral-500 uppercase">Female</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 rounded-full bg-gia-400" />
+                      <span className="text-[9px] font-bold text-neutral-400 dark:text-neutral-500 uppercase">Male</span>
+                    </div>
+                  </div>
                 </div>
               </div>
+            )}
 
-              {/* Butterfly Plot */}
+            {/* OFFICE / COLLEGE */}
+            {activeChart === 'office' && (
               <div>
-                <p className="text-[9px] font-black uppercase tracking-widest text-neutral-400 dark:text-neutral-500 mb-4">Session Attendance: Gender Split</p>
-                <div className="space-y-4 mt-2">
-                  <div className="flex justify-between text-[8px] font-black uppercase tracking-widest text-neutral-400 dark:text-neutral-500 px-2">
-                    <span className="w-1/3 text-right">Female</span>
-                    <span className="w-1/3 text-center">Session</span>
-                    <span className="w-1/3 text-left">Male</span>
-                  </div>
-                  {Object.entries(stats.sessionSDD)
-                    .sort((a, b) => b[1].total - a[1].total)
-                    .map(([name, counts]) => {
-                      const femaleWidth = (counts.female / stats.maxGenderCount) * 100;
-                      const maleWidth = (counts.male / stats.maxGenderCount) * 100;
-                      return (
-                        <div key={name} className="flex items-center group">
-                          <div className="w-1/3 flex justify-end items-center gap-2">
-                            <span className="text-[10px] font-bold text-neutral-400 group-hover:text-rose-500 transition-colors">{counts.female}</span>
-                            <div className="h-4 bg-neutral-100 dark:bg-neutral-800 w-full max-w-[80px] rounded-l-full overflow-hidden flex justify-end">
-                              <div className="h-full bg-rose-400 transition-all duration-1000 ease-out" style={{ width: `${femaleWidth}%` }} />
-                            </div>
-                          </div>
-                          <div className="w-1/3 px-2 text-center">
-                            <span className="text-[9px] font-black text-neutral-600 dark:text-neutral-400 leading-tight block truncate" title={name}>{name}</span>
-                          </div>
-                          <div className="w-1/3 flex justify-start items-center gap-2">
-                            <div className="h-4 bg-neutral-100 dark:bg-neutral-800 w-full max-w-[80px] rounded-r-full overflow-hidden">
-                              <div className="h-full bg-gia-400 transition-all duration-1000 ease-out" style={{ width: `${maleWidth}%` }} />
-                            </div>
-                            <span className="text-[10px] font-bold text-neutral-400 group-hover:text-gia-500 transition-colors">{counts.male}</span>
+                <p className="text-[9px] font-black uppercase tracking-widest text-neutral-400 dark:text-neutral-500 mb-4">Top 5 Office / College</p>
+                <div className="space-y-3">
+                  {stats.officeTop.length === 0 && (
+                    <p className="text-xs text-neutral-400 dark:text-neutral-500 text-center py-8">No office/college data for this session.</p>
+                  )}
+                  {stats.officeTop.map(([name, val]) => {
+                    const g = stats.officeGender?.[name] || { female: 0, male: 0 };
+                    const female = g.female || 0;
+                    const male = g.male || 0;
+                    const knownTotal = female + male;
+                    const femaleShare = knownTotal ? (female / knownTotal) * 100 : 0;
+                    const barWidth = knownTotal ? (knownTotal / officeMaxKnownTotal) * 100 : 0;
+                    return (
+                      <div key={name}>
+                        <div className="flex justify-between text-[10px] font-bold mb-1">
+                          <span className="truncate pr-3 text-neutral-700 dark:text-neutral-300">{name}</span>
+                          <span className="text-neutral-500 dark:text-neutral-400 font-black shrink-0">
+                            {val} (F {female} / M {male})
+                          </span>
+                        </div>
+                        <div className="h-3 bg-neutral-100 dark:bg-neutral-800 rounded-sm overflow-hidden">
+                          <div className="h-full flex" style={{ width: `${barWidth}%` }}>
+                            <div className="h-full bg-rose-400" style={{ width: `${femaleShare}%` }} />
+                            <div className="h-full bg-gia-400" style={{ width: `${100 - femaleShare}%` }} />
                           </div>
                         </div>
-                      );
-                    })}
+                      </div>
+                    );
+                  })}
                 </div>
-                <div className="mt-6 pt-4 border-t border-neutral-100 dark:border-neutral-800 flex justify-center gap-6">
+              </div>
+            )}
+
+            {/* SECTOR */}
+            {activeChart === 'sector' && (
+              <div>
+                <p className="text-[9px] font-black uppercase tracking-widest text-neutral-400 dark:text-neutral-500 mb-4">Sector Representation</p>
+                <div className="h-48 mb-4"><canvas ref={canvasRefs.sector} /></div>
+                <div className="grid grid-cols-2 gap-2 mt-4">
+                  {Object.entries(stats.sectorGender || {})
+                    .sort((a, b) => (b[1].female + b[1].male) - (a[1].female + a[1].male))
+                    .slice(0, 6)
+                    .map(([k, g]) => (
+                      <div key={k} className="flex items-center gap-2 text-[10px] font-medium text-neutral-500 dark:text-neutral-400">
+                        <div className="flex items-center gap-1">
+                          <span className="w-2 h-2 rounded-full bg-rose-400 block" />
+                          <span className="w-2 h-2 rounded-full bg-gia-400 block" />
+                        </div>
+                        <span className="truncate">{k}: F {g.female || 0} / M {g.male || 0}</span>
+                      </div>
+                    ))}
+                </div>
+              </div>
+            )}
+
+            {/* AGE DISTRIBUTION */}
+            {activeChart === 'age' && (
+              <div>
+                <p className="text-[9px] font-black uppercase tracking-widest text-neutral-400 dark:text-neutral-500 mb-4">Age Distribution</p>
+                <div className="h-56"><canvas ref={canvasRefs.age} /></div>
+                <div className="mt-4 flex justify-center gap-6">
                   <div className="flex items-center gap-2">
                     <div className="w-2 h-2 rounded-full bg-rose-400" />
                     <span className="text-[9px] font-bold text-neutral-400 dark:text-neutral-500 uppercase">Female</span>
@@ -353,108 +430,31 @@ export const EventAnalyticsDashboard = ({ attendanceData = [], filteredAttendanc
                   </div>
                 </div>
               </div>
-            </div>
-          )}
+            )}
 
-          {/* OFFICE / COLLEGE */}
-          {activeChart === 'office' && (
-            <div>
-              <p className="text-[9px] font-black uppercase tracking-widest text-neutral-400 dark:text-neutral-500 mb-4">Top 5 Office / College</p>
-              <div className="space-y-3">
-                {stats.officeTop.length === 0 && (
-                  <p className="text-xs text-neutral-400 dark:text-neutral-500 text-center py-8">No office/college data for this session.</p>
-                )}
-                {stats.officeTop.map(([name, val]) => {
-                  const g = stats.officeGender?.[name] || { female: 0, male: 0 };
-                  const female = g.female || 0;
-                  const male = g.male || 0;
-                  const knownTotal = female + male;
-                  const femaleShare = knownTotal ? (female / knownTotal) * 100 : 0;
-                  const barWidth = knownTotal ? (knownTotal / officeMaxKnownTotal) * 100 : 0;
-                  return (
-                    <div key={name}>
-                      <div className="flex justify-between text-[10px] font-bold mb-1">
-                        <span className="truncate pr-3 text-neutral-700 dark:text-neutral-300">{name}</span>
-                        <span className="text-neutral-500 dark:text-neutral-400 font-black shrink-0">
-                          {val} (F {female} / M {male})
+            {/* EMPLOYMENT */}
+            {activeChart === 'employment' && (
+              <div>
+                <p className="text-[9px] font-black uppercase tracking-widest text-neutral-400 dark:text-neutral-500 mb-4">Employment Status Mix</p>
+                <div className="h-48 mb-4"><canvas ref={canvasRefs.emp} /></div>
+                <div className="flex flex-wrap gap-4 justify-center">
+                  {Object.entries(stats.empGender || {})
+                    .sort((a, b) => (b[1].female + b[1].male) - (a[1].female + a[1].male))
+                    .slice(0, 8)
+                    .map(([k, g]) => (
+                      <div key={k} className="flex items-center gap-2 text-[10px] font-medium text-neutral-500 dark:text-neutral-400">
+                        <span className="flex items-center gap-1">
+                          <span className="w-2 h-2 rounded-full bg-rose-400 block" />
+                          <span className="w-2 h-2 rounded-full bg-gia-400 block" />
                         </span>
+                        <span className="truncate">{k}: F {g.female || 0} / M {g.male || 0}</span>
                       </div>
-                      <div className="h-3 bg-neutral-100 dark:bg-neutral-800 rounded-sm overflow-hidden">
-                        <div className="h-full flex" style={{ width: `${barWidth}%` }}>
-                          <div className="h-full bg-rose-400" style={{ width: `${femaleShare}%` }} />
-                          <div className="h-full bg-gia-400" style={{ width: `${100 - femaleShare}%` }} />
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-          {/* SECTOR */}
-          {activeChart === 'sector' && (
-            <div>
-              <p className="text-[9px] font-black uppercase tracking-widest text-neutral-400 dark:text-neutral-500 mb-4">Sector Representation</p>
-              <div className="h-48 mb-4"><canvas ref={canvasRefs.sector} /></div>
-              <div className="grid grid-cols-2 gap-2 mt-4">
-                {Object.entries(stats.sectorGender || {})
-                  .sort((a, b) => (b[1].female + b[1].male) - (a[1].female + a[1].male))
-                  .slice(0, 6)
-                  .map(([k, g]) => (
-                    <div key={k} className="flex items-center gap-2 text-[10px] font-medium text-neutral-500 dark:text-neutral-400">
-                      <div className="flex items-center gap-1">
-                        <span className="w-2 h-2 rounded-full bg-rose-400 block" />
-                        <span className="w-2 h-2 rounded-full bg-gia-400 block" />
-                      </div>
-                      <span className="truncate">{k}: F {g.female || 0} / M {g.male || 0}</span>
-                    </div>
-                  ))}
-              </div>
-            </div>
-          )}
-
-          {/* AGE DISTRIBUTION */}
-          {activeChart === 'age' && (
-            <div>
-              <p className="text-[9px] font-black uppercase tracking-widest text-neutral-400 dark:text-neutral-500 mb-4">Age Distribution</p>
-              <div className="h-56"><canvas ref={canvasRefs.age} /></div>
-              <div className="mt-4 flex justify-center gap-6">
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full bg-rose-400" />
-                  <span className="text-[9px] font-bold text-neutral-400 dark:text-neutral-500 uppercase">Female</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full bg-gia-400" />
-                  <span className="text-[9px] font-bold text-neutral-400 dark:text-neutral-500 uppercase">Male</span>
+                    ))}
                 </div>
               </div>
-            </div>
-          )}
-
-          {/* EMPLOYMENT */}
-          {activeChart === 'employment' && (
-            <div>
-              <p className="text-[9px] font-black uppercase tracking-widest text-neutral-400 dark:text-neutral-500 mb-4">Employment Status Mix</p>
-              <div className="h-48 mb-4"><canvas ref={canvasRefs.emp} /></div>
-              <div className="flex flex-wrap gap-4 justify-center">
-                {Object.entries(stats.empGender || {})
-                  .sort((a, b) => (b[1].female + b[1].male) - (a[1].female + a[1].male))
-                  .slice(0, 8)
-                  .map(([k, g]) => (
-                    <div key={k} className="flex items-center gap-2 text-[10px] font-medium text-neutral-500 dark:text-neutral-400">
-                      <span className="flex items-center gap-1">
-                        <span className="w-2 h-2 rounded-full bg-rose-400 block" />
-                        <span className="w-2 h-2 rounded-full bg-gia-400 block" />
-                      </span>
-                      <span className="truncate">{k}: F {g.female || 0} / M {g.male || 0}</span>
-                    </div>
-                  ))}
-              </div>
-            </div>
-          )}
+            )}
+          </div>
         </div>
-      </div>
       }
     </div>
   );

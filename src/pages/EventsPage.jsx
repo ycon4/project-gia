@@ -1,8 +1,10 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import {
-  Plus, Calendar, Trash2, X, Search, Edit3, PlusSquare,
-  BarChart3, PanelRightClose, PanelRight,
-  CheckCircle2, DatabaseZap
+  Plus, Calendar, Trash2, Search, Edit3,
+  BarChart3, PanelRightClose, PanelRight, DatabaseZap, PlusSquare,
+  MapPin, Monitor, Users, Tag, CalendarDays, FileText, Wifi,
+  UserCircle, Wallet, Building, FileCheck, Target, StickyNote, BookOpen,
+  ClipboardList, Download,
 } from 'lucide-react';
 import { seedDemoData } from '../utils/seedDemoData';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
@@ -13,38 +15,71 @@ import AttendanceTable from '../components/events/AttendanceTable';
 import { SessionQRManager } from '../components/events/SessionQRManager';
 import { EventAnalyticsDashboard } from '../components/events/EventsAnalytics';
 import GeneralDashboard from '../components/events/GeneralPage';
+import EventFormModal from '../components/events/EventFormModal';
+import EventPosterGenerator from '../components/events/EventPosterGenerator';
 
-const GAD_ATTRIBUTES = [
-  'sex', 'age', 'home_address', 'email', 'phone', 'office_college',
-  'department', 'designation', 'sector', 'pwd_status', 'ethnic_group',
-  'employment_status', 'year_level', 'emergency_contact', 'id_number'
-];
+// ─── Event info panel helpers ─────────────────────────────────────────────────
+
+/** Single metadata row: icon + label + value */
+function MetaItem({ icon: Icon, label, value, span = false }) {
+  return (
+    <div className={`flex items-start gap-2 ${span ? 'col-span-2' : ''}`}>
+      <Icon size={12} className="text-neutral-400 dark:text-neutral-500 shrink-0 mt-0.5" />
+      <div className="min-w-0">
+        <p className="text-[9px] font-black uppercase tracking-widest text-neutral-400 dark:text-neutral-500">{label}</p>
+        <p className="text-xs font-semibold text-neutral-700 dark:text-neutral-300 leading-snug break-words">{value}</p>
+      </div>
+    </div>
+  );
+}
+
+/** Text block with icon label */
+function InfoBlock({ icon: Icon, label, children }) {
+  return (
+    <div className="pt-3 border-t border-neutral-100 dark:border-neutral-800">
+      <div className="flex items-center gap-1.5 mb-1.5">
+        <Icon size={11} className="text-neutral-400 dark:text-neutral-500 shrink-0" />
+        <p className="text-[9px] font-black uppercase tracking-widest text-neutral-400 dark:text-neutral-500">{label}</p>
+      </div>
+      {children}
+    </div>
+  );
+}
+
+/** Format a Firestore Timestamp or ISO string to a relative/absolute label */
+function formatTs(ts) {
+  if (!ts) return '';
+  const d = ts?.toDate ? ts.toDate() : new Date(ts);
+  if (isNaN(d.getTime())) return '';
+  const diff = Date.now() - d.getTime();
+  const days = Math.floor(diff / 86400000);
+  if (days === 0) return 'today';
+  if (days === 1) return 'yesterday';
+  if (days < 30) return `${days}d ago`;
+  return d.toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 export default function EventsPage({
   events = [],
   attendance = [],
-  onCreateEvent = () => {},
-  onDeleteEvent = () => {},
-  onUpdateEvent = () => {},
+  onCreateEvent = () => { },
+  onDeleteEvent = () => { },
+  onUpdateEvent = () => { },
 }) {
-  const [activeEvent, setActiveEvent]     = useState(null);
+  const [activeEvent, setActiveEvent] = useState(null);
   const [attendanceData, setAttendanceData] = useState([]);
   const [selectedSession, setSelectedSession] = useState('Pre-Registration');
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editingEvent, setEditingEvent] = useState(null);
   const [newSessionInput, setNewSessionInput] = useState('');
-  const [searchTerm, setSearchTerm]       = useState('');
-  const [isEditing, setIsEditing]         = useState(false);
-  const [loading, setLoading]             = useState(false);
-  const [rightOpen, setRightOpen]         = useState(true);
-  const [seeding, setSeeding]             = useState(false);
-
-  const [newEvent, setNewEvent] = useState({
-    title: '', description: '', status: 'Active',
-    sessions: ['Day 1 Attendance'],
-    hasPreReg: true,
-    targetParticipants: '',
-    formConfig: { sex: true, office_college: true, pwd_status: true, sector: true }
-  });
+  const [searchTerm, setSearchTerm] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [rightOpen, setRightOpen] = useState(true);
+  const [seeding, setSeeding] = useState(false);
+  const [showPosterGenerator, setShowPosterGenerator] = useState(false);
 
   // Live attendance sync for selected event
   useEffect(() => {
@@ -60,63 +95,84 @@ export default function EventsPage({
 
   const handleSelectEvent = (event) => {
     setActiveEvent(event);
-    if (event.hasPreReg)           setSelectedSession('Pre-Registration');
+    if (event.hasPreReg) setSelectedSession('Pre-Registration');
     else if (event.sessions?.length) setSelectedSession(event.sessions[0]);
-    else                            setSelectedSession('General Attendance');
+    else setSelectedSession('General Attendance');
   };
 
   const handleAddGate = async () => {
-    if (!newSessionInput.trim() || !activeEvent?.id) return;
+    const gateName = newSessionInput.trim().replace(/\s+/g, ' ');
+    if (!gateName || !activeEvent?.id) return;
+
+    // Prevent duplicate gate names
+    const existing = [
+      ...(activeEvent.hasPreReg ? ['Pre-Registration'] : []),
+      ...(activeEvent.sessions || []),
+    ];
+    if (existing.some(s => s.toLowerCase() === gateName.toLowerCase())) {
+      alert(`A gate named "${gateName}" already exists.`);
+      return;
+    }
+
     try {
-      await addEventSession(activeEvent.id, newSessionInput.trim());
-      const updated = { ...activeEvent, sessions: [...(activeEvent.sessions || []), newSessionInput.trim()] };
+      await addEventSession(activeEvent.id, gateName);
+      const updated = {
+        ...activeEvent,
+        sessions: [...(activeEvent.sessions || []), gateName],
+      };
+      // Sync both local view state AND the parent events list in App.jsx
       setActiveEvent(updated);
-      setSelectedSession(newSessionInput.trim());
+      setSelectedSession(gateName);
       setNewSessionInput('');
-      alert('Attendance gate created.');
+      onUpdateEvent(activeEvent.id, updated);
     } catch (err) {
-      alert(`Error: ${err.message}`);
+      alert(`Error creating gate: ${err.message}`);
     }
   };
 
-  const handleToggleAttribute = (id) =>
-    setNewEvent(p => ({ ...p, formConfig: { ...p.formConfig, [id]: !p.formConfig?.[id] } }));
-
-  const handleSelectAll = () => {
-    const all = GAD_ATTRIBUTES.every(a => newEvent.formConfig?.[a]);
-    const cfg = {};
-    GAD_ATTRIBUTES.forEach(a => (cfg[a] = !all));
-    setNewEvent(p => ({ ...p, formConfig: cfg }));
-  };
-
   const openCreate = () => {
-    setNewEvent({ title:'', description:'', status:'Active', sessions:['Day 1 Attendance'], hasPreReg:true,
-      targetParticipants: '',
-      formConfig:{ sex:true, office_college:true, pwd_status:true, sector:true } });
+    setEditingEvent(null);
     setIsEditing(false);
     setShowCreateModal(true);
   };
 
+  const openEdit = (event) => {
+    setEditingEvent(event);
+    setIsEditing(true);
+    setShowCreateModal(true);
+  };
+
+  const handleFormSubmit = (formData) => {
+    if (isEditing && editingEvent?.id) {
+      onUpdateEvent(editingEvent.id, formData);
+    } else {
+      onCreateEvent(formData);
+    }
+  };
+
+  // Normalize session name for matching — trims and collapses internal whitespace
+  const normSession = (s) => String(s || '').trim().replace(/\s+/g, ' ');
+
   const filteredAttendance = useMemo(() => {
     if (!activeEvent) return [];
+    // attendanceData is already scoped to activeEvent.id via the onSnapshot query,
+    // so no need to re-check eventId here.
     return attendanceData.filter(r => {
-      const sameEvent   = String(r.eventId) === String(activeEvent.id);
-      const sameSession = String(r.session || r.session_name || '').trim() === String(selectedSession).trim();
+      const sameSession = normSession(r.session_name || r.session) === normSession(selectedSession);
       const q = searchTerm.toLowerCase();
       const matchSearch = !searchTerm ||
         r.fullName?.toLowerCase().includes(q) ||
         r.office_college?.toLowerCase().includes(q) ||
         r.id_number?.toLowerCase().includes(q);
-      return sameEvent && sameSession && matchSearch;
+      return sameSession && matchSearch;
     });
   }, [activeEvent, attendanceData, searchTerm, selectedSession]);
 
   // ─── Shared sidebar item style (mirrors left sidebar SideNavItem) ───────────
   const navItem = (active) =>
-    `w-full flex items-center py-2 px-2 rounded-md transition-colors duration-150 gap-2.5 ${
-      active
-        ? 'bg-neutral-100 dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100'
-        : 'text-neutral-500 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 hover:text-neutral-900 dark:hover:text-neutral-100'
+    `w-full flex items-center py-2 px-2 rounded-md transition-colors duration-150 gap-2.5 ${active
+      ? 'bg-neutral-100 dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100'
+      : 'text-neutral-500 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 hover:text-neutral-900 dark:hover:text-neutral-100'
     }`;
 
   return (
@@ -156,17 +212,20 @@ export default function EventsPage({
               </div>
             ) : (
               <>
-                {/* Top row: QR left, stat cards right */}
-                <div className="grid grid-cols-3 gap-6 items-stretch min-h-[320px]">
-                  <div className="col-span-1 flex">
+                {/* Main grid: Left column (QR + Stats stacked), Right column (Event Details) */}
+                <div className="grid grid-cols-3 gap-4 items-start">
+
+                  {/* Left Column: QR Manager + Stats Cards Stacked */}
+                  <div className="col-span-1 space-y-4">
+                    {/* QR Manager */}
                     <SessionQRManager
                       activeEvent={activeEvent}
                       selectedSession={selectedSession}
                       onSessionChange={setSelectedSession}
                       registrationUrl={`${window.location.origin}/register/${activeEvent.id}?session=${encodeURIComponent(selectedSession)}`}
                     />
-                  </div>
-                  <div className="col-span-2">
+
+                    {/* Stats Cards - Stacked vertically (1 per line) */}
                     <EventAnalyticsDashboard
                       attendanceData={attendanceData}
                       filteredAttendance={filteredAttendance}
@@ -174,6 +233,132 @@ export default function EventsPage({
                       selectedSession={selectedSession}
                       statsOnly={true}
                     />
+                  </div>
+
+                  {/* Right Column: Event Details Panel */}
+                  <div className="col-span-2">
+                    {/* Event info panel — scrollable */}
+                    <div className="flex-1 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700/70 rounded-2xl overflow-hidden flex flex-col min-h-0">
+
+                      {/* Panel header */}
+                      <div className="flex items-start justify-between gap-3 px-5 pt-5 pb-4 border-b border-neutral-100 dark:border-neutral-800 shrink-0">
+                        <div className="min-w-0">
+                          <p className="text-[9px] font-black uppercase tracking-widest text-neutral-400 dark:text-neutral-500 mb-1">Event Details</p>
+                          <h3 className="text-sm font-black text-neutral-900 dark:text-neutral-100 leading-snug">{activeEvent.title}</h3>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded-full ${activeEvent.status === 'Active'
+                            ? 'bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 dark:text-emerald-400'
+                            : activeEvent.status === 'Cancelled'
+                              ? 'bg-rose-50 dark:bg-rose-950/20 text-rose-500 dark:text-rose-400'
+                              : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400'
+                            }`}>{activeEvent.status || 'Active'}</span>
+                          <button onClick={() => setShowPosterGenerator(true)}
+                            className="p-1.5 rounded-lg text-neutral-400 dark:text-neutral-500 hover:text-gia-600 dark:hover:text-gia-400 hover:bg-gia-50 dark:hover:bg-gia-950/20 transition-colors"
+                            title="Download poster"><Download size={13} /></button>
+                          <button onClick={() => openEdit(activeEvent)}
+                            className="p-1.5 rounded-lg text-neutral-400 dark:text-neutral-500 hover:text-gia-600 dark:hover:text-gia-400 hover:bg-gia-50 dark:hover:bg-gia-950/20 transition-colors"
+                            title="Edit event"><Edit3 size={13} /></button>
+                        </div>
+                      </div>
+
+                      {/* Scrollable body */}
+                      <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4 min-h-0">
+
+                        {/* Core metadata */}
+                        <div className="grid grid-cols-2 gap-x-4 gap-y-3">
+                          {activeEvent.eventType && <MetaItem icon={Tag} label="Type" value={activeEvent.eventType} />}
+                          {activeEvent.mode && <MetaItem icon={activeEvent.mode === 'Online' ? Wifi : Monitor} label="Mode" value={activeEvent.mode} />}
+                          {activeEvent.venue && <MetaItem icon={MapPin} label={activeEvent.mode === 'Online' ? 'Platform' : 'Venue'} value={activeEvent.venue} span />}
+                          {(activeEvent.startDate || activeEvent.endDate) && (
+                            <MetaItem icon={CalendarDays} label="Date" span value={[
+                              activeEvent.startDate && new Date(activeEvent.startDate + 'T00:00:00').toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' }),
+                              activeEvent.endDate && activeEvent.endDate !== activeEvent.startDate
+                                ? new Date(activeEvent.endDate + 'T00:00:00').toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })
+                                : null,
+                            ].filter(Boolean).join(' — ')} />
+                          )}
+                          {activeEvent.targetParticipants && <MetaItem icon={Users} label="Target Pax" value={`${Number(activeEvent.targetParticipants).toLocaleString()} participants`} />}
+                          <MetaItem icon={CalendarDays} label="Gates" value={`${(activeEvent.hasPreReg ? 1 : 0) + (activeEvent.sessions?.length || 0)} session${((activeEvent.hasPreReg ? 1 : 0) + (activeEvent.sessions?.length || 0)) !== 1 ? 's' : ''}`} />
+                          {activeEvent.targetGroup && <MetaItem icon={Target} label="Target Group" value={activeEvent.targetGroup} span />}
+                          {activeEvent.organizer && <MetaItem icon={UserCircle} label="Organizer" value={activeEvent.organizer} span />}
+                        </div>
+
+                        {/* Description */}
+                        {activeEvent.description && (
+                          <InfoBlock icon={FileText} label="Description">
+                            <p className="text-xs text-neutral-500 dark:text-neutral-400 font-medium leading-relaxed">{activeEvent.description}</p>
+                          </InfoBlock>
+                        )}
+
+                        {/* Objectives */}
+                        {activeEvent.objectives && (
+                          <InfoBlock icon={Target} label="Objectives / Expected Output">
+                            <p className="text-xs text-neutral-500 dark:text-neutral-400 font-medium leading-relaxed">{activeEvent.objectives}</p>
+                          </InfoBlock>
+                        )}
+
+                        {/* GAD Planning */}
+                        {(activeEvent.budget || activeEvent.fundingSource || activeEvent.partnerAgencies || activeEvent.gadMandate) && (
+                          <div className="pt-3 border-t border-neutral-100 dark:border-neutral-800 space-y-3">
+                            <p className="text-[9px] font-black uppercase tracking-widest text-neutral-400 dark:text-neutral-500 flex items-center gap-1.5">
+                              <BookOpen size={10} /> GAD Planning
+                            </p>
+                            <div className="grid grid-cols-2 gap-x-4 gap-y-3">
+                              {activeEvent.budget && <MetaItem icon={Wallet} label="Budget" value={`₱${Number(activeEvent.budget).toLocaleString()}`} />}
+                              {activeEvent.fundingSource && <MetaItem icon={Building} label="Funding Source" value={activeEvent.fundingSource} />}
+                              {activeEvent.partnerAgencies && <MetaItem icon={Building} label="Partner Agencies" value={activeEvent.partnerAgencies} span />}
+                              {activeEvent.gadMandate && <MetaItem icon={FileCheck} label="GAD Mandate" value={activeEvent.gadMandate} span />}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Accomplishment Notes */}
+                        {activeEvent.accomplishmentNotes && (
+                          <InfoBlock icon={StickyNote} label="Accomplishment Notes">
+                            <p className="text-xs text-neutral-500 dark:text-neutral-400 font-medium leading-relaxed">{activeEvent.accomplishmentNotes}</p>
+                          </InfoBlock>
+                        )}
+
+                        {/* Form config summary */}
+                        {activeEvent.formConfig && Object.values(activeEvent.formConfig).some(Boolean) && (
+                          <div className="pt-3 border-t border-neutral-100 dark:border-neutral-800">
+                            <p className="text-[9px] font-black uppercase tracking-widest text-neutral-400 dark:text-neutral-500 mb-2 flex items-center gap-1.5">
+                              <ClipboardList size={10} /> Collecting from participants
+                            </p>
+                            <div className="flex flex-wrap gap-1">
+                              {['Full Name', 'Sex / Gender'].map(f => (
+                                <span key={f} className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-gia-50 dark:bg-gia-950/20 text-gia-600 dark:text-gia-400 border border-gia-200/60 dark:border-gia-800/40">{f}</span>
+                              ))}
+                              {[
+                                { id: 'age', label: 'Age' }, { id: 'home_address', label: 'Address' },
+                                { id: 'id_number', label: 'ID No.' }, { id: 'email', label: 'Email' },
+                                { id: 'phone', label: 'Phone' }, { id: 'emergency_contact', label: 'Emergency Contact' },
+                                { id: 'office_college', label: 'College / Office' }, { id: 'department', label: 'Department' },
+                                { id: 'designation', label: 'Designation' }, { id: 'sector', label: 'Sector' },
+                                { id: 'year_level', label: 'Year Level' }, { id: 'pwd_status', label: 'PWD Status' },
+                                { id: 'ethnic_group', label: 'Ethnic Group' }, { id: 'employment_status', label: 'Employment' },
+                              ].filter(f => activeEvent.formConfig[f.id]).map(f => (
+                                <span key={f.id} className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400">{f.label}</span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Timestamps */}
+                        {(activeEvent.createdAt || activeEvent.updatedAt) && (
+                          <div className="pt-3 border-t border-neutral-100 dark:border-neutral-800 flex items-center gap-4">
+                            {activeEvent.createdAt && (
+                              <p className="text-[9px] text-neutral-400 dark:text-neutral-600 font-medium">Created {formatTs(activeEvent.createdAt)}</p>
+                            )}
+                            {activeEvent.updatedAt && (
+                              <p className="text-[9px] text-neutral-400 dark:text-neutral-600 font-medium">Updated {formatTs(activeEvent.updatedAt)}</p>
+                            )}
+                          </div>
+                        )}
+
+                      </div>
+                    </div>
                   </div>
                 </div>
 
@@ -186,24 +371,47 @@ export default function EventsPage({
                   chartsOnly={true}
                 />
 
-                {/* Session tabs */}
+                {/* Session tabs — each shows a live count badge so mismatches are immediately visible */}
                 <div className="flex gap-2 flex-wrap">
-                  {activeEvent.hasPreReg && (
-                    <button onClick={() => setSelectedSession('Pre-Registration')}
-                      className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${
-                        selectedSession === 'Pre-Registration'
+                  {activeEvent.hasPreReg && (() => {
+                    const count = attendanceData.filter(
+                      r => normSession(r.session_name || r.session) === 'Pre-Registration'
+                    ).length;
+                    const active = selectedSession === 'Pre-Registration';
+                    return (
+                      <button
+                        onClick={() => setSelectedSession('Pre-Registration')}
+                        className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-1.5 ${active
                           ? 'bg-gia-600 text-white shadow-sm'
                           : 'bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 text-neutral-500 dark:text-neutral-400 hover:border-gia-400'
-                      }`}>Pre-Registration</button>
-                  )}
-                  {(activeEvent.sessions || []).map(s => (
-                    <button key={s} onClick={() => setSelectedSession(s)}
-                      className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${
-                        selectedSession === s
+                          }`}
+                      >
+                        Pre-Registration
+                        <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-black ${active ? 'bg-white/20 text-white' : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400'
+                          }`}>{count}</span>
+                      </button>
+                    );
+                  })()}
+                  {(activeEvent.sessions || []).map(s => {
+                    const count = attendanceData.filter(
+                      r => normSession(r.session_name || r.session) === normSession(s)
+                    ).length;
+                    const active = selectedSession === s;
+                    return (
+                      <button
+                        key={s}
+                        onClick={() => setSelectedSession(s)}
+                        className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-1.5 ${active
                           ? 'bg-gia-600 text-white shadow-sm'
                           : 'bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 text-neutral-500 dark:text-neutral-400 hover:border-gia-400'
-                      }`}>{s}</button>
-                  ))}
+                          }`}
+                      >
+                        {s}
+                        <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-black ${active ? 'bg-white/20 text-white' : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400'
+                          }`}>{count}</span>
+                      </button>
+                    );
+                  })}
                 </div>
 
                 {/* Search + table */}
@@ -298,36 +506,49 @@ export default function EventsPage({
                   <p className="text-neutral-400 dark:text-neutral-500 text-[10px] text-center py-4 px-3 leading-relaxed">
                     No events yet. Create one above!
                   </p>
-                ) : events.map(event => (
-                  <button
-                    key={event.id}
-                    onClick={() => handleSelectEvent(event)}
-                    className={`w-full text-left px-3 py-2 rounded-lg transition-all duration-100 group flex items-start gap-2 ${
-                      activeEvent?.id === event.id
+                ) : events.map(event => {
+                  // Determine status dot color
+                  const statusColor = event.status === 'Active'
+                    ? 'bg-emerald-400'
+                    : event.status === 'Cancelled'
+                      ? 'bg-rose-400'
+                      : 'bg-neutral-400'; // Done
+
+                  return (
+                    <button
+                      key={event.id}
+                      onClick={() => handleSelectEvent(event)}
+                      className={`w-full text-left px-3 py-2 rounded-lg transition-all duration-100 group flex items-start gap-2 ${activeEvent?.id === event.id
                         ? 'bg-neutral-100 dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100'
                         : 'text-neutral-500 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 hover:text-neutral-900 dark:hover:text-neutral-100'
-                    }`}
-                  >
-                    <Calendar size={12} className="shrink-0 mt-0.5 opacity-40" />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-normal truncate leading-snug">{event.title}</p>
-                      <p className="text-xs opacity-40 mt-0.5">{event.startDate || event.status}</p>
-                    </div>
-                    {/* Edit / Delete on hover — mirrors chat delete */}
-                    <div className="shrink-0 opacity-0 group-hover:opacity-100 flex gap-0.5 mt-0.5 transition-opacity">
-                      <span
-                        onClick={e => { e.stopPropagation(); setNewEvent(event); setIsEditing(true); setShowCreateModal(true); }}
-                        className="p-0.5 hover:text-gia-500 transition-colors cursor-pointer"
-                        title="Edit"
-                      ><Edit3 size={10} /></span>
-                      <span
-                        onClick={e => { e.stopPropagation(); if (window.confirm(`Delete "${event.title}"?`)) onDeleteEvent(event.id, event.title); }}
-                        className="p-0.5 hover:text-rose-500 transition-colors cursor-pointer"
-                        title="Delete"
-                      ><Trash2 size={10} /></span>
-                    </div>
-                  </button>
-                ))}
+                        }`}
+                    >
+                      {/* Status Dot */}
+                      <div className="shrink-0 mt-1.5">
+                        <div className={`w-2 h-2 rounded-full ${statusColor}`} title={event.status || 'Active'} />
+                      </div>
+
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-normal truncate leading-snug">{event.title}</p>
+                        <p className="text-xs opacity-40 mt-0.5">{event.startDate || event.status}</p>
+                      </div>
+
+                      {/* Edit / Delete on hover — mirrors chat delete */}
+                      <div className="shrink-0 opacity-0 group-hover:opacity-100 flex gap-0.5 mt-0.5 transition-opacity">
+                        <span
+                          onClick={e => { e.stopPropagation(); openEdit(event); }}
+                          className="p-0.5 hover:text-gia-500 transition-colors cursor-pointer"
+                          title="Edit"
+                        ><Edit3 size={10} /></span>
+                        <span
+                          onClick={e => { e.stopPropagation(); if (window.confirm(`Delete "${event.title}"?`)) onDeleteEvent(event.id, event.title); }}
+                          className="p-0.5 hover:text-rose-500 transition-colors cursor-pointer"
+                          title="Delete"
+                        ><Trash2 size={10} /></span>
+                      </div>
+                    </button>
+                  );
+                })}
               </div>
 
               {/* Seed demo data — always visible */}
@@ -356,18 +577,26 @@ export default function EventsPage({
           {/* Collapsed dots for event list (when sidebar closed) */}
           {!rightOpen && events.length > 0 && (
             <div className="flex-1 flex flex-col items-center pt-3 gap-1.5 overflow-hidden">
-              {events.slice(0, 8).map(event => (
-                <button
-                  key={event.id}
-                  onClick={() => handleSelectEvent(event)}
-                  title={event.title}
-                  className={`w-5 h-5 rounded-full transition-all ${
-                    activeEvent?.id === event.id
-                      ? 'bg-gia-600'
-                      : 'bg-neutral-200 dark:bg-neutral-700 hover:bg-gia-300 dark:hover:bg-gia-700'
-                  }`}
-                />
-              ))}
+              {events.slice(0, 8).map(event => {
+                // Determine status dot color
+                const statusColor = event.status === 'Active'
+                  ? 'bg-emerald-400'
+                  : event.status === 'Cancelled'
+                    ? 'bg-rose-400'
+                    : 'bg-neutral-400'; // Done
+
+                return (
+                  <button
+                    key={event.id}
+                    onClick={() => handleSelectEvent(event)}
+                    title={`${event.title} (${event.status || 'Active'})`}
+                    className={`w-5 h-5 rounded-full transition-all border-2 ${activeEvent?.id === event.id
+                      ? `${statusColor} border-neutral-900 dark:border-neutral-100`
+                      : `${statusColor} border-transparent hover:border-neutral-300 dark:hover:border-neutral-600`
+                      }`}
+                  />
+                );
+              })}
             </div>
           )}
         </div>
@@ -398,114 +627,21 @@ export default function EventsPage({
         )}
       </aside>
 
-      {/* ══════════════════════════════════════════════
-          MODAL: Create / Edit Event
-      ══════════════════════════════════════════════ */}
-      {showCreateModal && (
-        <div className="fixed inset-0 bg-neutral-900/50 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-neutral-900 rounded-2xl w-full max-w-2xl shadow-xl overflow-hidden flex flex-col max-h-[90vh]">
-            <div className="p-6 border-b border-neutral-200 dark:border-neutral-700 flex justify-between items-center sticky top-0 bg-white dark:bg-neutral-900 z-10">
-              <div>
-                <h2 className="font-bold text-lg text-neutral-900 dark:text-neutral-100">
-                  {isEditing ? 'Update GAD Event' : 'Initialize New GAD Event'}
-                </h2>
-                <p className="text-xs text-neutral-400 dark:text-neutral-500 font-medium">Configure event details and registration requirements</p>
-              </div>
-              <button onClick={() => setShowCreateModal(false)}
-                className="text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200 p-2 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-full transition-colors">
-                <X size={20}/>
-              </button>
-            </div>
+      {/* ── Event Form Modal ── */}
+      <EventFormModal
+        isOpen={showCreateModal}
+        isEditing={isEditing}
+        initialData={editingEvent}
+        onSubmit={handleFormSubmit}
+        onClose={() => setShowCreateModal(false)}
+      />
 
-            <form onSubmit={e => { e.preventDefault(); isEditing ? onUpdateEvent(newEvent.id, newEvent) : onCreateEvent(newEvent); setShowCreateModal(false); }}
-              className="p-6 space-y-6 overflow-y-auto">
-
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-[10px] font-black text-neutral-500 dark:text-neutral-400 mb-1 uppercase tracking-widest">Event Title</label>
-                  <input required placeholder="e.g., Annual Gender Sensitivity Training"
-                    className="w-full border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 rounded-xl p-3 outline-none focus:ring-2 focus:ring-gia-500 font-medium"
-                    value={newEvent.title} onChange={e => setNewEvent({...newEvent, title: e.target.value})} />
-                </div>
-                <div>
-                  <label className="block text-[10px] font-black text-neutral-500 dark:text-neutral-400 mb-1 uppercase tracking-widest">Description</label>
-                  <textarea placeholder="Briefly explain the purpose of this GAD activity..."
-                    className="w-full border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 rounded-xl p-3 outline-none focus:ring-2 focus:ring-gia-500 min-h-[80px] text-sm"
-                    value={newEvent.description || ''} onChange={e => setNewEvent({...newEvent, description: e.target.value})} />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-[10px] font-black text-neutral-500 dark:text-neutral-400 mb-1 uppercase tracking-widest">Start Date</label>
-                    <input type="date" required
-                      className="w-full border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 rounded-xl p-3 outline-none focus:ring-2 focus:ring-gia-500 text-sm font-medium"
-                      value={newEvent.startDate || ''} onChange={e => setNewEvent({...newEvent, startDate: e.target.value})} />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] font-black text-neutral-500 dark:text-neutral-400 mb-1 uppercase tracking-widest">End Date</label>
-                    <input type="date" required
-                      className="w-full border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 rounded-xl p-3 outline-none focus:ring-2 focus:ring-gia-500 text-sm font-medium"
-                      value={newEvent.endDate || ''} onChange={e => setNewEvent({...newEvent, endDate: e.target.value})} />
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-[10px] font-black text-neutral-500 dark:text-neutral-400 mb-1 uppercase tracking-widest">Target Participants</label>
-                  <input type="number" min="1" placeholder="e.g. 100"
-                    className="w-full border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 rounded-xl p-3 outline-none focus:ring-2 focus:ring-gia-500 text-sm font-medium"
-                    value={newEvent.targetParticipants || ''} onChange={e => setNewEvent({...newEvent, targetParticipants: e.target.value})} />
-                </div>
-              </div>
-
-              <div className="bg-neutral-50 dark:bg-neutral-800 p-5 rounded-2xl border border-neutral-200 dark:border-neutral-700 space-y-4">
-                <div className="flex justify-between items-end">
-                  <div>
-                    <h3 className="text-sm font-bold text-neutral-800 dark:text-neutral-200">Registration Attributes</h3>
-                    <p className="text-[10px] text-neutral-500 dark:text-neutral-400 font-medium italic">Full Name and Timestamp are automatically included.</p>
-                  </div>
-                  <button type="button" onClick={handleSelectAll}
-                    className="text-[10px] bg-gia-100 dark:bg-gia-900/30 text-gia-700 dark:text-gia-300 px-3 py-1 rounded-full font-bold hover:bg-gia-200 dark:hover:bg-gia-800/40 transition-colors">
-                    {GAD_ATTRIBUTES.every(a => newEvent.formConfig?.[a]) ? 'CLEAR ALL' : 'SELECT ALL 15'}
-                  </button>
-                </div>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-y-3 gap-x-4 pt-2 border-t border-neutral-200 dark:border-neutral-700">
-                  {[
-                    { id: 'sex', label: 'Sex/Gender' },
-                    { id: 'age', label: 'Age' },
-                    { id: 'home_address', label: 'Home Address' },
-                    { id: 'email', label: 'Email Address' },
-                    { id: 'phone', label: 'Phone Number' },
-                    { id: 'office_college', label: 'College/Office' },
-                    { id: 'department', label: 'Department' },
-                    { id: 'designation', label: 'Designation' },
-                    { id: 'sector', label: 'Sector (Solo Parent, etc.)' },
-                    { id: 'pwd_status', label: 'PWD Status' },
-                    { id: 'ethnic_group', label: 'Ethnic Group' },
-                    { id: 'employment_status', label: 'Employment Status' },
-                    { id: 'year_level', label: 'Year Level (Students)' },
-                    { id: 'emergency_contact', label: 'Emergency Contact' },
-                    { id: 'id_number', label: 'ID Number (Student/Emp)' },
-                  ].map(attr => (
-                    <label key={attr.id} className="flex items-center gap-3 group cursor-pointer">
-                      <input type="checkbox" className="w-4 h-4 rounded border-neutral-300 text-gia-600 focus:ring-gia-500"
-                        checked={newEvent.formConfig?.[attr.id] || false} onChange={() => handleToggleAttribute(attr.id)} />
-                      <span className="text-[11px] font-semibold text-neutral-600 dark:text-neutral-400 group-hover:text-gia-600 dark:group-hover:text-gia-400 transition-colors">
-                        {attr.label}
-                      </span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-
-              <div className="pt-2 sticky bottom-0 bg-white dark:bg-neutral-900">
-                <button type="submit"
-                  className="w-full bg-neutral-900 dark:bg-neutral-800 hover:bg-gia-600 dark:hover:bg-gia-700 text-white py-4 rounded-xl font-bold shadow-lg transition-all flex items-center justify-center gap-2">
-                  {isEditing ? <Edit3 size={18}/> : <PlusSquare size={18}/>}
-                  {isEditing ? 'Confirm Changes' : 'Launch GAD Event'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      {/* ── Event Poster Generator ── */}
+      <EventPosterGenerator
+        event={activeEvent}
+        isOpen={showPosterGenerator}
+        onClose={() => setShowPosterGenerator(false)}
+      />
     </div>
   );
 }

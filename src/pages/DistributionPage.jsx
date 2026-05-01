@@ -4,10 +4,10 @@ import {
   RefreshCcw, Trash2, Printer, FileUp, MoreVertical,
   Database, Users, Briefcase, Zap,
   ChevronLeft, ChevronRight, ChevronDown,
-  ArrowUpDown, ArrowUp, ArrowDown,
+  ArrowUpDown, ArrowUp, ArrowDown, Edit3, Calendar,
 } from 'lucide-react';
 
-import { getAllDocuments, deleteAYData } from '../../firebase/services.js';
+import { getAllDocuments, deleteAYData, updateDocument } from '../../firebase/services.js';
 import ExcelUploadEnrollment from '../components/excel_upload/ExcelUploadEnrollment.jsx';
 import ExcelUploadEngagement from '../components/excel_upload/ExcelUploadEngagement.jsx';
 import ExcelUploadEmployee from '../components/excel_upload/ExcelUploadEmployment.jsx';
@@ -19,40 +19,40 @@ const LILAC = '#a673d8';
 
 // Human-readable column labels (keyed by field name)
 const HEADER_LABELS = {
-  studid:               'Student ID',
-  studgender:           'Sex',
-  stud_college:         'College',
-  stud_program:         'Program',
-  stud_yrlevel:         'Year Level',
-  studethnic:           'Ethnicity',
-  studreligion:         'Religion',
-  currentadd_prov:      'Province',
-  income_PSA_category:  'Income Category',
+  studid: 'Student ID',
+  studgender: 'Sex',
+  stud_college: 'College',
+  stud_program: 'Program',
+  stud_yrlevel: 'Year Level',
+  studethnic: 'Ethnicity',
+  studreligion: 'Religion',
+  currentadd_prov: 'Province',
+  income_PSA_category: 'Income Category',
   is_first_gen_learner: '1st Gen Learner',
-  '_pwd?':              'PWD',
-  '_solo_parent?':      'Has Solo Parent',
-  '_ip_member?':        'IP Member',
-  '_working_student?':  'Working Student',
-  is_indigenous:        'Indigenous',
-  is_child_lgbtq:       'Child of LGBTQ+',
-  is_child_pdl:         'Child of PDL',
+  '_pwd?': 'PWD',
+  '_solo_parent?': 'Has Solo Parent',
+  '_ip_member?': 'IP Member',
+  '_working_student?': 'Working Student',
+  is_indigenous: 'Indigenous',
+  is_child_lgbtq: 'Child of LGBTQ+',
+  is_child_pdl: 'Child of PDL',
   is_child_solo_parent: 'Child of Solo Parent',
-  employee_id:          'Employee ID',
-  sex:                  'Sex',
-  employee_type:        'Employee Type',
+  employee_id: 'Employee ID',
+  sex: 'Sex',
+  employee_type: 'Employee Type',
   administrative_officials: 'Admin Official',
-  plantilla_position:   'Plantilla Position',
-  income_order:         'Income Order',
-  ethnicity:            'Ethnicity',
-  religion:             'Religion',
-  place_of_birth:       'Place of Birth',
-  special_needs:        'Special Needs',
-  student_id:           'Student ID',
-  scholarship_status:   'Scholarship',
-  academic_standing:    'Academic Standing',
-  student_council:      'Student Council',
-  organizations:        'Organizations',
-  publication:          'Publication',
+  plantilla_position: 'Plantilla Position',
+  income_order: 'Income Order',
+  ethnicity: 'Ethnicity',
+  religion: 'Religion',
+  place_of_birth: 'Place of Birth',
+  special_needs: 'Special Needs',
+  student_id: 'Student ID',
+  scholarship_status: 'Scholarship',
+  academic_standing: 'Academic Standing',
+  student_council: 'Student Council',
+  organizations: 'Organizations',
+  publication: 'Publication',
 };
 
 const SECTORS = {
@@ -91,21 +91,25 @@ const ROWS_OPTIONS = [20, 50, 100, 'All'];
 
 export default function DistributionPage() {
   const [allSectorData, setAllSectorData] = useState([]);
-  const [loading, setLoading]             = useState(true);
-  const [activeTab, setActiveTab]         = useState('student_enrollment');
-  const [activeAY, setActiveAY]           = useState(null);
-  const [viewMode, setViewMode]           = useState('visuals');
-  const [searchTerm, setSearchTerm]       = useState('');
-  const [isDeleting, setIsDeleting]       = useState(false);
-  const [currentPage, setCurrentPage]     = useState(1);
-  const [rowsPerPage, setRowsPerPage]     = useState(20);
-  const [datasetOpen, setDatasetOpen]     = useState(false);
-  const [ayOpen, setAyOpen]               = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState('student_enrollment');
+  const [activeAY, setActiveAY] = useState(null);
+  const [viewMode, setViewMode] = useState('visuals');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [rowsPerPage, setRowsPerPage] = useState(20);
+  const [datasetOpen, setDatasetOpen] = useState(false);
+  const [ayOpen, setAyOpen] = useState(false);
   const [clearModalOpen, setClearModalOpen] = useState(false);
-  const [sortCol, setSortCol]             = useState(null);
-  const [sortDir, setSortDir]             = useState('asc');
-  const datasetRef                        = useRef(null);
-  const ayRef                             = useRef(null);
+  const [deleteConfirmText, setDeleteConfirmText] = useState('');
+  const [modifyPeriodOpen, setModifyPeriodOpen] = useState(false);
+  const [newPeriod, setNewPeriod] = useState('');
+  const [isModifying, setIsModifying] = useState(false);
+  const [sortCol, setSortCol] = useState(null);
+  const [sortDir, setSortDir] = useState('asc');
+  const datasetRef = useRef(null);
+  const ayRef = useRef(null);
 
   useEffect(() => { loadTabData(); }, [activeTab]);
   useEffect(() => { setCurrentPage(1); }, [searchTerm, activeAY, activeTab, rowsPerPage]);
@@ -142,6 +146,7 @@ export default function DistributionPage() {
       setIsDeleting(true);
       await deleteAYData(activeTab, activeAY);
       await loadTabData();
+      setClearModalOpen(false); // Close modal after successful deletion
     } catch (err) {
       console.error(err);
       alert('Delete failed.');
@@ -150,9 +155,61 @@ export default function DistributionPage() {
     }
   };
 
-  const availableYears = useMemo(() =>
-    [...new Set(allSectorData.map(i => i.academicYear))].filter(Boolean).sort().reverse(),
-  [allSectorData]);
+  const handleModifyPeriod = async () => {
+    if (!activeAY || !newPeriod || newPeriod === activeAY) return;
+
+    try {
+      setIsModifying(true);
+
+      // Get all records for the current period
+      const recordsToUpdate = currentInboxData;
+
+      // Update each record's academicYear field
+      await Promise.all(
+        recordsToUpdate.map(record =>
+          updateDocument(activeTab, record.id, { academicYear: newPeriod })
+        )
+      );
+
+      // Reload data and close modal
+      await loadTabData();
+      setModifyPeriodOpen(false);
+      setNewPeriod('');
+    } catch (err) {
+      console.error('Modify period failed:', err);
+      alert('Failed to modify period. Please try again.');
+    } finally {
+      setIsModifying(false);
+    }
+  };
+
+  // Sort periods intelligently (most recent first)
+  const availableYears = useMemo(() => {
+    const periods = [...new Set(allSectorData.map(i => i.academicYear))].filter(Boolean);
+
+    // Sort by year first, then by semester
+    return periods.sort((a, b) => {
+      // Extract start year from "2024-2025" or "2024-2025 1st Semester"
+      const yearA = parseInt(a.split('-')[0]);
+      const yearB = parseInt(b.split('-')[0]);
+
+      if (yearA !== yearB) return yearB - yearA; // Most recent year first
+
+      // Same year, sort by semester
+      const semesterOrder = { '1st Semester': 1, '2nd Semester': 2, 'Summer': 3 };
+      const semA = a.includes('1st Semester') ? 1 : a.includes('2nd Semester') ? 2 : a.includes('Summer') ? 3 : 0;
+      const semB = b.includes('1st Semester') ? 1 : b.includes('2nd Semester') ? 2 : b.includes('Summer') ? 3 : 0;
+
+      // If both have semesters, sort by semester order (1st, 2nd, Summer)
+      if (semA && semB) return semA - semB;
+
+      // If one has semester and other doesn't, prioritize the one with semester
+      if (semA && !semB) return -1;
+      if (!semA && semB) return 1;
+
+      return 0;
+    });
+  }, [allSectorData]);
 
   const currentInboxData = useMemo(() => {
     const filtered = allSectorData.filter(i => i.academicYear === activeAY);
@@ -161,18 +218,18 @@ export default function DistributionPage() {
     // Normalize old field names to new schema so both old and new AY records display correctly
     return filtered.map(r => ({
       ...r,
-      studid:               r.studid               || r.student_id      || 'N/A',
-      studgender:           r.studgender            || r.sex             || 'Unknown',
-      studethnic:           r.studethnic            || r.ethnicity       || 'Not Specified',
-      stud_college:         r.stud_college          || r.college         || 'Not Specified',
-      stud_program:         r.stud_program          || r.program         || 'Not Specified',
-      stud_yrlevel:         r.stud_yrlevel          || r.year_level      || 'Not Specified',
-      currentadd_prov:      r.currentadd_prov       || r.place_of_origin || 'Not Specified',
+      studid: r.studid || r.student_id || 'N/A',
+      studgender: r.studgender || r.sex || 'Unknown',
+      studethnic: r.studethnic || r.ethnicity || 'Not Specified',
+      stud_college: r.stud_college || r.college || 'Not Specified',
+      stud_program: r.stud_program || r.program || 'Not Specified',
+      stud_yrlevel: r.stud_yrlevel || r.year_level || 'Not Specified',
+      currentadd_prov: r.currentadd_prov || r.place_of_origin || 'Not Specified',
       is_first_gen_learner: nb(r.is_first_gen_learner ?? r['_first_generation?']),
-      '_pwd?':              nb(r['_pwd?'] ?? r.is_pwd),
-      '_solo_parent?':      nb(r['_solo_parent?'] ?? r.is_solo_parent),
-      '_ip_member?':        nb(r['_ip_member?'] ?? r.is_ip_member),
-      '_working_student?':  nb(r['_working_student?'] ?? r.is_working_student),
+      '_pwd?': nb(r['_pwd?'] ?? r.is_pwd),
+      '_solo_parent?': nb(r['_solo_parent?'] ?? r.is_solo_parent),
+      '_ip_member?': nb(r['_ip_member?'] ?? r.is_ip_member),
+      '_working_student?': nb(r['_working_student?'] ?? r.is_working_student),
     }));
   }, [allSectorData, activeAY, activeTab]);
 
@@ -180,7 +237,7 @@ export default function DistributionPage() {
     currentInboxData.filter(row =>
       Object.values(row).some(v => String(v).toLowerCase().includes(searchTerm.toLowerCase()))
     ),
-  [currentInboxData, searchTerm]);
+    [currentInboxData, searchTerm]);
 
   const sortedData = useMemo(() => {
     if (!sortCol) return filteredData;
@@ -191,7 +248,7 @@ export default function DistributionPage() {
   }, [filteredData, sortCol, sortDir]);
 
   const effectiveRows = rowsPerPage === 'All' ? sortedData.length || 1 : rowsPerPage;
-  const totalPages    = Math.max(1, Math.ceil(sortedData.length / effectiveRows));
+  const totalPages = Math.max(1, Math.ceil(sortedData.length / effectiveRows));
   const paginatedData = useMemo(() => {
     if (rowsPerPage === 'All') return sortedData;
     const s = (currentPage - 1) * rowsPerPage;
@@ -199,14 +256,14 @@ export default function DistributionPage() {
   }, [sortedData, currentPage, rowsPerPage]);
 
   const showingFrom = sortedData.length === 0 ? 0 : (currentPage - 1) * effectiveRows + 1;
-  const showingTo   = Math.min(currentPage * effectiveRows, sortedData.length);
+  const showingTo = Math.min(currentPage * effectiveRows, sortedData.length);
 
   const handleSort = (col) => {
     if (sortCol === col) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
     else { setSortCol(col); setSortDir('asc'); }
     setCurrentPage(1);
   };
-  const sector      = SECTORS[activeTab];
+  const sector = SECTORS[activeTab];
 
   const UploadButton = activeTab === 'student_engagement'
     ? <ExcelUploadEngagement activeTab={activeTab} onUploadSuccess={loadTabData} compact />
@@ -273,30 +330,36 @@ export default function DistributionPage() {
             <div className="relative" ref={ayRef}>
               <button
                 onClick={() => setAyOpen(o => !o)}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-neutral-300 dark:border-neutral-600 text-neutral-600 dark:text-neutral-400 text-sm font-medium bg-white dark:bg-neutral-900 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-neutral-300 dark:border-neutral-600 text-neutral-600 dark:text-neutral-400 text-sm font-medium bg-white dark:bg-neutral-900 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors max-w-[280px]"
               >
-                {activeAY ?? '—'}
-                <ChevronDown size={13} className={`transition-transform duration-200 ${ayOpen ? 'rotate-180' : ''}`} />
+                <span className="truncate">{activeAY ?? '—'}</span>
+                <ChevronDown size={13} className={`transition-transform duration-200 shrink-0 ${ayOpen ? 'rotate-180' : ''}`} />
               </button>
 
               {ayOpen && (
-                <div className="absolute top-full left-0 mt-1 z-30 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-xl shadow-xl overflow-hidden min-w-[130px]">
-                  {availableYears.map(ay => (
-                    <button
-                      key={ay}
-                      onClick={() => { setActiveAY(ay); setAyOpen(false); }}
-                      className="w-full flex items-center justify-between gap-2 px-4 py-2.5 text-sm text-left transition-colors"
-                      style={activeAY === ay
-                        ? { color: LILAC, backgroundColor: `${LILAC}12`, fontWeight: 600 }
-                        : { color: '#6b7280' }
-                      }
-                      onMouseEnter={e => { if (activeAY !== ay) e.currentTarget.style.backgroundColor = '#f9fafb'; }}
-                      onMouseLeave={e => { if (activeAY !== ay) e.currentTarget.style.backgroundColor = ''; }}
-                    >
-                      {ay}
-                      {activeAY === ay && <span className="text-xs">✓</span>}
-                    </button>
-                  ))}
+                <div className="absolute top-full left-0 mt-1 z-30 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-xl shadow-xl overflow-hidden min-w-[200px] max-h-[400px] overflow-y-auto">
+                  {availableYears.map(ay => {
+                    // Check if this is a semester-based period
+                    const isSemesterBased = ay.includes('Semester') || ay.includes('Summer');
+                    const displayText = isSemesterBased ? ay : `${ay} (Full Year)`;
+
+                    return (
+                      <button
+                        key={ay}
+                        onClick={() => { setActiveAY(ay); setAyOpen(false); }}
+                        className="w-full flex items-center justify-between gap-2 px-4 py-2.5 text-sm text-left transition-colors"
+                        style={activeAY === ay
+                          ? { color: LILAC, backgroundColor: `${LILAC}12`, fontWeight: 600 }
+                          : { color: '#6b7280' }
+                        }
+                        onMouseEnter={e => { if (activeAY !== ay) e.currentTarget.style.backgroundColor = '#f9fafb'; }}
+                        onMouseLeave={e => { if (activeAY !== ay) e.currentTarget.style.backgroundColor = ''; }}
+                      >
+                        <span className="truncate">{displayText}</span>
+                        {activeAY === ay && <span className="text-xs shrink-0">✓</span>}
+                      </button>
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -309,8 +372,8 @@ export default function DistributionPage() {
       <div className="border-b border-neutral-200 dark:border-neutral-700">
         <div className="flex">
           {[
-            { id: 'visuals',  label: 'Visuals' },
-            { id: 'table',    label: 'Data Sheet' },
+            { id: 'visuals', label: 'Visuals' },
+            { id: 'table', label: 'Data Sheet' },
           ].map(tab => (
             <button
               key={tab.id}
@@ -337,12 +400,20 @@ export default function DistributionPage() {
         </button>
         {UploadButton}
         {activeAY && (
-          <button
-            onClick={() => setClearModalOpen(true)}
-            className="p-1.5 rounded-lg border border-neutral-200 dark:border-neutral-700 text-neutral-500 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200 hover:border-neutral-300 dark:hover:border-neutral-500 transition-colors"
-          >
-            <MoreVertical size={15} />
-          </button>
+          <>
+            <button
+              onClick={() => { setNewPeriod(''); setModifyPeriodOpen(true); }}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-neutral-200 dark:border-neutral-700 text-xs font-semibold text-neutral-500 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200 hover:border-neutral-300 dark:hover:border-neutral-500 transition-colors"
+            >
+              <Edit3 size={13} /> Modify Period
+            </button>
+            <button
+              onClick={() => setClearModalOpen(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-red-200 dark:border-red-700 text-xs font-semibold text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 hover:border-red-300 dark:hover:border-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+            >
+              <Trash2 size={13} /> Delete Period
+            </button>
+          </>
         )}
       </div>
 
@@ -392,34 +463,224 @@ export default function DistributionPage() {
 
       {/* ── CLEAR AY MODAL ── */}
       {clearModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setClearModalOpen(false)}>
-          <div className="bg-white dark:bg-neutral-900 rounded-xl shadow-2xl p-6 w-80 flex flex-col gap-4" onClick={e => e.stopPropagation()}>
-            <div className="flex flex-col gap-1">
-              <h3 className="text-sm font-bold text-neutral-900 dark:text-neutral-100">Clear AY {activeAY}</h3>
-              <p className="text-xs text-neutral-500 dark:text-neutral-400">
-                This will permanently delete all {currentInboxData.length.toLocaleString()} records for Academic Year {activeAY}. This cannot be undone.
-              </p>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" onClick={() => { if (!isDeleting) { setClearModalOpen(false); setDeleteConfirmText(''); } }}>
+          <div className="bg-white dark:bg-neutral-900 rounded-xl shadow-2xl p-6 w-96 flex flex-col gap-4 border-2 border-red-500" onClick={e => e.stopPropagation()}>
+            <div className="flex items-start gap-3">
+              <div className="p-2 bg-red-100 dark:bg-red-900/30 rounded-lg">
+                <AlertCircle className="text-red-600 dark:text-red-400" size={24} />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-base font-bold text-neutral-900 dark:text-neutral-100 mb-1">Delete Dataset Confirmation</h3>
+                <p className="text-xs text-neutral-600 dark:text-neutral-400 leading-relaxed">
+                  You are about to permanently delete <span className="font-bold text-red-600 dark:text-red-400">{currentInboxData.length.toLocaleString()} records</span> from <span className="font-bold">{sector.label}</span> for period <span className="font-bold">{activeAY}</span>.
+                </p>
+              </div>
             </div>
-            <div className="flex items-center justify-end gap-2">
+
+            <div className="p-3 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800">
+              <p className="text-xs font-bold text-red-800 dark:text-red-300 mb-2">⚠️ Warning: This action cannot be undone!</p>
+              <p className="text-xs text-red-700 dark:text-red-400">All student records, analytics, and historical data for this period will be permanently lost.</p>
+            </div>
+
+            {/* Progress Bar - Shows during deletion */}
+            {isDeleting && (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-semibold text-neutral-700 dark:text-neutral-300">Deleting records...</span>
+                  <span className="text-neutral-500 dark:text-neutral-400">Please wait</span>
+                </div>
+                <div className="w-full h-2 bg-neutral-200 dark:bg-neutral-700 rounded-full overflow-hidden">
+                  <div className="h-full bg-gradient-to-r from-red-500 to-red-600 rounded-full animate-pulse" style={{ width: '100%' }}></div>
+                </div>
+                <p className="text-xs text-neutral-500 dark:text-neutral-400 italic text-center">
+                  Do not close this window
+                </p>
+              </div>
+            )}
+
+            {/* Confirmation Input - Hidden during deletion */}
+            {!isDeleting && (
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-neutral-700 dark:text-neutral-300 block">
+                  Type <span className="px-2 py-0.5 bg-neutral-100 dark:bg-neutral-800 rounded font-mono text-red-600 dark:text-red-400">DELETE</span> to confirm:
+                </label>
+                <input
+                  type="text"
+                  value={deleteConfirmText}
+                  onChange={(e) => setDeleteConfirmText(e.target.value)}
+                  placeholder="Type DELETE here"
+                  className="w-full px-3 py-2 border-2 border-neutral-300 dark:border-neutral-600 rounded-lg text-sm font-mono focus:border-red-500 focus:outline-none bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100"
+                  autoFocus
+                />
+              </div>
+            )}
+
+            <div className="flex items-center justify-end gap-2 pt-2">
               <button
-                onClick={() => setClearModalOpen(false)}
-                className="px-3 py-1.5 rounded-lg text-xs font-semibold text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
+                onClick={() => { setClearModalOpen(false); setDeleteConfirmText(''); }}
+                disabled={isDeleting}
+                className="px-4 py-2 rounded-lg text-xs font-semibold text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 Cancel
               </button>
               <button
-                onClick={() => { setClearModalOpen(false); handleDeleteAY(); }}
-                disabled={isDeleting}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-white bg-red-500 hover:bg-red-600 disabled:opacity-50 transition-colors"
+                onClick={() => {
+                  if (deleteConfirmText === 'DELETE') {
+                    setDeleteConfirmText('');
+                    handleDeleteAY();
+                  }
+                }}
+                disabled={isDeleting || deleteConfirmText !== 'DELETE'}
+                className="flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold text-white bg-red-600 hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
-                {isDeleting ? <RefreshCcw className="animate-spin" size={11} /> : <Trash2 size={11} />}
-                Clear AY {activeAY}
+                {isDeleting ? (
+                  <>
+                    <RefreshCcw className="animate-spin" size={14} />
+                    Deleting...
+                  </>
+                ) : (
+                  <>
+                    <Trash2 size={14} />
+                    Delete {currentInboxData.length.toLocaleString()} Records
+                  </>
+                )}
               </button>
             </div>
           </div>
         </div>
       )}
-    </div>
+
+      {/* ── MODIFY PERIOD MODAL ── */}
+      {modifyPeriodOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" onClick={() => { if (!isModifying) { setModifyPeriodOpen(false); setNewPeriod(''); } }}>
+          <div className="bg-white dark:bg-neutral-900 rounded-xl shadow-2xl p-6 w-[480px] flex flex-col gap-4 border-2 border-blue-500" onClick={e => e.stopPropagation()}>
+            <div className="flex items-start gap-3">
+              <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+                <Calendar className="text-blue-600 dark:text-blue-400" size={24} />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-base font-bold text-neutral-900 dark:text-neutral-100 mb-1">Modify Academic Period</h3>
+                <p className="text-xs text-neutral-600 dark:text-neutral-400 leading-relaxed">
+                  Change the academic period for <span className="font-bold text-blue-600 dark:text-blue-400">{currentInboxData.length.toLocaleString()} records</span> in <span className="font-bold">{sector.label}</span>.
+                </p>
+              </div>
+            </div>
+
+            <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+              <p className="text-xs font-bold text-blue-800 dark:text-blue-300 mb-1">Current Period:</p>
+              <p className="text-sm font-bold text-blue-900 dark:text-blue-200">{activeAY}</p>
+            </div>
+
+            {/* Progress Bar - Shows during modification */}
+            {isModifying && (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-semibold text-neutral-700 dark:text-neutral-300">Updating {currentInboxData.length} records...</span>
+                  <span className="text-neutral-500 dark:text-neutral-400">Please wait</span>
+                </div>
+                <div className="w-full h-2 bg-neutral-200 dark:bg-neutral-700 rounded-full overflow-hidden">
+                  <div className="h-full bg-gradient-to-r from-blue-500 to-blue-600 rounded-full animate-pulse" style={{ width: '100%' }}></div>
+                </div>
+              </div>
+            )}
+
+            {/* Input Field - Hidden during modification */}
+            {!isModifying && (
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-neutral-700 dark:text-neutral-300 block">
+                  New Academic Period:
+                </label>
+                {activeTab === 'student_enrollment' ? (
+                  // Semester-based dropdown for Student Enrollment
+                  <select
+                    value={newPeriod}
+                    onChange={(e) => setNewPeriod(e.target.value)}
+                    className="w-full px-3 py-2 border-2 border-neutral-300 dark:border-neutral-600 rounded-lg text-sm focus:border-blue-500 focus:outline-none bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 cursor-pointer"
+                    autoFocus
+                  >
+                    <option value="">Select a period...</option>
+                    {(() => {
+                      const currentYear = new Date().getFullYear();
+                      const options = [];
+                      // Generate from 2022-2023 to current year + 2
+                      for (let year = 2022; year <= currentYear + 2; year++) {
+                        const nextYear = year + 1;
+                        options.push(
+                          <option key={`${year}-1st`} value={`${year}-${nextYear} 1st Semester`}>
+                            {year}-{nextYear} 1st Semester
+                          </option>,
+                          <option key={`${year}-2nd`} value={`${year}-${nextYear} 2nd Semester`}>
+                            {year}-{nextYear} 2nd Semester
+                          </option>
+                        );
+                      }
+                      return options;
+                    })()}
+                  </select>
+                ) : (
+                  // Year-based dropdown for other datasets
+                  <select
+                    value={newPeriod}
+                    onChange={(e) => setNewPeriod(e.target.value)}
+                    className="w-full px-3 py-2 border-2 border-neutral-300 dark:border-neutral-600 rounded-lg text-sm focus:border-blue-500 focus:outline-none bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 cursor-pointer"
+                    autoFocus
+                  >
+                    <option value="">Select a period...</option>
+                    {(() => {
+                      const currentYear = new Date().getFullYear();
+                      const options = [];
+                      // Generate from 2022-2023 to current year + 2
+                      for (let year = 2022; year <= currentYear + 2; year++) {
+                        const nextYear = year + 1;
+                        options.push(
+                          <option key={year} value={`${year}-${nextYear}`}>
+                            {year}-{nextYear}
+                          </option>
+                        );
+                      }
+                      return options;
+                    })()}
+                  </select>
+                )}
+                <p className="text-xs text-neutral-500 dark:text-neutral-400">
+                  {activeTab === 'student_enrollment'
+                    ? 'Select the semester period for these records'
+                    : 'Select the academic year for these records'}
+                </p>
+              </div>
+            )}
+
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <button
+                onClick={() => { setModifyPeriodOpen(false); setNewPeriod(''); }}
+                disabled={isModifying}
+                className="px-4 py-2 rounded-lg text-xs font-semibold text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleModifyPeriod}
+                disabled={isModifying || !newPeriod || newPeriod === activeAY}
+                className="flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                {isModifying ? (
+                  <>
+                    <RefreshCcw className="animate-spin" size={14} />
+                    Updating...
+                  </>
+                ) : (
+                  <>
+                    <Edit3 size={14} />
+                    Update Period
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div >
+      )
+      }
+    </div >
   );
 }
 
