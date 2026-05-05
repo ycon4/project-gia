@@ -37,12 +37,24 @@ export default function PublicRegister() {
   }, [eventId]);
 
   const handleSubmit = async (formData) => {
-    await addDoc(collection(db, 'attendance'), {
-      ...formData,
-      eventId,
-      session_name: session,
-      createdAt: serverTimestamp(),
-    });
+    try {
+      console.log('📝 Submitting attendance record...');
+      console.log('  Event ID:', eventId);
+      console.log('  Session:', session);
+      console.log('  Form Data:', formData);
+
+      const docRef = await addDoc(collection(db, 'attendance'), {
+        ...formData,
+        eventId,
+        session_name: session,
+        createdAt: serverTimestamp(),
+      });
+
+      console.log('✅ Attendance record saved! Doc ID:', docRef.id);
+    } catch (error) {
+      console.error('❌ Failed to save attendance record:', error);
+      throw error; // Re-throw so RegistrationForm can handle it
+    }
   };
 
   if (status === 'loading') {
@@ -103,6 +115,7 @@ export default function PublicRegister() {
 
   return (
     <RegistrationForm
+      eventId={eventId}
       eventName={event.title}
       description={event.description}
       formConfig={event.formConfig}

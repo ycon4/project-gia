@@ -1,8 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   ShieldCheck, Send, CheckCircle2,
-  CalendarCheck, Info, Sparkles
+  CalendarCheck, Info, Sparkles, Loader2
 } from 'lucide-react';
+import { collection, query, where, getDocs } from 'firebase/firestore';
+import { db } from '../../../firebase/config';
 
 // --- COMPACT STYLES ALIGNED WITH GIA THEME ---
 const inputClass = `
@@ -23,7 +25,8 @@ export default function RegistrationForm({
   onSubmit,
   formConfig = {},
   hasPreReg = false,
-  selectedSession = "General Attendance"
+  selectedSession = "General Attendance",
+  eventId = null // Add eventId prop for auto-fill lookup
 }) {
   const initialFormState = {
     fullName: '', sex: '', age: '', home_address: '',
@@ -36,9 +39,90 @@ export default function RegistrationForm({
   const [formData, setFormData] = useState(initialFormState);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [isLookingUp, setIsLookingUp] = useState(false);
+  const [autoFillStatus, setAutoFillStatus] = useState(null); // 'found' | 'not-found' | null
+
+  // Auto-fill lookup when name, sex, and age are all filled
+  useEffect(() => {
+    const lookupExistingAttendee = async () => {
+      // Only lookup if we have all three identity fields AND eventId
+      if (!formData.fullName || !formData.sex || !formData.age || !eventId) {
+        setAutoFillStatus(null);
+        return;
+      }
+
+      // Skip if already auto-filled
+      if (autoFillStatus === 'found') return;
+
+      setIsLookingUp(true);
+      setAutoFillStatus(null);
+
+      try {
+        // Normalize name for comparison (trim + lowercase)
+        const normalizedName = formData.fullName.trim().toLowerCase();
+        const age = parseInt(formData.age);
+
+        // Query Firestore for existing attendance records
+        const attendanceRef = collection(db, 'attendance');
+        const q = query(
+          attendanceRef,
+          where('eventId', '==', eventId),
+          where('sex', '==', formData.sex),
+          where('age', '==', age)
+        );
+
+        const snapshot = await getDocs(q);
+
+        // Find exact name match (case-insensitive)
+        let matchedData = null;
+        for (const doc of snapshot.docs) {
+          const data = doc.data();
+          const recordName = data.fullName ? data.fullName.trim().toLowerCase() : '';
+
+          if (recordName === normalizedName) {
+            matchedData = data;
+            break;
+          }
+        }
+
+        if (matchedData) {
+          // Auto-fill all fields from matched record
+          setFormData(prev => ({
+            ...prev,
+            home_address: matchedData.home_address || prev.home_address,
+            email: matchedData.email || prev.email,
+            phone: matchedData.phone || prev.phone,
+            office_college: matchedData.office_college || prev.office_college,
+            department: matchedData.department || prev.department,
+            designation: matchedData.designation || prev.designation,
+            sector: matchedData.sector || prev.sector,
+            pwd_status: matchedData.pwd_status || prev.pwd_status,
+            ethnic_group: matchedData.ethnic_group || prev.ethnic_group,
+            employment_status: matchedData.employment_status || prev.employment_status,
+            year_level: matchedData.year_level || prev.year_level,
+            emergency_contact: matchedData.emergency_contact || prev.emergency_contact,
+            id_number: matchedData.id_number || prev.id_number,
+          }));
+          setAutoFillStatus('found');
+        } else {
+          setAutoFillStatus('not-found');
+        }
+      } catch (error) {
+        console.error('Auto-fill error:', error);
+        setAutoFillStatus('not-found');
+      } finally {
+        setIsLookingUp(false);
+      }
+    };
+
+    // Debounce the lookup to avoid too many queries (wait for user to finish typing)
+    const timeoutId = setTimeout(lookupExistingAttendee, 1200);
+    return () => clearTimeout(timeoutId);
+  }, [formData.fullName, formData.sex, formData.age, eventId]);
 
   const isEnabled = (fieldName) => {
-    if (fieldName === 'fullName' || fieldName === 'sex') return true;
+    // Always required: fullName, sex, age
+    if (fieldName === 'fullName' || fieldName === 'sex' || fieldName === 'age') return true;
     if (formConfig && typeof formConfig === 'object' && Object.keys(formConfig).length > 0) {
       return formConfig[fieldName] === true;
     }
@@ -47,7 +131,7 @@ export default function RegistrationForm({
   };
 
   const dynamicFields = Object.keys(initialFormState).filter(key =>
-    isEnabled(key) && key !== 'fullName' && key !== 'sex'
+    isEnabled(key) && key !== 'fullName' && key !== 'sex' && key !== 'age'
   );
 
   const handleSubmit = async (e) => {
@@ -56,6 +140,7 @@ export default function RegistrationForm({
     try {
       const submissionData = {
         ...formData,
+        age: parseInt(formData.age), // Convert age to number
         session_name: selectedSession,
         registrationType: hasPreReg ? 'Pre-Registration' : 'Attendance'
       };
@@ -218,14 +303,46 @@ export default function RegistrationForm({
               <Sparkles size={14} className="text-gia-500" />
               <h2 className="text-[10px] font-black text-neutral-500 uppercase tracking-widest">Required Information</h2>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <label className={labelClass}>Full Name <span className="text-gia-500">*</span></label>
-                {renderField('fullName')}
+
+            {/* Auto-fill status indicator */}
+            {isLookingUp && (
+              <div className="mb-3 flex items-center gap-2 px-3 py-2 bg-blue-50 border border-blue-200 rounded-lg text-xs font-medium text-blue-700 animate-in slide-in-from-top-2">
+                <Loader2 size={14} className="animate-spin" />
+                Looking up your previous registration...
               </div>
-              <div className="space-y-1">
+            )}
+
+            {autoFillStatus === 'found' && (
+              <div className="mb-3 flex items-center gap-2 px-3 py-2 bg-emerald-50 border border-emerald-200 rounded-lg text-xs font-bold text-emerald-700 animate-in slide-in-from-top-2">
+                <CheckCircle2 size={14} />
+                Found your previous registration! Auto-filled your details.
+              </div>
+            )}
+
+            {autoFillStatus === 'not-found' && (
+              <div className="mb-3 flex items-center gap-2 px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg text-xs font-medium text-amber-700 animate-in slide-in-from-top-2">
+                <Info size={14} />
+                First time registering for this event. Please fill in your information.
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-3">
+              <div className="md:col-span-6 space-y-1">
+                <label className={labelClass}>
+                  Full Name (with M.I.) <span className="text-gia-500">*</span>
+                </label>
+                {renderField('fullName')}
+                <p className="text-[9px] text-neutral-400 font-medium mt-1">
+                  e.g., Maria C. Santos
+                </p>
+              </div>
+              <div className="md:col-span-3 space-y-1">
                 <label className={labelClass}>Sex <span className="text-gia-500">*</span></label>
                 {renderField('sex')}
+              </div>
+              <div className="md:col-span-3 space-y-1">
+                <label className={labelClass}>Age <span className="text-gia-500">*</span></label>
+                {renderField('age')}
               </div>
             </div>
           </div>

@@ -35,7 +35,6 @@ const FIELD_GROUPS = [
     label: 'Identity',
     icon: Shield,
     fields: [
-      { id: 'age', label: 'Age' },
       { id: 'home_address', label: 'Home Address' },
       { id: 'id_number', label: 'ID Number' },
     ],
@@ -711,7 +710,7 @@ export default function EventFormModal({ isOpen, isEditing, initialData, onSubmi
                 </svg>
               </div>
               <p className="text-[10px] font-bold text-gia-700 dark:text-gia-300">
-                Full Name, Sex/Gender, and Timestamp are always collected automatically.
+                Full Name, Sex/Gender, Age, and Timestamp are always collected automatically.
               </p>
             </div>
 
