@@ -16,7 +16,7 @@ const API_URL = 'https://api.groq.com/openai/v1/chat/completions';
 const MODEL = 'llama-3.3-70b-versatile';
 
 app.use(cors({
-  origin: ['http://localhost:5173', 'http://localhost:3000', 'http://127.0.0.1:5173'],
+  origin: ['http://localhost:5173', 'http://localhost:5174', 'http://localhost:5175', 'http://localhost:3000', 'http://127.0.0.1:5173'],
   methods: ['GET', 'POST'],
   credentials: true
 }));
@@ -113,7 +113,7 @@ app.post('/api/chat', async (req, res) => {
     const data = await response.json();
 
     let reply = data.choices?.[0]?.message?.content ||
-                "I apologize, but I couldn't generate a proper response. Please try again.";
+      "I apologize, but I couldn't generate a proper response. Please try again.";
 
     reply = reply.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
 
@@ -132,7 +132,6 @@ Read the user's question and return ONLY a single valid JSON object — no markd
 
 ## Collections
 - "student_enrollment" — student records, vulnerability groups (default for most questions)
-- "student_engagement" — academic standing, scholarships, organizations, publications, student council
 - "employee_information" — faculty/staff records
 - "attendance" — event attendance
 - "events" — event records
@@ -152,9 +151,24 @@ Read the user's question and return ONLY a single valid JSON object — no markd
 - "stud_college" — college
 - "stud_program" — degree program / course
 - "stud_yrlevel" — year level
-- "studethnic" — ethnicity
-- "studreligion" — religion
+- "studgender" — student sex/gender
+- "studethnic" — student ethnicity
+- "studreligion" — student religion
 - "currentadd_prov" — province / place of origin
+
+## Boolean fields (employee_information) — always use value "Yes":
+- "is_emp_pwd" — PWD employee (disabled employee, employee with disability)
+- "is_emp_senior" — Senior/Administrative Official (senior citizen, admin official)
+
+## Grouping fields (employee_information):
+- "empgender" — employee sex/gender
+- "emptype" — employee type (teaching, non-teaching, permanent, contractual)
+- "emp_plantilla" — plantilla position
+- "empsalary_grade" — salary grade / income
+- "empethnic" — employee ethnicity
+- "empreligion" — employee religion
+- "deptcoll" — department/college
+- "deptcode" — department code
 
 ## College full names (use these exact strings in filterValue/filterValues):
 - "College of Science and Mathematics" (CSM)
@@ -181,16 +195,22 @@ Read the user's question and return ONLY a single valid JSON object — no markd
 
 ## Rules:
 1. isConversational = true ONLY for pure chat (greetings, thanks, "who are you"). Any data question = false.
-2. For every boolean attribute mentioned, add {"field": <field>, "value": "Yes"} to andFilters.
-3. If a specific college is mentioned: add its full name to filterValues. If only one college: also set filterValue.
-4. If user asks "from what college", "which college", "by college", "per college" — set groupField = "stud_college".
-5. If user asks for all colleges without naming one — set wantsAll = true and groupField = "stud_college".
-6. Extract academic years matching YYYY-YYYY into academicYears array.
-7. wantsSexBreakdown = true if: male/female/sex/gender/breakdown mentioned, OR any boolean filter is present.
-8. wantsComparison = true if: multiple colleges, multiple years, or compare/versus/vs mentioned.
-9. Default collection = "student_enrollment" for student questions.
-10. For general enrollment questions with no specific filter: set wantsAll = true and groupField = "stud_college".
-11. Return ONLY valid JSON. No extra text.`;
+2. For employee queries (mentions employee/staff/faculty/instructor/professor/personnel/teacher/worker):
+   - Set collection = "employee_information"
+   - Use employee fields (empgender, empethnic, empreligion, emptype, etc.) NOT student fields
+   - CRITICAL: If query mentions "employee" + "religion" → use "empreligion" (NOT "studreligion")
+   - CRITICAL: If query mentions "employee" + "ethnicity" → use "empethnic" (NOT "studethnic")
+   - CRITICAL: If query mentions "employee" + "gender/sex" → use "empgender" (NOT "studgender")
+3. For every boolean attribute mentioned, add {"field": <field>, "value": "Yes"} to andFilters.
+4. If a specific college is mentioned: add its full name to filterValues. If only one college: also set filterValue.
+5. If user asks "from what college", "which college", "by college", "per college" — set groupField = "stud_college".
+6. If user asks for all colleges without naming one — set wantsAll = true and groupField = "stud_college".
+7. Extract academic years matching YYYY-YYYY into academicYears array.
+8. wantsSexBreakdown = true if: male/female/sex/gender/breakdown mentioned, OR any boolean filter is present.
+9. wantsComparison = true if: multiple colleges, multiple years, or compare/versus/vs mentioned.
+10. Default collection = "student_enrollment" for student questions.
+11. For general enrollment questions with no specific filter: set wantsAll = true and groupField = "stud_college".
+12. Return ONLY valid JSON. No extra text.`;
 
 // ─── Parse-intent endpoint ───────────────────────────────────
 app.post('/api/parse-intent', async (req, res) => {

@@ -4,20 +4,36 @@ import { getAuth } from 'firebase/auth';
 import { getAnalytics } from 'firebase/analytics';
 
 const firebaseConfig = {
-  apiKey: "AIzaSyBgi9HPxp0XFWUZc8Yb_PO29U0okWnsQ0M",
-  authDomain: "project-gia-2159a.firebaseapp.com",
-  projectId: "project-gia-2159a",
-  storageBucket: "project-gia-2159a.firebasestorage.app",
-  messagingSenderId: "176814540343",
-  appId: "1:176814540343:web:c51e20b0231ab1f95721b2",
-  measurementId: "G-JPJ9W2ZSYR"
+  apiKey: "AIzaSyDjkqvg7OkS-rbpP-SG5Mt4eq_jTJsdRxY",
+  authDomain: "project-gia-v2.firebaseapp.com",
+  projectId: "project-gia-v2",
+  storageBucket: "project-gia-v2.firebasestorage.app",
+  messagingSenderId: "485721554493",
+  appId: "1:485721554493:web:3725b26f5b08f8d3b33454",
+  measurementId: "G-QHG7C1W4KL"
 };
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 
-// Initialize Firestore
+// Initialize Firestore with settings to handle connection issues
 export const db = getFirestore(app);
+
+// Enable offline persistence and configure settings
+import { enableIndexedDbPersistence } from 'firebase/firestore';
+
+// Enable offline persistence (helps with connection issues)
+try {
+  enableIndexedDbPersistence(db).catch((err) => {
+    if (err.code === 'failed-precondition') {
+      console.warn('⚠️ Multiple tabs open, persistence only enabled in one tab');
+    } else if (err.code === 'unimplemented') {
+      console.warn('⚠️ Browser doesn\'t support offline persistence');
+    }
+  });
+} catch (err) {
+  console.warn('⚠️ Persistence setup error:', err);
+}
 
 // Initialize Auth
 export const auth = getAuth(app);

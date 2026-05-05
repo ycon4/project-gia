@@ -7,10 +7,14 @@ Read the user's question and return ONLY a single valid JSON object — no markd
 
 ## Collections
 - "student_enrollment" — student records, vulnerability groups (default for most questions)
-- "student_engagement" — academic standing, scholarships, organizations, publications, student council
 - "employee_information" — faculty/staff records
-- "attendance" — event attendance
-- "events" — event records
+- "events" — event records (USE THIS when query mentions: event, seminar, workshop, training, symposium, conference, forum, webinar)
+- "attendance" — generic attendance records (ONLY use if no event-specific keywords present)
+
+IMPORTANT: If the query mentions a specific event name (e.g., "Anti-sexual harassment seminar", "Leadership training", "Research symposium"), you MUST:
+1. Set collection = "events"
+2. Set eventTitle = the extracted event name (without question words)
+3. Set wantsSexBreakdown = true
 
 ## Boolean fields (student_enrollment) — always use value "Yes":
 - "_pwd?" — Person with Disability (PWD, disabled)
@@ -27,9 +31,29 @@ Read the user's question and return ONLY a single valid JSON object — no markd
 - "stud_college" — college
 - "stud_program" — degree program / course
 - "stud_yrlevel" — year level
-- "studethnic" — ethnicity
-- "studreligion" — religion
+- "studgender" — student sex/gender
+- "studethnic" — student ethnicity
+- "studreligion" — student religion
 - "currentadd_prov" — province / place of origin
+
+## Boolean fields (employee_information) — always use value "Yes":
+- "is_emp_pwd" — PWD employee (disabled employee, employee with disability)
+- "is_emp_senior" — Senior/Administrative Official (senior citizen, admin official)
+
+## Grouping fields (employee_information):
+- "empgender" — employee sex/gender
+- "emptype" — employee type (teaching, non-teaching, permanent, contractual)
+- "emp_plantilla" — plantilla position
+- "empsalary_grade" — salary grade / income
+- "empethnic" — employee ethnicity
+- "empreligion" — employee religion
+- "deptcoll" — department/college
+- "deptcode" — department code
+
+## Grouping fields (events):
+- "sector" — participant sector (use when query says "by sector", "per sector", "sector breakdown")
+- "title" — individual event name (use when query says "per event", "each event", "by event", "all events")
+- "eventType" — event type/category (default for events)
 
 ## College full names (use these exact strings in filterValue/filterValues):
 - "College of Science and Mathematics" (CSM)
@@ -44,6 +68,7 @@ Read the user's question and return ONLY a single valid JSON object — no markd
 {
   "isConversational": boolean,
   "collection": string | null,
+  "eventTitle": string | null,
   "andFilters": [{ "field": string, "value": "Yes" }],
   "groupField": string | null,
   "filterValue": string | null,
@@ -56,16 +81,41 @@ Read the user's question and return ONLY a single valid JSON object — no markd
 
 ## Rules:
 1. isConversational = true ONLY for pure chat (greetings, thanks, "who are you"). Any data question = false.
-2. For every boolean attribute mentioned, add {"field": <field>, "value": "Yes"} to andFilters.
-3. If a specific college is mentioned: add its full name to filterValues. If only one college: also set filterValue.
-4. If user asks "from what college", "which college", "by college", "per college" — set groupField = "stud_college".
-5. If user asks for all colleges without naming one — set wantsAll = true and groupField = "stud_college".
-6. Extract academic years matching YYYY-YYYY into academicYears array.
-7. wantsSexBreakdown = true if: male/female/sex/gender/breakdown mentioned, OR any boolean filter is present.
-8. wantsComparison = true if: multiple colleges, multiple years, or compare/versus/vs mentioned.
-9. Default collection = "student_enrollment" for student questions.
-10. For general enrollment questions with no specific filter: set wantsAll = true and groupField = "stud_college".
-11. Return ONLY valid JSON. No extra text.`;
+2. For event-specific queries (mentions seminar/workshop/training/symposium/conference/forum/webinar):
+   - If asking about a SPECIFIC event (e.g., "Anti-sexual harassment seminar"): Set collection = "events", extract event name and set eventTitle
+   - If asking about ALL events individually (e.g., "per event", "each event", "by event"): Set collection = "events", groupField = "title"
+   - If asking about event types/categories: Set collection = "events", groupField = "eventType"
+   - Always set wantsSexBreakdown = true for event queries
+3. For employee queries (mentions employee/staff/faculty/instructor/professor/personnel/teacher/worker):
+   - Set collection = "employee_information"
+   - Use employee fields (empgender, empethnic, empreligion, emptype, etc.) NOT student fields
+   - CRITICAL: If query mentions "employee" + "religion" → use "empreligion" (NOT "studreligion")
+   - CRITICAL: If query mentions "employee" + "ethnicity" → use "empethnic" (NOT "studethnic")
+   - CRITICAL: If query mentions "employee" + "gender/sex" → use "empgender" (NOT "studgender")
+4. For every boolean attribute mentioned, add {"field": <field>, "value": "Yes"} to andFilters.
+5. If a specific college is mentioned: add its full name to filterValues. If only one college: also set filterValue.
+6. If user asks "from what college", "which college", "by college", "per college" — set groupField = "stud_college".
+7. If user asks for all colleges without naming one — set wantsAll = true and groupField = "stud_college".
+8. Extract academic years matching YYYY-YYYY into academicYears array.
+9. wantsSexBreakdown = true if: male/female/sex/gender/breakdown/SDD/sex-disaggregated/sector mentioned, OR any boolean filter is present, OR event-specific query.
+10. wantsComparison = true if: multiple colleges, multiple years, or compare/versus/vs mentioned.
+11. Default collection = "student_enrollment" for student questions.
+12. For general enrollment questions with no specific filter: set wantsAll = true and groupField = "stud_college".
+13. Return ONLY valid JSON. No extra text.
+
+## Examples:
+- "How many people attended the Anti-sexual harassment seminar?" → {"collection": "events", "eventTitle": "anti-sexual harassment seminar", "wantsSexBreakdown": true}
+- "Show me attendance for the Leadership training" → {"collection": "events", "eventTitle": "leadership training", "wantsSexBreakdown": true}
+- "Show me SDD breakdown per event" → {"collection": "events", "groupField": "title", "wantsSexBreakdown": true, "wantsAll": true}
+- "What's the SDD for each event?" → {"collection": "events", "groupField": "title", "wantsSexBreakdown": true, "wantsAll": true}
+- "Show me sector breakdown of all events" → {"collection": "events", "groupField": "sector", "wantsSexBreakdown": true, "wantsAll": true}
+- "What's the SDD by sector for events?" → {"collection": "events", "groupField": "sector", "wantsSexBreakdown": true, "wantsAll": true}
+- "How many students are enrolled?" → {"collection": "student_enrollment", "wantsAll": true, "groupField": "stud_college"}
+- "Show me employee religion breakdown" → {"collection": "employee_information", "groupField": "empreligion", "wantsSexBreakdown": true, "wantsAll": true}
+- "What's the ethnicity distribution of employees?" → {"collection": "employee_information", "groupField": "empethnic", "wantsSexBreakdown": true, "wantsAll": true}
+- "Show me PWD employees" → {"collection": "employee_information", "andFilters": [{"field": "is_emp_pwd", "value": "Yes"}], "wantsSexBreakdown": true}
+- "How many senior employees?" → {"collection": "employee_information", "andFilters": [{"field": "is_emp_senior", "value": "Yes"}], "wantsSexBreakdown": true}`;
+
 
 const fetchWithRetry = async (url, options, retries = 2, delayMs = 2000) => {
   for (let attempt = 1; attempt <= retries; attempt++) {

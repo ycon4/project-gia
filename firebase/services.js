@@ -1,15 +1,15 @@
 // src/firebase/services.js
-import { 
-  collection, 
-  doc, 
-  addDoc, 
-  getDoc, 
+import {
+  collection,
+  doc,
+  addDoc,
+  getDoc,
   updateDoc,
-  getDocs, 
-  deleteDoc, 
-  query, 
-  where, 
-  orderBy, 
+  getDocs,
+  deleteDoc,
+  query,
+  where,
+  orderBy,
   limit,
   setDoc,
   onSnapshot,
@@ -75,7 +75,7 @@ export const getDocument = async (collectionName, documentId) => {
   try {
     const docRef = doc(db, collectionName, documentId);
     const docSnap = await getDoc(docRef);
-    
+
     if (docSnap.exists()) {
       return { id: docSnap.id, ...docSnap.data() };
     } else {
@@ -94,13 +94,22 @@ export const getDocument = async (collectionName, documentId) => {
  * @returns {Promise<Array>} - Array of documents
  */
 export const getAllDocuments = async (collectionName) => {
-  const colRef = collection(db, collectionName);
-  const q = query(colRef); 
-  const querySnapshot = await getDocs(q);
-  return querySnapshot.docs.map(doc => ({
-    id: doc.id,
-    ...doc.data()
-  }));
+  try {
+    console.log(`📥 Fetching all documents from: ${collectionName}`);
+    const colRef = collection(db, collectionName);
+    const q = query(colRef);
+    const querySnapshot = await getDocs(q);
+    const docs = querySnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }));
+    console.log(`✅ Fetched ${docs.length} documents from ${collectionName}`);
+    return docs;
+  } catch (error) {
+    console.error(`❌ Error fetching ${collectionName}:`, error.code, error.message);
+    // Return empty array instead of throwing to prevent app crash
+    return [];
+  }
 };
 
 /**
@@ -114,22 +123,22 @@ export const getAllDocuments = async (collectionName) => {
 export const queryDocuments = async (collectionName, conditions = [], orderByField = null, limitCount = null) => {
   try {
     let q = collection(db, collectionName);
-    
+
     const constraints = [];
     conditions.forEach(([field, operator, value]) => {
       constraints.push(where(field, operator, value));
     });
-    
+
     if (orderByField) {
       constraints.push(orderBy(orderByField));
     }
-    
+
     if (limitCount) {
       constraints.push(limit(limitCount));
     }
-    
+
     q = query(q, ...constraints);
-    
+
     const querySnapshot = await getDocs(q);
     const documents = [];
     querySnapshot.forEach((doc) => {
@@ -160,7 +169,7 @@ export const updateDocument = async (collectionName, documentId, data) => {
   try {
     const docRef = doc(db, collectionName, documentId);
     const { id, ...dataToUpdate } = data; // Remove 'id' from the update payload
-    
+
     await updateDoc(docRef, {
       ...dataToUpdate,
       updatedAt: new Date().toISOString()
@@ -168,7 +177,7 @@ export const updateDocument = async (collectionName, documentId, data) => {
 
     console.log('Document updated successfully:', documentId);
   } catch (error) {
-    
+
     if (error.code === 'not-found') {
       console.error("Document does not exist in Firestore. Check your ID!")
     }
@@ -215,7 +224,7 @@ export const deleteAYData = async (sector, academicYear) => {
  */
 export const listenToDocument = (collectionName, documentId, callback) => {
   const docRef = doc(db, collectionName, documentId);
-  
+
   const unsubscribe = onSnapshot(docRef, (doc) => {
     if (doc.exists()) {
       callback({ id: doc.id, ...doc.data() });
@@ -225,7 +234,7 @@ export const listenToDocument = (collectionName, documentId, callback) => {
   }, (error) => {
     console.error('Error listening to document:', error);
   });
-  
+
   return unsubscribe;
 };
 
@@ -238,14 +247,14 @@ export const listenToDocument = (collectionName, documentId, callback) => {
  */
 export const listenToCollection = (collectionName, callback, conditions = []) => {
   let q = collection(db, collectionName);
-  
+
   if (conditions.length > 0) {
-    const constraints = conditions.map(([field, operator, value]) => 
+    const constraints = conditions.map(([field, operator, value]) =>
       where(field, operator, value)
     );
     q = query(q, ...constraints);
   }
-  
+
   const unsubscribe = onSnapshot(q, (querySnapshot) => {
     const documents = [];
     querySnapshot.forEach((doc) => {
@@ -255,7 +264,7 @@ export const listenToCollection = (collectionName, callback, conditions = []) =>
   }, (error) => {
     console.error('Error listening to collection:', error);
   });
-  
+
   return unsubscribe;
 };
 
@@ -310,7 +319,7 @@ export const addEventSession = async (eventId, sessionName) => {
   try {
     const cleanId = String(eventId);
     const eventRef = doc(db, 'events', eventId);
-    
+
     await updateDoc(eventRef, {
       sessions: arrayUnion(sessionName),
       updatedAt: serverTimestamp()

@@ -3,7 +3,7 @@ import { db } from '../../firebase/config';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 const ts = (dateStr, hour = 9, minOffset = 0) => {
-  const d = new Date(`${dateStr}T${String(hour).padStart(2,'0')}:${String(minOffset).padStart(2,'0')}:00`);
+  const d = new Date(`${dateStr}T${String(hour).padStart(2, '0')}:${String(minOffset).padStart(2, '0')}:00`);
   return Timestamp.fromDate(d);
 };
 
@@ -21,33 +21,33 @@ const COLLEGES = [
 ];
 
 const FEMALE_NAMES = [
-  'Maria Santos','Ana Reyes','Liza Dela Cruz','Patricia Villanueva','Kristine Bautista',
-  'Angelica Mendoza','Josephine Flores','Carmela Torres','Rosario Aquino','Melanie Garcia',
-  'Cherryl Navarro','Diana Ramos','Gemma Castillo','Rowena Morales','Aileen Salazar',
-  'Lovely Pascual','Joanna Magno','Veronica Llanes','Maricel Buenaventura','Tricia Domingo',
-  'Sheila Gonzales','Rhea Cabrera','Nica Escano','Fatima Macapagal','Glaiza Padilla',
+  'Maria Santos', 'Ana Reyes', 'Liza Dela Cruz', 'Patricia Villanueva', 'Kristine Bautista',
+  'Angelica Mendoza', 'Josephine Flores', 'Carmela Torres', 'Rosario Aquino', 'Melanie Garcia',
+  'Cherryl Navarro', 'Diana Ramos', 'Gemma Castillo', 'Rowena Morales', 'Aileen Salazar',
+  'Lovely Pascual', 'Joanna Magno', 'Veronica Llanes', 'Maricel Buenaventura', 'Tricia Domingo',
+  'Sheila Gonzales', 'Rhea Cabrera', 'Nica Escano', 'Fatima Macapagal', 'Glaiza Padilla',
 ];
 
 const MALE_NAMES = [
-  'Juan dela Cruz','Miguel Santos','Carlo Reyes','Ramon Bautista','Marco Villanueva',
-  'Aldrin Flores','Jerome Mendoza','Patrick Torres','Rodel Aquino','Vincent Garcia',
-  'Jomar Navarro','Christian Ramos','Aldous Castillo','Renato Morales','Gilbert Salazar',
-  'Rodrigo Pascual','Dennis Magno','Francis Llanes','Ernesto Buenaventura','Leo Domingo',
+  'Juan dela Cruz', 'Miguel Santos', 'Carlo Reyes', 'Ramon Bautista', 'Marco Villanueva',
+  'Aldrin Flores', 'Jerome Mendoza', 'Patrick Torres', 'Rodel Aquino', 'Vincent Garcia',
+  'Jomar Navarro', 'Christian Ramos', 'Aldous Castillo', 'Renato Morales', 'Gilbert Salazar',
+  'Rodrigo Pascual', 'Dennis Magno', 'Francis Llanes', 'Ernesto Buenaventura', 'Leo Domingo',
 ];
 
-const SECTORS = ['Student','Student','Student','Faculty','Faculty','Staff','Guest'];
-const EMP_STATUS = ['Employed','Employed','Employed','Unemployed','Self-Employed'];
-const ETHNIC = ['Tagalog','Ilocano','Cebuano','Maranao','Bisaya','Kapampangan','Ibanag'];
+const SECTORS = ['Student', 'Student', 'Student', 'Faculty', 'Faculty', 'Staff', 'Other Beneficiaries'];
+const EMP_STATUS = ['Employed', 'Employed', 'Employed', 'Unemployed', 'Self-Employed'];
+const ETHNIC = ['Tagalog', 'Ilocano', 'Cebuano', 'Maranao', 'Bisaya', 'Kapampangan', 'Ibanag'];
 
 function makeParticipant(eventId, session_name, sex, date, index) {
-  const names   = sex === 'Female' ? FEMALE_NAMES : MALE_NAMES;
-  const name    = names[index % names.length];
-  const sector  = pick(SECTORS);
+  const names = sex === 'Female' ? FEMALE_NAMES : MALE_NAMES;
+  const name = names[index % names.length];
+  const sector = pick(SECTORS);
   const college = pick(COLLEGES);
-  const age     = sector === 'Student' ? String(18 + (index % 8)) : String(28 + (index % 30));
-  const pwd     = index % 9 === 0 ? 'Yes' : 'No';
-  const hour    = 8 + (index % 3);
-  const mins    = (index * 7) % 60;
+  const age = sector === 'Student' ? String(18 + (index % 8)) : String(28 + (index % 30));
+  const pwd = index % 9 === 0 ? 'Yes' : 'No';
+  const hour = 8 + (index % 3);
+  const mins = (index * 7) % 60;
 
   return {
     eventId,
@@ -56,7 +56,7 @@ function makeParticipant(eventId, session_name, sex, date, index) {
     sex,
     age,
     email: `${name.split(' ')[0].toLowerCase()}${index}@msuiit.edu.ph`,
-    phone: `09${String(100000000 + index * 997).slice(0,9)}`,
+    phone: `09${String(100000000 + index * 997).slice(0, 9)}`,
     office_college: college,
     department: 'General',
     designation: sector === 'Student' ? 'Student' : sector === 'Faculty' ? 'Faculty Member' : 'Staff',
@@ -65,9 +65,9 @@ function makeParticipant(eventId, session_name, sex, date, index) {
     ethnic_group: pick(ETHNIC),
     employment_status: sector === 'Student' ? 'Unemployed' : pick(EMP_STATUS),
     year_level: sector === 'Student' ? String(1 + (index % 4)) : '',
-    id_number: `2025-${String(10000 + index * 13).slice(0,5)}`,
+    id_number: `2025-${String(10000 + index * 13).slice(0, 5)}`,
     home_address: `Iligan City, Lanao del Norte`,
-    emergency_contact: `09${String(100000000 + index * 443).slice(0,9)}`,
+    emergency_contact: `09${String(100000000 + index * 443).slice(0, 9)}`,
     createdAt: ts(date, hour, mins),
   };
 }
@@ -86,13 +86,13 @@ const EVENTS = [
     participants: [
       // Day 1 — 10 Female, 5 Male
       ...Array.from({ length: 10 }, (_, i) => ({ sex: 'Female', session: 'Day 1 Attendance', date: '2025-01-15', idx: i })),
-      ...Array.from({ length: 5  }, (_, i) => ({ sex: 'Male',   session: 'Day 1 Attendance', date: '2025-01-15', idx: i + 10 })),
+      ...Array.from({ length: 5 }, (_, i) => ({ sex: 'Male', session: 'Day 1 Attendance', date: '2025-01-15', idx: i + 10 })),
       // Day 2 — 7 Female, 4 Male
-      ...Array.from({ length: 7  }, (_, i) => ({ sex: 'Female', session: 'Day 2 Attendance', date: '2025-01-16', idx: i + 15 })),
-      ...Array.from({ length: 4  }, (_, i) => ({ sex: 'Male',   session: 'Day 2 Attendance', date: '2025-01-16', idx: i + 22 })),
+      ...Array.from({ length: 7 }, (_, i) => ({ sex: 'Female', session: 'Day 2 Attendance', date: '2025-01-16', idx: i + 15 })),
+      ...Array.from({ length: 4 }, (_, i) => ({ sex: 'Male', session: 'Day 2 Attendance', date: '2025-01-16', idx: i + 22 })),
       // Pre-reg — 5 Female, 3 Male
-      ...Array.from({ length: 5  }, (_, i) => ({ sex: 'Female', session: 'Pre-Registration', date: '2025-01-14', idx: i + 26 })),
-      ...Array.from({ length: 3  }, (_, i) => ({ sex: 'Male',   session: 'Pre-Registration', date: '2025-01-14', idx: i + 31 })),
+      ...Array.from({ length: 5 }, (_, i) => ({ sex: 'Female', session: 'Pre-Registration', date: '2025-01-14', idx: i + 26 })),
+      ...Array.from({ length: 3 }, (_, i) => ({ sex: 'Male', session: 'Pre-Registration', date: '2025-01-14', idx: i + 31 })),
     ],
   },
   {
@@ -106,14 +106,14 @@ const EVENTS = [
     formConfig: { sex: true, office_college: true, pwd_status: true, sector: true, age: true },
     participants: [
       // Morning — 14 Female, 5 Male
-      ...Array.from({ length: 14 }, (_, i) => ({ sex: 'Female', session: 'Morning Session',   date: '2025-03-08', idx: i })),
-      ...Array.from({ length: 5  }, (_, i) => ({ sex: 'Male',   session: 'Morning Session',   date: '2025-03-08', idx: i + 14 })),
+      ...Array.from({ length: 14 }, (_, i) => ({ sex: 'Female', session: 'Morning Session', date: '2025-03-08', idx: i })),
+      ...Array.from({ length: 5 }, (_, i) => ({ sex: 'Male', session: 'Morning Session', date: '2025-03-08', idx: i + 14 })),
       // Afternoon — 10 Female, 4 Male
       ...Array.from({ length: 10 }, (_, i) => ({ sex: 'Female', session: 'Afternoon Session', date: '2025-03-08', idx: i + 19 })),
-      ...Array.from({ length: 4  }, (_, i) => ({ sex: 'Male',   session: 'Afternoon Session', date: '2025-03-08', idx: i + 29 })),
+      ...Array.from({ length: 4 }, (_, i) => ({ sex: 'Male', session: 'Afternoon Session', date: '2025-03-08', idx: i + 29 })),
       // Pre-reg — 8 Female, 3 Male
-      ...Array.from({ length: 8  }, (_, i) => ({ sex: 'Female', session: 'Pre-Registration',  date: '2025-03-07', idx: i + 33 })),
-      ...Array.from({ length: 3  }, (_, i) => ({ sex: 'Male',   session: 'Pre-Registration',  date: '2025-03-07', idx: i + 41 })),
+      ...Array.from({ length: 8 }, (_, i) => ({ sex: 'Female', session: 'Pre-Registration', date: '2025-03-07', idx: i + 33 })),
+      ...Array.from({ length: 3 }, (_, i) => ({ sex: 'Male', session: 'Pre-Registration', date: '2025-03-07', idx: i + 41 })),
     ],
   },
   {
@@ -127,17 +127,17 @@ const EVENTS = [
     formConfig: { sex: true, office_college: true, pwd_status: true, sector: true, age: true },
     participants: [
       // Day 1 — 8 Female, 6 Male
-      ...Array.from({ length: 8  }, (_, i) => ({ sex: 'Female', session: 'Day 1 Attendance', date: '2025-06-20', idx: i })),
-      ...Array.from({ length: 6  }, (_, i) => ({ sex: 'Male',   session: 'Day 1 Attendance', date: '2025-06-20', idx: i + 8 })),
+      ...Array.from({ length: 8 }, (_, i) => ({ sex: 'Female', session: 'Day 1 Attendance', date: '2025-06-20', idx: i })),
+      ...Array.from({ length: 6 }, (_, i) => ({ sex: 'Male', session: 'Day 1 Attendance', date: '2025-06-20', idx: i + 8 })),
       // Day 2 — 7 Female, 4 Male
-      ...Array.from({ length: 7  }, (_, i) => ({ sex: 'Female', session: 'Day 2 Attendance', date: '2025-06-21', idx: i + 14 })),
-      ...Array.from({ length: 4  }, (_, i) => ({ sex: 'Male',   session: 'Day 2 Attendance', date: '2025-06-21', idx: i + 21 })),
+      ...Array.from({ length: 7 }, (_, i) => ({ sex: 'Female', session: 'Day 2 Attendance', date: '2025-06-21', idx: i + 14 })),
+      ...Array.from({ length: 4 }, (_, i) => ({ sex: 'Male', session: 'Day 2 Attendance', date: '2025-06-21', idx: i + 21 })),
       // Day 3 — 6 Female, 3 Male
-      ...Array.from({ length: 6  }, (_, i) => ({ sex: 'Female', session: 'Day 3 Attendance', date: '2025-06-22', idx: i + 25 })),
-      ...Array.from({ length: 3  }, (_, i) => ({ sex: 'Male',   session: 'Day 3 Attendance', date: '2025-06-22', idx: i + 31 })),
+      ...Array.from({ length: 6 }, (_, i) => ({ sex: 'Female', session: 'Day 3 Attendance', date: '2025-06-22', idx: i + 25 })),
+      ...Array.from({ length: 3 }, (_, i) => ({ sex: 'Male', session: 'Day 3 Attendance', date: '2025-06-22', idx: i + 31 })),
       // Pre-reg — 5 Female, 2 Male
-      ...Array.from({ length: 5  }, (_, i) => ({ sex: 'Female', session: 'Pre-Registration', date: '2025-06-19', idx: i + 34 })),
-      ...Array.from({ length: 2  }, (_, i) => ({ sex: 'Male',   session: 'Pre-Registration', date: '2025-06-19', idx: i + 39 })),
+      ...Array.from({ length: 5 }, (_, i) => ({ sex: 'Female', session: 'Pre-Registration', date: '2025-06-19', idx: i + 34 })),
+      ...Array.from({ length: 2 }, (_, i) => ({ sex: 'Male', session: 'Pre-Registration', date: '2025-06-19', idx: i + 39 })),
     ],
   },
   {
@@ -151,11 +151,11 @@ const EVENTS = [
     formConfig: { sex: true, office_college: true, pwd_status: true, sector: true, age: true },
     participants: [
       // Morning — 22 Female, 14 Male
-      ...Array.from({ length: 22 }, (_, i) => ({ sex: 'Female', session: 'Morning Session',   date: '2025-09-10', idx: i })),
-      ...Array.from({ length: 14 }, (_, i) => ({ sex: 'Male',   session: 'Morning Session',   date: '2025-09-10', idx: i + 22 })),
+      ...Array.from({ length: 22 }, (_, i) => ({ sex: 'Female', session: 'Morning Session', date: '2025-09-10', idx: i })),
+      ...Array.from({ length: 14 }, (_, i) => ({ sex: 'Male', session: 'Morning Session', date: '2025-09-10', idx: i + 22 })),
       // Pre-reg — 10 Female, 6 Male
-      ...Array.from({ length: 10 }, (_, i) => ({ sex: 'Female', session: 'Pre-Registration',  date: '2025-09-09', idx: i + 36 })),
-      ...Array.from({ length: 6  }, (_, i) => ({ sex: 'Male',   session: 'Pre-Registration',  date: '2025-09-09', idx: i + 46 })),
+      ...Array.from({ length: 10 }, (_, i) => ({ sex: 'Female', session: 'Pre-Registration', date: '2025-09-09', idx: i + 36 })),
+      ...Array.from({ length: 6 }, (_, i) => ({ sex: 'Male', session: 'Pre-Registration', date: '2025-09-09', idx: i + 46 })),
     ],
   },
   {
@@ -170,13 +170,13 @@ const EVENTS = [
     participants: [
       // Day 1 — 12 Female, 7 Male
       ...Array.from({ length: 12 }, (_, i) => ({ sex: 'Female', session: 'Day 1 Attendance', date: '2026-02-12', idx: i })),
-      ...Array.from({ length: 7  }, (_, i) => ({ sex: 'Male',   session: 'Day 1 Attendance', date: '2026-02-12', idx: i + 12 })),
+      ...Array.from({ length: 7 }, (_, i) => ({ sex: 'Male', session: 'Day 1 Attendance', date: '2026-02-12', idx: i + 12 })),
       // Day 2 — 10 Female, 5 Male
       ...Array.from({ length: 10 }, (_, i) => ({ sex: 'Female', session: 'Day 2 Attendance', date: '2026-02-13', idx: i + 19 })),
-      ...Array.from({ length: 5  }, (_, i) => ({ sex: 'Male',   session: 'Day 2 Attendance', date: '2026-02-13', idx: i + 29 })),
+      ...Array.from({ length: 5 }, (_, i) => ({ sex: 'Male', session: 'Day 2 Attendance', date: '2026-02-13', idx: i + 29 })),
       // Pre-reg — 7 Female, 4 Male
-      ...Array.from({ length: 7  }, (_, i) => ({ sex: 'Female', session: 'Pre-Registration', date: '2026-02-11', idx: i + 34 })),
-      ...Array.from({ length: 4  }, (_, i) => ({ sex: 'Male',   session: 'Pre-Registration', date: '2026-02-11', idx: i + 41 })),
+      ...Array.from({ length: 7 }, (_, i) => ({ sex: 'Female', session: 'Pre-Registration', date: '2026-02-11', idx: i + 34 })),
+      ...Array.from({ length: 4 }, (_, i) => ({ sex: 'Male', session: 'Pre-Registration', date: '2026-02-11', idx: i + 41 })),
     ],
   },
 ];

@@ -3,16 +3,57 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
   PieChart, Pie, Cell
 } from 'recharts';
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown, Palette, Copy, Check, Download, FileText, MoreVertical } from 'lucide-react';
+import html2canvas from 'html2canvas';
+import ReportGeneratorModal from './ReportGeneratorModal';
 
-const LILAC = '#a673d8';
-const LILAC_2 = '#b07ade';
-const TEAL = '#14b8a6';
+// Color theme definitions
+const COLOR_THEMES = {
+  default: {
+    name: 'GIA Purple & Amber',
+    Male: '#f59e0b',
+    Female: '#c084fc',
+    palette: ['#c084fc', '#d8b4fe', '#f59e0b', '#10b981', '#f43f5e', '#3b82f6', '#8b5cf6', '#ec4899'],
+  },
+  ocean: {
+    name: 'Ocean Blue',
+    Male: '#0ea5e9',
+    Female: '#06b6d4',
+    palette: ['#0ea5e9', '#06b6d4', '#14b8a6', '#22d3ee', '#3b82f6', '#60a5fa', '#0891b2', '#0284c7'],
+  },
+  forest: {
+    name: 'Forest Green',
+    Male: '#10b981',
+    Female: '#84cc16',
+    palette: ['#10b981', '#84cc16', '#22c55e', '#4ade80', '#059669', '#65a30d', '#16a34a', '#86efac'],
+  },
+  sunset: {
+    name: 'Sunset Warm',
+    Male: '#f59e0b',
+    Female: '#ef4444',
+    palette: ['#f59e0b', '#ef4444', '#f97316', '#fb923c', '#dc2626', '#fbbf24', '#ea580c', '#fb7185'],
+  },
+  berry: {
+    name: 'Berry Mix',
+    Male: '#ec4899',
+    Female: '#a855f7',
+    palette: ['#ec4899', '#a855f7', '#d946ef', '#f472b6', '#c026d3', '#e879f9', '#db2777', '#c084fc'],
+  },
+  professional: {
+    name: 'Professional',
+    Male: '#3b82f6',
+    Female: '#8b5cf6',
+    palette: ['#3b82f6', '#8b5cf6', '#6366f1', '#60a5fa', '#7c3aed', '#a78bfa', '#2563eb', '#9333ea'],
+  },
+};
+
+const LILAC = '#c084fc';
+const LILAC_2 = '#d8b4fe';
 const AMBER = '#f59e0b';
 const COLORS = {
-  Male: TEAL,
-  Female: AMBER,
-  palette: [LILAC, LILAC_2, TEAL, AMBER, '#10b981', '#f43f5e'],
+  Male: AMBER,
+  Female: LILAC,
+  palette: [LILAC, LILAC_2, AMBER, '#10b981', '#f43f5e', '#3b82f6'],
 };
 
 function CustomTooltip({ active, payload, label }) {
@@ -60,18 +101,104 @@ const normalizeEnrollmentRecord = (r) => ({
   '_working_student?': nb(r['_working_student?'] ?? r.is_working_student),
 });
 
-export default function StudentEnrollmentVisuals({ data, recordsCount = 0 }) {
+export default function StudentEnrollmentVisuals({ data, recordsCount = 0, academicPeriod = 'Academic Year' }) {
   const [activeChart, setActiveChart] = useState(0);
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [currentTheme, setCurrentTheme] = useState('default');
+  const [showThemeMenu, setShowThemeMenu] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [downloaded, setDownloaded] = useState(false);
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [showActionsMenu, setShowActionsMenu] = useState(false);
   const dropdownRef = useRef(null);
+  const themeRef = useRef(null);
+  const actionsRef = useRef(null);
+  const chartRef = useRef(null);
+  const chartRefs = useRef([]);
 
   useEffect(() => {
     const handler = (e) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target)) setDropdownOpen(false);
+      if (themeRef.current && !themeRef.current.contains(e.target)) setShowThemeMenu(false);
+      if (actionsRef.current && !actionsRef.current.contains(e.target)) setShowActionsMenu(false);
     };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, []);
+
+  // Get colors from current theme
+  const COLORS = useMemo(() => COLOR_THEMES[currentTheme], [currentTheme]);
+
+  const captureChart = async () => {
+    if (!chartRef.current) return null;
+
+    const canvas = await html2canvas(chartRef.current, {
+      backgroundColor: '#ffffff',
+      scale: 2,
+      logging: false,
+    });
+
+    return canvas;
+  };
+
+  const copyChartAsImage = async () => {
+    try {
+      const canvas = await captureChart();
+      if (!canvas) return;
+
+      canvas.toBlob(async (blob) => {
+        if (blob) {
+          await navigator.clipboard.write([
+            new ClipboardItem({ 'image/png': blob })
+          ]);
+          setCopied(true);
+          setTimeout(() => setCopied(false), 2000);
+        }
+      });
+    } catch (error) {
+      console.error('Failed to copy chart:', error);
+    }
+  };
+
+  const downloadChartAsImage = async () => {
+    try {
+      const canvas = await captureChart();
+      if (!canvas) return;
+
+      canvas.toBlob((blob) => {
+        if (blob) {
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, '-');
+          link.download = `student-enrollment-${timestamp}.png`;
+          link.href = url;
+          link.click();
+          URL.revokeObjectURL(url);
+          setDownloaded(true);
+          setTimeout(() => setDownloaded(false), 2000);
+        }
+      });
+    } catch (error) {
+      console.error('Failed to download chart:', error);
+    }
+  };
+
+  // Capture specific chart by index for report generation
+  const captureChartByIndex = async (chartIndex) => {
+    // Temporarily switch to the chart
+    const originalChart = activeChart;
+    setActiveChart(chartIndex);
+
+    // Wait for render
+    await new Promise(resolve => setTimeout(resolve, 100));
+
+    const canvas = await captureChart();
+
+    // Switch back
+    setActiveChart(originalChart);
+
+    return canvas;
+  };
 
   // Normalize all records once so old and new schemas both work
   const normalizedData = useMemo(() => (data || []).map(normalizeEnrollmentRecord), [data]);
@@ -194,6 +321,11 @@ export default function StudentEnrollmentVisuals({ data, recordsCount = 0 }) {
     {
       title: "Enrollment by College",
       desc: "Total student population distribution across colleges disaggregated by sex.",
+      summary: [
+        { label: 'Total Students', value: normalizedData.length.toLocaleString() },
+        { label: 'Female', value: `${normalizedData.filter(d => d.studgender === 'Female').length.toLocaleString()} (${((normalizedData.filter(d => d.studgender === 'Female').length / normalizedData.length) * 100).toFixed(1)}%)`, color: COLORS.Female },
+        { label: 'Male', value: `${normalizedData.filter(d => d.studgender === 'Male').length.toLocaleString()} (${((normalizedData.filter(d => d.studgender === 'Male').length / normalizedData.length) * 100).toFixed(1)}%)`, color: COLORS.Male },
+      ],
       render: () => (
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={stats.college} layout="vertical">
@@ -211,6 +343,10 @@ export default function StudentEnrollmentVisuals({ data, recordsCount = 0 }) {
     {
       title: "Year Level Distribution",
       desc: "Progress of male vs female students per academic year level.",
+      summary: [
+        { label: 'Total Students', value: normalizedData.length.toLocaleString() },
+        { label: 'Year Levels', value: stats.yearLevel.length },
+      ],
       render: () => (
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={stats.yearLevel}>
@@ -228,6 +364,12 @@ export default function StudentEnrollmentVisuals({ data, recordsCount = 0 }) {
     {
       title: "Vulnerability & Support Tracking",
       desc: "Sex representation across specific support groups (PWD, 4Ps, Solo Parent, etc.).",
+      summary: [
+        { label: 'PWD', value: normalizedData.filter(d => d['_pwd?'] === 'Yes').length },
+        { label: 'Solo Parent', value: normalizedData.filter(d => d['_solo_parent?'] === 'Yes').length },
+        { label: 'IP Member', value: normalizedData.filter(d => d['_ip_member?'] === 'Yes').length },
+        { label: 'Working Student', value: normalizedData.filter(d => d['_working_student?'] === 'Yes').length },
+      ],
       render: () => (
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={stats.vulnerabilities}>
@@ -432,19 +574,151 @@ export default function StudentEnrollmentVisuals({ data, recordsCount = 0 }) {
           <span className="text-xs text-neutral-400 dark:text-neutral-500 tabular-nums">{activeChart + 1} / {charts.length}</span>
         </div>
 
-        {/* Records count */}
-        <span className="text-xs font-medium text-neutral-400 dark:text-neutral-500 tabular-nums">
-          {recordsCount.toLocaleString()} records
-        </span>
+        {/* Right side: Actions dropdown + Theme selector + Records count */}
+        <div className="flex items-center gap-2">
+          {/* Actions Dropdown (Report, Copy, Download) */}
+          <div className="relative" ref={actionsRef}>
+            <button
+              onClick={() => setShowActionsMenu(!showActionsMenu)}
+              className="flex items-center gap-1.5 px-2 py-1 text-xs text-neutral-600 dark:text-neutral-400 hover:text-gia-600 dark:hover:text-gia-400 hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-lg transition-all duration-200"
+              title="Chart actions"
+            >
+              <MoreVertical size={16} />
+            </button>
+
+            {showActionsMenu && (
+              <div className="absolute right-0 top-full mt-1 z-20 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg shadow-xl overflow-hidden min-w-[160px]">
+                <button
+                  onClick={() => {
+                    setShowReportModal(true);
+                    setShowActionsMenu(false);
+                  }}
+                  className="w-full flex items-center gap-2 px-3 py-2 text-xs text-left transition-colors text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-700"
+                >
+                  <FileText size={14} />
+                  <span>Generate Report</span>
+                </button>
+                <button
+                  onClick={() => {
+                    copyChartAsImage();
+                    setShowActionsMenu(false);
+                  }}
+                  className="w-full flex items-center gap-2 px-3 py-2 text-xs text-left transition-colors text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-700"
+                >
+                  {copied ? (
+                    <>
+                      <Check size={14} className="text-green-500" />
+                      <span className="text-green-500">Copied!</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy size={14} />
+                      <span>Copy Chart</span>
+                    </>
+                  )}
+                </button>
+                <button
+                  onClick={() => {
+                    downloadChartAsImage();
+                    setShowActionsMenu(false);
+                  }}
+                  className="w-full flex items-center gap-2 px-3 py-2 text-xs text-left transition-colors text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-700"
+                >
+                  {downloaded ? (
+                    <>
+                      <Check size={14} className="text-green-500" />
+                      <span className="text-green-500">Downloaded!</span>
+                    </>
+                  ) : (
+                    <>
+                      <Download size={14} />
+                      <span>Download Chart</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Theme Selector */}
+          <div className="relative" ref={themeRef}>
+            <button
+              onClick={() => setShowThemeMenu(!showThemeMenu)}
+              className="flex items-center gap-1.5 px-2 py-1 text-xs text-neutral-600 dark:text-neutral-400 hover:text-gia-600 dark:hover:text-gia-400 hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-lg transition-all duration-200"
+              title="Change color theme"
+            >
+              <Palette size={13} />
+              <span className="hidden sm:inline">Theme</span>
+            </button>
+
+            {showThemeMenu && (
+              <div className="absolute right-0 top-full mt-1 z-20 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg shadow-xl overflow-hidden min-w-[160px]">
+                {Object.entries(COLOR_THEMES).map(([key, theme]) => (
+                  <button
+                    key={key}
+                    onClick={() => {
+                      setCurrentTheme(key);
+                      setShowThemeMenu(false);
+                    }}
+                    className={`w-full flex items-center justify-between gap-2 px-3 py-2 text-xs text-left transition-colors ${currentTheme === key
+                      ? 'bg-gia-50 dark:bg-gia-900/20 text-gia-600 dark:text-gia-400 font-semibold'
+                      : 'text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-700'
+                      }`}
+                  >
+                    <span>{theme.name}</span>
+                    {currentTheme === key && <span className="text-xs">✓</span>}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Records count */}
+          <span className="text-xs font-medium text-neutral-400 dark:text-neutral-500 tabular-nums">
+            {recordsCount.toLocaleString()} records
+          </span>
+        </div>
       </div>
 
-      {/* ── Description ── */}
-      <p className="px-6 pt-4 pb-1 text-xs text-neutral-400 dark:text-neutral-500 italic shrink-0">{current.desc}</p>
+      {/* ── Chart content area (for capture) ── */}
+      <div className="flex-1 flex flex-col min-h-0" ref={chartRef}>
+        {/* ── Title ── */}
+        <div className="px-6 pt-4 pb-2">
+          <h3 className="text-base font-bold text-neutral-800 dark:text-neutral-200">{current.title}</h3>
+        </div>
 
-      {/* ── Chart fills remaining space ── */}
-      <div className="flex-1 px-4 pb-4 pt-2 min-h-0">
-        {current.render()}
+        {/* ── Description ── */}
+        <p className="px-6 pb-2 text-xs text-neutral-400 dark:text-neutral-500 italic">{current.desc}</p>
+
+        {/* ── Summary Stats (if available) ── */}
+        {current.summary && (
+          <div className="px-6 pb-3">
+            <div className="flex flex-wrap gap-3 text-xs">
+              {current.summary.map((stat, idx) => (
+                <div key={idx} className="flex items-center gap-1.5">
+                  <span className="font-semibold text-neutral-700 dark:text-neutral-300">{stat.label}:</span>
+                  <span className="font-bold" style={{ color: stat.color || '#6b7280' }}>{stat.value}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* ── Chart fills remaining space ── */}
+        <div className="flex-1 px-4 pb-4 pt-2 min-h-0">
+          {current.render()}
+        </div>
       </div>
+
+      {/* Report Generator Modal */}
+      <ReportGeneratorModal
+        isOpen={showReportModal}
+        onClose={() => setShowReportModal(false)}
+        charts={charts}
+        academicPeriod={academicPeriod}
+        datasetName="Student Enrollment"
+        captureChartFn={captureChartByIndex}
+      />
 
     </div>
   );

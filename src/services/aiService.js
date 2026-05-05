@@ -25,7 +25,6 @@ const simplifyStr = s =>
 
 const COLLECTION_DISPLAY_NAMES = {
   student_enrollment: 'Student Enrollment',
-  student_engagement: 'Student Engagement',
   employee_information: 'Employee Information',
   attendance: 'Attendance',
   events: 'Events',
@@ -70,47 +69,121 @@ const canonicalizeCollege = (val) => {
 };
 
 const FIELD_ALIASES = {
+  // ── EMPLOYEE INFORMATION (CHECK FIRST) ─────────────────────
+  // Employee fields are checked FIRST to take precedence over student fields
+  'employee id': 'empId',
+  'emp id': 'empId',
+  'staff id': 'empId',
+  'employee gender': 'empgender',
+  'employee sex': 'empgender',
+  'emp gender': 'empgender',
+  'emp sex': 'empgender',
+  'staff gender': 'empgender',
+  'staff sex': 'empgender',
+  'employee type': 'emptype',
+  'employment type': 'emptype',
+  'emp type': 'emptype',
+  'staff type': 'emptype',
+  'type of employee': 'emptype',
+  'plantilla': 'emp_plantilla',
+  'plantilla position': 'emp_plantilla',
+  'permanent position': 'emp_plantilla',
+  'salary grade': 'empsalary_grade',
+  'income': 'empsalary_grade',
+  'salary': 'empsalary_grade',
+  'grade': 'empsalary_grade',
+  'employee ethnicity': 'empethnic',
+  'emp ethnicity': 'empethnic',
+  'staff ethnicity': 'empethnic',
+  'employee religion': 'empreligion',
+  'emp religion': 'empreligion',
+  'staff religion': 'empreligion',
+  'senior': 'is_emp_senior',
+  'senior employee': 'is_emp_senior',
+  'senior citizen': 'is_emp_senior',
+  'senior staff': 'is_emp_senior',
+  'administrative official': 'is_emp_senior',
+  'admin official': 'is_emp_senior',
+  'employee pwd': 'is_emp_pwd',
+  'staff pwd': 'is_emp_pwd',
+  'department': 'deptcoll',
+  'employee department': 'deptcoll',
+  'staff department': 'deptcoll',
+  'dept college': 'deptcoll',
+  'department code': 'deptcode',
+  'dept code': 'deptcode',
+
+  // ── STUDENT ENROLLMENT ──────────────────────────────────────
   'college': 'stud_college',
   'program': 'stud_program',
   'course': 'stud_program',
   'degree': 'stud_program',
   'year level': 'stud_yrlevel',
-  'year': 'stud_yrlevel',
   'level': 'stud_yrlevel',
-  'academic standing': 'academic_standing',
-  'standing': 'academic_standing',
-  'lister': 'academic_standing',
-  'dean': 'academic_standing',
-  'honor': 'academic_standing',
-  'scholarship': 'scholarship_status',
-  'scholar': 'scholarship_status',
-  'organization': 'organizations',
-  'org': 'organizations',
-  'club': 'organizations',
-  'publication': 'publication',
-  'student council': 'student_council',
-  'council': 'student_council',
-  'employee type': 'employee_type',
-  'employment type': 'employee_type',
-  'plantilla': 'plantilla_position',
-  'position': 'plantilla_position',
-  'special needs': 'special_needs',
-  'ethnicity': 'studethnic',
-  'religion': 'studreligion',
-  'income': 'income_order',
-  'pwd': '_pwd?',
-  'disability': '_pwd?',
-  'disabled': '_pwd?',
-  'solo parent': '_solo_parent?',
-  'single parent': '_solo_parent?',
-  'has solo parent': '_solo_parent?',
-  'have solo parent': '_solo_parent?',
-  'with solo parent': '_solo_parent?',
+  'student gender': 'studgender',
+  'student sex': 'studgender',
+  'preferred pronouns': 'preferred_pronouns',
+  'legal status': 'studlegstatus',
+  'student ethnicity': 'studethnic',
+  'student religion': 'studreligion',
+  'country': 'currentadd_country',
+  'current country': 'currentadd_country',
+  'province': 'currentadd_prov',
+  'current province': 'currentadd_prov',
+  'indigenous group': 'indigenous_group',
+  'ip group': 'indigenous_group',
+  'tribe': 'indigenous_group',
+  'disability type': 'pwd_aspect',
+  'disability aspect': 'pwd_aspect',
+  'pwd type': 'pwd_aspect',
+  'student pwd': 'is_pwd',
+  'student disability': 'is_pwd',
+  'solo parent': 'is_child_solo_parent',
+  'single parent': 'is_child_solo_parent',
+
+  // ── AMBIGUOUS FIELDS (default to employee when collection is detected) ──
+  'ethnicity': 'empethnic',        // Defaults to employee
+  'ethnic group': 'empethnic',     // Defaults to employee
+  'ethnic': 'empethnic',           // Defaults to employee
+  'religion': 'empreligion',       // Defaults to employee
+  'religious affiliation': 'empreligion', // Defaults to employee
+  'gender': 'empgender',           // Defaults to employee
+  'sex': 'empgender',              // Defaults to employee
+  'pwd': 'is_emp_pwd',             // Defaults to employee
+  'disability': 'is_emp_pwd',      // Defaults to employee
+  'disabled': 'is_emp_pwd',        // Defaults to employee
+  'pronouns': 'preferred_pronouns',
+
+  // ── EVENTS ──────────────────────────────────────────────────
+  'event type': 'eventType',
+  'type': 'eventType',
+  'event mode': 'mode',
+  'mode': 'mode',
+  'venue': 'venue',
+  'location': 'venue',
+  'place': 'venue',
+  'organizer': 'organizer',
+  'organized by': 'organizer',
+  'event status': 'status',
+  'status': 'status',
+  'target group': 'targetGroup',
+  'target': 'targetGroup',
+  'participants': 'targetParticipants',
+  'target participants': 'targetParticipants',
+  'budget': 'budget',
+  'funding': 'fundingSource',
+  'funding source': 'fundingSource',
+  'partner agencies': 'partnerAgencies',
+  'partners': 'partnerAgencies',
+  'gad mandate': 'gadMandate',
+  'mandate': 'gadMandate',
+  'has solo parent': 'is_child_solo_parent',
+  'have solo parent': 'is_child_solo_parent',
+  'with solo parent': 'is_child_solo_parent',
   'ip member': '_ip_member?',
   'ip': '_ip_member?',
   'lumad': '_ip_member?',
   'working student': '_working_student?',
-  'working': '_working_student?',
   'first generation': 'is_first_gen_learner',
   '1st generation': 'is_first_gen_learner',
   '1st gen': 'is_first_gen_learner',
@@ -123,6 +196,8 @@ const FIELD_ALIASES = {
   'child pdl': 'is_child_pdl',
   'pdl': 'is_child_pdl',
   'child solo parent': 'is_child_solo_parent',
+
+  // ── ATTENDANCE ──────────────────────────────────────────────
   'sector': 'sector',
 };
 
@@ -130,12 +205,17 @@ const FIELD_TO_COLLECTION = {
   stud_college: 'student_enrollment',
   stud_program: 'student_enrollment',
   stud_yrlevel: 'student_enrollment',
+  studgender: 'student_enrollment',
+  preferred_pronouns: 'student_enrollment',
+  studlegstatus: 'student_enrollment',
   studethnic: 'student_enrollment',
   studreligion: 'student_enrollment',
-  studid: 'student_enrollment',
-  studgender: 'student_enrollment',
-  '_pwd?': 'student_enrollment',
-  '_solo_parent?': 'student_enrollment',
+  currentadd_country: 'student_enrollment',
+  currentadd_prov: 'student_enrollment',
+  indigenous_group: 'student_enrollment',
+  pwd_aspect: 'student_enrollment',
+  is_pwd: 'student_enrollment',
+  is_child_solo_parent: 'student_enrollment',
   '_ip_member?': 'student_enrollment',
   '_working_student?': 'student_enrollment',
   is_first_gen_learner: 'student_enrollment',
@@ -145,19 +225,32 @@ const FIELD_TO_COLLECTION = {
   is_child_pdl: 'student_enrollment',
   is_child_solo_parent: 'student_enrollment',
   income_PSA_category: 'student_enrollment',
-  academic_standing: 'student_engagement',
-  scholarship_status: 'student_engagement',
-  organizations: 'student_engagement',
-  publication: 'student_engagement',
-  student_council: 'student_engagement',
-  employee_type: 'employee_information',
-  plantilla_position: 'employee_information',
-  special_needs: 'employee_information',
-  ethnicity: 'employee_information',
-  religion: 'employee_information',
-  income_order: 'employee_information',
+  empId: 'employee_information',
+  empgender: 'employee_information',
+  preferred_pronouns: 'employee_information',
+  emptype: 'employee_information',
+  emp_plantilla: 'employee_information',
+  empsalary_grade: 'employee_information',
+  empethnic: 'employee_information',
+  empreligion: 'employee_information',
+  is_emp_senior: 'employee_information',
+  is_emp_pwd: 'employee_information',
+  deptcoll: 'employee_information',
+  deptcode: 'employee_information',
   sector: 'attendance',
   office_college: 'attendance',
+  // ── EVENTS ──────────────────────────────────────────────────
+  eventType: 'events',
+  mode: 'events',
+  venue: 'events',
+  organizer: 'events',
+  status: 'events',
+  targetGroup: 'events',
+  targetParticipants: 'events',
+  budget: 'events',
+  fundingSource: 'events',
+  partnerAgencies: 'events',
+  gadMandate: 'events',
 };
 
 // ─────────────────────────────────────────────────────────────
@@ -165,45 +258,62 @@ const FIELD_TO_COLLECTION = {
 // ─────────────────────────────────────────────────────────────
 
 const BOOLEAN_FIELD_LABELS = {
-  '_pwd?':               'PWD',
-  '_solo_parent?':       'Has Solo Parent',
-  '_ip_member?':         'IP Member',
-  '_working_student?':   'Working Student',
-  is_first_gen_learner:  'First-Generation Learner',
-  is_indigenous:         'Indigenous',
-  is_pwd:                'PWD',
-  is_child_lgbtq:        'Child of LGBTQ+',
-  is_child_pdl:          'Child of PDL',
-  is_child_solo_parent:  'Child of Solo Parent',
+  // Student fields
+  'is_pwd': 'PWD',
+  'is_child_solo_parent': 'Child of Solo Parent',
+  '_ip_member?': 'IP Member',
+  '_working_student?': 'Working Student',
+  is_first_gen_learner: 'First-Generation Learner',
+  is_indigenous: 'Indigenous',
+  is_child_lgbtq: 'Child of LGBTQ+',
+  is_child_pdl: 'Child of PDL',
+
+  // Employee fields
+  'is_emp_pwd': 'PWD Employee',
+  'is_emp_senior': 'Senior/Admin Official',
+  
 };
 
 // Maps natural-language keywords → boolean enrollment field names.
 // Used to detect ALL conditions in one pass (multi-filter support).
 const BOOLEAN_FIELD_ALIASES_MAP = {
-  'pwd':                '_pwd?',
-  'disability':         '_pwd?',
-  'disabled':           '_pwd?',
-  'solo parent':        '_solo_parent?',
-  'single parent':      '_solo_parent?',
-  'has solo parent':    '_solo_parent?',
-  'have solo parent':   '_solo_parent?',
-  'with solo parent':   '_solo_parent?',
-  'ip member':          '_ip_member?',
-  'ip':                 '_ip_member?',
-  'lumad':              '_ip_member?',
-  'working student':    '_working_student?',
-  'first generation':   'is_first_gen_learner',
-  '1st generation':     'is_first_gen_learner',
-  '1st gen':            'is_first_gen_learner',
-  'firstgen':           'is_first_gen_learner',
-  'first gen learner':  'is_first_gen_learner',
-  '1st gen learner':    'is_first_gen_learner',
-  'indigenous':         'is_indigenous',
-  'child lgbtq':        'is_child_lgbtq',
-  'lgbtq':              'is_child_lgbtq',
-  'child pdl':          'is_child_pdl',
-  'pdl':                'is_child_pdl',
-  'child solo parent':  'is_child_solo_parent',
+  // Student fields
+  'pwd': 'is_pwd',
+  'disability': 'is_pwd',
+  'disabled': 'is_pwd',
+  'solo parent': 'is_child_solo_parent',
+  'single parent': 'is_child_solo_parent',
+  'has solo parent': 'is_child_solo_parent',
+  'have solo parent': 'is_child_solo_parent',
+  'with solo parent': 'is_child_solo_parent',
+  'ip member': '_ip_member?',
+  'ip': '_ip_member?',
+  'lumad': '_ip_member?',
+  'working student': '_working_student?',
+  'first generation': 'is_first_gen_learner',
+  '1st generation': 'is_first_gen_learner',
+  '1st gen': 'is_first_gen_learner',
+  'firstgen': 'is_first_gen_learner',
+  'first gen learner': 'is_first_gen_learner',
+  '1st gen learner': 'is_first_gen_learner',
+  'indigenous': 'is_indigenous',
+  'child lgbtq': 'is_child_lgbtq',
+  'lgbtq': 'is_child_lgbtq',
+  'child pdl': 'is_child_pdl',
+  'pdl': 'is_child_pdl',
+  'child solo parent': 'is_child_solo_parent',
+
+  // Employee fields
+  'pwd employee': 'is_emp_pwd',
+  'employee pwd': 'is_emp_pwd',
+  'disabled employee': 'is_emp_pwd',
+  'employee disability': 'is_emp_pwd',
+  'staff pwd': 'is_emp_pwd',
+  'senior employee': 'is_emp_senior',
+  'admin official': 'is_emp_senior',
+  'administrative official': 'is_emp_senior',
+  'senior official': 'is_emp_senior',
+  'senior staff': 'is_emp_senior',
 };
 
 // ─────────────────────────────────────────────────────────────
@@ -222,8 +332,7 @@ const CONVERSATIONAL_PATTERNS = [
 
 const DATA_KEYWORDS = [
   'enrollment', 'enrolled', 'enroll', 'college', 'program', 'course', 'degree',
-  'year level', 'year', 'standing', 'lister', 'dean', 'honor', 'scholarship', 'scholar',
-  'organization', 'org', 'club', 'publication', 'council',
+  'year level',
   'employee', 'staff', 'faculty', 'instructor', 'professor', 'personnel', 'teacher',
   'attendance', 'attended', 'present', 'absent',
   'event', 'seminar', 'workshop', 'training',
@@ -231,6 +340,8 @@ const DATA_KEYWORDS = [
   'working student', 'first generation', '1st generation', '1st gen', 'first gen learner',
   'indigenous', 'lumad', 'ip member', 'lgbtq', 'pdl', 'child pdl', 'child lgbtq',
   'male', 'female', 'sex', 'gender', 'distribution', 'breakdown',
+  'province', 'country', 'location', 'region',
+  'semester', '1st semester', '2nd semester', 'first semester', 'second semester',
   'compare', 'comparison', 'versus', ' vs ', 'compared to', 'difference',
   'how many', 'count', 'total', 'number of', 'data', 'record', 'statistic',
   'how much', 'what is the', 'give me', 'show me', 'tell me',
@@ -240,6 +351,10 @@ const DATA_KEYWORDS = [
   '2020', '2021', '2022', '2023', '2024', '2025', '2026',
   'percent', 'percentage', '%', 'ratio', 'proportion',
   'analyze', 'analyse', 'analysis', 'report', 'summary', 'overview',
+  // Employee-specific keywords
+  'teaching', 'non-teaching', 'plantilla', 'salary grade', 'ethnicity', 'religion',
+  'senior citizen', 'senior official', 'administrative', 'admin', 'department',
+  'ethnic', 'religious', 'affiliation', 'type', 'permanent', 'contractual',
 ];
 
 const isConversational = (message) => {
@@ -279,12 +394,33 @@ const parseQuery = (message) => {
   // ── Extract ALL academic years ─────────────────────────────
   const yearMatches = lower.matchAll(/20\d\d[-–]20\d\d/g);
   for (const match of yearMatches) {
-    intent.academicYears.push(match[0].replace('–', '-'));
+    const yearPart = match[0].replace('–', '-');
+    // Check if semester is mentioned near the year
+    const semesterMatch = lower.match(/(1st|first|2nd|second)\s*(semester|sem)/i);
+    if (semesterMatch) {
+      const semester = semesterMatch[1].toLowerCase().includes('1') || semesterMatch[1].toLowerCase().includes('first')
+        ? '1st Semester'
+        : '2nd Semester';
+      intent.academicYears.push(`${yearPart} ${semester}`);
+    } else {
+      intent.academicYears.push(yearPart);
+    }
+  }
+
+  // Detect semester without year (will use latest year)
+  if (intent.academicYears.length === 0) {
+    const semesterMatch = lower.match(/(1st|first|2nd|second)\s*(semester|sem)/i);
+    if (semesterMatch) {
+      const semester = semesterMatch[1].toLowerCase().includes('1') || semesterMatch[1].toLowerCase().includes('first')
+        ? '1st Semester'
+        : '2nd Semester';
+      intent.semester = semester; // Store for later combination with latest year
+    }
   }
 
   // ── Comparison intent ──────────────────────────────────────
   if (intent.academicYears.length > 1 ||
-      /\bcompare\b|\bversus\b|\bvs\b|\bcompared to\b|\bdifference between\b|\bcontrast\b/i.test(lower)) {
+    /\bcompare\b|\bversus\b|\bvs\b|\bcompared to\b|\bdifference between\b|\bcontrast\b/i.test(lower)) {
     intent.wantsComparison = true;
   }
 
@@ -304,17 +440,33 @@ const parseQuery = (message) => {
   if (/\bemployee|\bstaff|\bfaculty|\binstructor|\bprofessor|\bpersonnel|\bteacher|\bworker/i.test(lower)) {
     intent.collection = 'employee_information';
   }
-  // Engagement (checked before enrollment to avoid overlap on shared words)
-  else if (/\bengagement|\bacademic standing|\bstanding|\blister|\bdean.?s list|\bhonor|\bscholarship|\bscholar|\borganization|\bpublication|\bstudent council/i.test(lower)) {
-    intent.collection = 'student_engagement';
+  // Events — CHECK FIRST before generic "attendance" to catch event-specific queries
+  // Keywords: event, seminar, workshop, training, symposium, conference, forum, webinar
+  else if (/\bevent|\bseminar|\bworkshop|\btraining|\bsymposium|\bconference|\bforum|\bwebinar/i.test(lower)) {
+    intent.collection = 'events';
+
+    // Only extract event title if asking about a SPECIFIC event (not "all events")
+    if (!/\ball events|\bevery event|\beach event|\bper event/i.test(lower)) {
+      // Try to extract specific event title from the query
+      // Remove common question words and extract the event name
+      const eventTitleMatch = lower
+        .replace(/how many (people|participants|attendees)?\s*(attended|registered|joined|participated in)?(\s+the)?/gi, '')
+        .replace(/what('s| is) the (attendance|turnout|participation) (for|of|in)(\s+the)?/gi, '')
+        .replace(/show me (the )?(attendance|participants|data) (for|of|in)(\s+the)?/gi, '')
+        .replace(/what is the (male and female|sex|gender|sdd)?\s*(breakdown|distribution)?\s*(of|for|in)?(\s+the)?/gi, '')
+        .replace(/\?/g, '')
+        .trim();
+
+      if (eventTitleMatch && eventTitleMatch.length > 3) {
+        intent.eventTitle = eventTitleMatch;
+        intent.wantsSexBreakdown = true; // Always show SDD for specific events
+        console.log('📝 Extracted event title from query:', eventTitleMatch);
+      }
+    }
   }
-  // Attendance
+  // Attendance — generic attendance queries (not event-specific)
   else if (/\battendance|\battended|\bpresent|\babsent/i.test(lower)) {
     intent.collection = 'attendance';
-  }
-  // Events
-  else if (/\bevent|\bseminar|\bworkshop|\btraining|\bsymposium/i.test(lower)) {
-    intent.collection = 'events';
   }
   // Enrollment — broadest, catches natural phrases like "how many students in COE"
   else if (/\benrollment|\benrolled|\benroll|\bcollege|\bprogram|\bcourse|\bdegree|\bstudent|\bundergraduate|\byear level|\bpwd|\bsolo parent|\bworking student|\bfirst gen|\bindigenous|\blgbtq|\bpdl/i.test(lower)) {
@@ -322,13 +474,31 @@ const parseQuery = (message) => {
   }
 
   // ── Field detection ────────────────────────────────────────
+  // IMPORTANT: Check collection first to use context-aware field mapping
+  let potentialFields = [];
   for (const [alias, field] of Object.entries(FIELD_ALIASES)) {
     if (lower.includes(alias)) {
-      intent.groupField = field;
-      if (!intent.collection && FIELD_TO_COLLECTION[field]) {
-        intent.collection = FIELD_TO_COLLECTION[field];
-      }
-      break;
+      potentialFields.push({ alias, field, priority: alias.length }); // Longer = more specific
+    }
+  }
+
+  // Sort by priority (longer aliases first for specificity)
+  potentialFields.sort((a, b) => b.priority - a.priority);
+
+  // If collection is already detected, filter to matching fields
+  if (intent.collection && potentialFields.length > 0) {
+    const collectionFields = potentialFields.filter(pf =>
+      FIELD_TO_COLLECTION[pf.field] === intent.collection
+    );
+    if (collectionFields.length > 0) {
+      intent.groupField = collectionFields[0].field;
+    } else {
+      intent.groupField = potentialFields[0].field;
+    }
+  } else if (potentialFields.length > 0) {
+    intent.groupField = potentialFields[0].field;
+    if (!intent.collection && FIELD_TO_COLLECTION[intent.groupField]) {
+      intent.collection = FIELD_TO_COLLECTION[intent.groupField];
     }
   }
 
@@ -394,8 +564,31 @@ const parseQuery = (message) => {
     intent.wantsAll = true;
   }
 
+  // ── Default group field for events ─────────────────────────
+  if (!intent.groupField && intent.collection === 'events') {
+    // Check if user wants sector breakdown per event (nested grouping)
+    // Match various phrasings: "sector per event", "per event sector", "sector of each event", etc.
+    if ((/\bsector/i.test(lower) && /\bper event|\beach event|\bby event|\bfor each event|\bfor every event/i.test(lower)) ||
+      (/\bper event|\beach event/i.test(lower) && /\bsector/i.test(lower))) {
+      intent.groupField = 'title'; // Primary: group by event
+      intent.secondaryGroupField = 'sector'; // Secondary: group by sector within each event
+      console.log('🔍 Detected nested grouping: sector per event');
+    }
+    // Check if user wants breakdown by sector only
+    else if (/\bsector|\bby sector|\bper sector|\bsectors/i.test(lower)) {
+      intent.groupField = 'sector'; // Group by sector
+    }
+    // Check if user wants breakdown by individual event (not by type)
+    else if (/\bper event|\beach event|\bby event|\bfor each event|\bfor every event|\ball events/i.test(lower)) {
+      intent.groupField = 'title'; // Group by individual event title
+    } else {
+      intent.groupField = 'eventType'; // Default: group by event type
+    }
+    intent.wantsAll = true;
+  }
+
   // ── Default sex breakdown for any breakdown/analysis request
-  if (/\bbreakdown|\banalysis|\banalyze|\banalyse|\bdistribution|\breport|\bsummary|\boverview/i.test(lower)) {
+  if (/\bbreakdown|\banalysis|\banalyze|\banalyse|\bdistribution|\breport|\bsummary|\boverview|\bsdd|\bsex.disaggregated|\bgender|\bsex|\bmale|\bfemale|\bsector/i.test(lower)) {
     intent.wantsSexBreakdown = true;
   }
 
@@ -530,6 +723,268 @@ const computeAnswer = (intent, dbData) => {
 
   const rawDocs = dbData[collection];
 
+  // Check if database is empty
+  if (!rawDocs || rawDocs.length === 0) {
+    console.log('⚠️ No data found for collection:', collection);
+    console.log('📊 Available collections:', Object.keys(dbData));
+    console.log('📊 Collection sizes:', Object.entries(dbData).map(([k, v]) => `${k}: ${v?.length || 0}`));
+    return {
+      error: 'No data available for this query. Please upload data first.',
+      totalRecords: 0,
+      data: {}
+    };
+  }
+
+  // ── SPECIAL HANDLING FOR EVENTS ────────────────────────────
+  // Events need to pull participant data from attendance collection
+  if (collection === 'events' && wantsSexBreakdown) {
+    const events = rawDocs.map(r => ({
+      ...r,
+      eventType: r.eventType || r.title || 'Not Specified',
+      mode: r.mode || 'Not Specified',
+      venue: r.venue || 'Not Specified',
+      organizer: r.organizer || 'Not Specified',
+      status: r.status || 'Active',
+    }));
+
+    const attendance = dbData.attendance || [];
+
+    // ── CHECK IF SPECIFIC EVENT IS REQUESTED ────────────────
+    if (intent.eventTitle) {
+      // Try to find specific event by fuzzy matching title
+      const searchTitle = simplifyStr(intent.eventTitle);
+      console.log('🔍 Searching for event with title:', intent.eventTitle);
+      console.log('🔍 Simplified search title:', searchTitle);
+      console.log('🔍 Available events:', events.map(e => ({ id: e.id, title: e.title })));
+
+      const matchedEvent = events.find(e => {
+        const eventTitle = simplifyStr(e.title || '');
+        const matches = eventTitle.includes(searchTitle) || searchTitle.includes(eventTitle);
+        console.log(`  Checking "${e.title}" (simplified: "${eventTitle}") - Match: ${matches}`);
+        return matches;
+      });
+
+      console.log('✅ Matched event:', matchedEvent ? matchedEvent.title : 'NONE');
+
+      if (matchedEvent) {
+        // Get attendance ONLY for this specific event
+        const eventAttendees = attendance.filter(a => String(a.eventId) === String(matchedEvent.id));
+
+        console.log(`📊 Event ID: ${matchedEvent.id}`);
+        console.log(`📊 Total attendance records: ${attendance.length}`);
+        console.log(`📊 Filtered attendees for this event: ${eventAttendees.length}`);
+
+        // Calculate sex breakdown
+        const sexCounts = {};
+        eventAttendees.forEach(a => {
+          const sex = a.sex || a.gender || 'Unknown';
+          sexCounts[sex] = (sexCounts[sex] || 0) + 1;
+        });
+
+        // Calculate sector breakdown
+        const sectorCounts = {};
+        eventAttendees.forEach(a => {
+          const sector = a.sector || 'Unknown';
+          sectorCounts[sector] = (sectorCounts[sector] || 0) + 1;
+        });
+
+        const total = eventAttendees.length;
+
+        // Build SDD data
+        const sddData = {};
+        Object.entries(sexCounts).forEach(([sex, count]) => {
+          const pct = total > 0 ? ((count / total) * 100).toFixed(1) : '0.0';
+          sddData[sex] = count;
+          sddData[`${sex} %`] = `${pct}%`;
+        });
+
+        // Build sector data
+        const sectorData = {};
+        Object.entries(sectorCounts).forEach(([sector, count]) => {
+          const pct = total > 0 ? ((count / total) * 100).toFixed(1) : '0.0';
+          sectorData[sector] = count;
+          sectorData[`${sector} %`] = `${pct}%`;
+        });
+
+        return {
+          collection: COLLECTION_DISPLAY_NAMES[collection] || collection,
+          academicYear: 'All Years',
+          isComparison: false,
+          groupField: 'title',
+          filterValue: matchedEvent.title,
+          sexField: 'sex',
+          totalRecords: total,
+          data: {
+            [matchedEvent.title]: { Total: total, ...sddData }
+          },
+          sectorBreakdown: sectorData,
+          eventInfo: {
+            title: matchedEvent.title,
+            type: matchedEvent.eventType,
+            date: matchedEvent.startDate,
+            venue: matchedEvent.venue,
+            mode: matchedEvent.mode,
+            organizer: matchedEvent.organizer,
+            status: matchedEvent.status,
+          }
+        };
+      } else {
+        // Event not found
+        return {
+          error: `Event "${intent.eventTitle}" not found. Please check the event name.`,
+          totalRecords: 0,
+          data: {}
+        };
+      }
+    }
+
+    // ── GENERAL EVENTS QUERY (group by type/title/sector) ────
+    const result = { totalRecords: events.length, data: {} };
+
+    // Special handling for sector grouping - group attendance by sector, not events
+    if (groupField === 'sector') {
+      const sectorGroups = {};
+
+      // Group ALL attendance records by sector
+      attendance.forEach(a => {
+        const sector = a.sector || 'Unknown';
+        if (!sectorGroups[sector]) {
+          sectorGroups[sector] = [];
+        }
+        sectorGroups[sector].push(a);
+      });
+
+      // Compute sex breakdown for each sector
+      Object.entries(sectorGroups).forEach(([sector, attendees]) => {
+        const sexCounts = {};
+        attendees.forEach(a => {
+          const sex = a.sex || a.gender || 'Unknown';
+          sexCounts[sex] = (sexCounts[sex] || 0) + 1;
+        });
+
+        const total = attendees.length;
+        const out = {};
+        Object.entries(sexCounts).forEach(([sex, count]) => {
+          const pct = total > 0 ? ((count / total) * 100).toFixed(1) : '0.0';
+          out[sex] = count;
+          out[`${sex} %`] = `${pct}%`;
+        });
+        result.data[sector] = { ...out, Total: total };
+      });
+
+      return {
+        collection: COLLECTION_DISPLAY_NAMES[collection] || collection,
+        academicYear: 'All Years',
+        isComparison: false,
+        groupField: 'sector',
+        filterValue: null,
+        sexField: 'sex',
+        totalRecords: attendance.length,
+        data: result.data,
+      };
+    }
+
+    // Special handling for nested grouping (e.g., sector per event)
+    if (intent.secondaryGroupField) {
+      const nestedData = {};
+
+      // First group by primary field (e.g., event title)
+      events.forEach(event => {
+        const primaryKey = event[groupField] || event.title || 'Unknown';
+        const eventAttendees = attendance.filter(a => String(a.eventId) === String(event.id));
+
+        if (eventAttendees.length === 0) return; // Skip events with no attendance
+
+        // Then group by secondary field (e.g., sector)
+        const secondaryGroups = {};
+        eventAttendees.forEach(a => {
+          const secondaryKey = a[intent.secondaryGroupField] || 'Unknown';
+          if (!secondaryGroups[secondaryKey]) {
+            secondaryGroups[secondaryKey] = [];
+          }
+          secondaryGroups[secondaryKey].push(a);
+        });
+
+        // Compute sex breakdown for each secondary group
+        const secondaryData = {};
+        Object.entries(secondaryGroups).forEach(([secondaryKey, attendees]) => {
+          const sexCounts = {};
+          attendees.forEach(a => {
+            const sex = a.sex || a.gender || 'Unknown';
+            sexCounts[sex] = (sexCounts[sex] || 0) + 1;
+          });
+
+          const total = attendees.length;
+          const out = {};
+          Object.entries(sexCounts).forEach(([sex, count]) => {
+            const pct = total > 0 ? ((count / total) * 100).toFixed(1) : '0.0';
+            out[sex] = count;
+            out[`${sex} %`] = `${pct}%`;
+          });
+          secondaryData[secondaryKey] = { ...out, Total: total };
+        });
+
+        nestedData[primaryKey] = secondaryData;
+      });
+
+      return {
+        collection: COLLECTION_DISPLAY_NAMES[collection] || collection,
+        academicYear: 'All Years',
+        isComparison: false,
+        isNested: true,
+        groupField: groupField,
+        secondaryGroupField: intent.secondaryGroupField,
+        filterValue: null,
+        sexField: 'sex',
+        totalRecords: events.length,
+        data: nestedData,
+      };
+    }
+
+    // Group events by eventType/title (or whatever groupField is set)
+    const grouped = {};
+    events.forEach(event => {
+      const groupVal = event[groupField] || event.eventType || event.title || 'Unknown';
+      if (!grouped[groupVal]) {
+        grouped[groupVal] = { events: [], attendees: [] };
+      }
+      grouped[groupVal].events.push(event);
+
+      // Find attendance records for this event
+      const eventAttendees = attendance.filter(a => String(a.eventId) === String(event.id));
+      grouped[groupVal].attendees.push(...eventAttendees);
+    });
+
+    // Compute sex breakdown for each group
+    Object.entries(grouped).forEach(([groupVal, { events: groupEvents, attendees }]) => {
+      const sexCounts = {};
+      attendees.forEach(a => {
+        const sex = a.sex || 'Unknown';
+        sexCounts[sex] = (sexCounts[sex] || 0) + 1;
+      });
+
+      const total = attendees.length;
+      const out = {};
+      Object.entries(sexCounts).forEach(([sex, count]) => {
+        const pct = total > 0 ? ((count / total) * 100).toFixed(1) : '0.0';
+        out[sex] = count;
+        out[`${sex} %`] = `${pct}%`;
+      });
+      result.data[groupVal] = { ...out, Total: total };
+    });
+
+    return {
+      collection: COLLECTION_DISPLAY_NAMES[collection] || collection,
+      academicYear: 'All Years',
+      isComparison: false,
+      groupField: groupField,
+      filterValue: null,
+      sexField: 'sex',
+      totalRecords: events.length,
+      data: result.data,
+    };
+  }
+
   // Converts any truthy representation (boolean true, "true", "1", "y") to "Yes"/"No" string.
   // Needed because old records may store booleans instead of "Yes"/"No" strings.
   const nb = v => (v === 'Yes' || v === true || v === 'yes' || v === 'true' || v === '1' || v === 1) ? 'Yes' : 'No';
@@ -537,33 +992,74 @@ const computeAnswer = (intent, dbData) => {
   // Normalize student_enrollment records so old (pre-2026) and new field names both resolve
   const allDocs = collection === 'student_enrollment'
     ? rawDocs.map(r => ({
+      ...r,
+      stud_college: canonicalizeCollege(r.stud_college || r.college),
+      stud_program: r.stud_program || r.program || 'Not Specified',
+      stud_yrlevel: r.stud_yrlevel || r.year_level || 'Not Specified',
+      studethnic: r.studethnic || r.ethnicity || 'Not Specified',
+      studreligion: r.studreligion || r.religion || 'Not Specified',
+      studid: r.studid || r.student_id || 'N/A',
+      studgender: r.studgender || r.sex || 'Unknown',
+      currentadd_prov: r.currentadd_prov || r.place_of_origin || 'Not Specified',
+      is_first_gen_learner: nb(r.is_first_gen_learner ?? r['_first_generation?']),
+      is_pwd: nb(r.is_pwd ?? r['_pwd?']),
+      is_child_solo_parent: nb(r.is_child_solo_parent ?? r['_solo_parent?'] ?? r.is_solo_parent),
+      '_ip_member?': nb(r['_ip_member?'] ?? r.is_ip_member),
+      '_working_student?': nb(r['_working_student?'] ?? r.is_working_student),
+    }))
+    : collection === 'employee_information'
+      ? rawDocs.map(r => ({
         ...r,
-        stud_college:         canonicalizeCollege(r.stud_college || r.college),
-        stud_program:         r.stud_program          || r.program         || 'Not Specified',
-        stud_yrlevel:         r.stud_yrlevel          || r.year_level      || 'Not Specified',
-        studethnic:           r.studethnic            || r.ethnicity       || 'Not Specified',
-        studreligion:         r.studreligion          || r.religion        || 'Not Specified',
-        studid:               r.studid                || r.student_id      || 'N/A',
-        studgender:           r.studgender            || r.sex             || 'Unknown',
-        currentadd_prov:      r.currentadd_prov       || r.place_of_origin || 'Not Specified',
-        is_first_gen_learner: nb(r.is_first_gen_learner ?? r['_first_generation?']),
-        '_pwd?':              nb(r['_pwd?'] ?? r.is_pwd),
-        '_solo_parent?':      nb(r['_solo_parent?'] ?? r.is_solo_parent),
-        '_ip_member?':        nb(r['_ip_member?'] ?? r.is_ip_member),
-        '_working_student?':  nb(r['_working_student?'] ?? r.is_working_student),
+        empId: r.empId || r.employee_id || 'N/A',
+        empgender: r.empgender || r.sex || r.gender || 'Unknown',
+        emptype: r.emptype || r.employee_type || 'Not Specified',
+        emp_plantilla: r.emp_plantilla || r.plantilla_position || 'Not Specified',
+        empsalary_grade: r.empsalary_grade || r.salary_grade || r.income_order || 'Not Specified',
+        empethnic: r.empethnic || r.ethnicity || 'Not Specified',
+        empreligion: r.empreligion || r.religion || 'Not Specified',
+        is_emp_pwd: nb(r.is_emp_pwd ?? r['_pwd?'] ?? r.special_needs),
+        is_emp_senior: nb(r.is_emp_senior ?? r.administrative_officials),
+        deptcoll: r.deptcoll || r.department || 'Not Specified',
+        deptcode: r.deptcode || r.department_code || 'Not Specified',
       }))
-    : rawDocs;
+      : collection === 'events'
+        ? rawDocs.map(r => ({
+          ...r,
+          eventType: r.eventType || r.title || 'Not Specified',
+          mode: r.mode || 'Not Specified',
+          venue: r.venue || 'Not Specified',
+          organizer: r.organizer || 'Not Specified',
+          status: r.status || 'Active',
+          targetGroup: r.targetGroup || 'Not Specified',
+          targetParticipants: r.targetParticipants || 'Not Specified',
+          fundingSource: r.fundingSource || 'Not Specified',
+          partnerAgencies: r.partnerAgencies || 'Not Specified',
+          gadMandate: r.gadMandate || 'Not Specified',
+        }))
+        : rawDocs;
 
   const displayName = COLLECTION_DISPLAY_NAMES[collection] || collection;
-  const sexField = allDocs[0]?.studgender !== undefined ? 'studgender'
-    : allDocs[0]?.sex !== undefined ? 'sex'
-    : allDocs[0]?.gender !== undefined ? 'gender'
-    : null;
+  const sexField = collection === 'events'
+    ? 'sex' // Events use registration data with 'sex' field
+    : allDocs[0]?.studgender !== undefined ? 'studgender' // Student enrollment
+      : allDocs[0]?.empgender !== undefined ? 'empgender' // Employee information
+        : allDocs[0]?.sex !== undefined ? 'sex'
+          : allDocs[0]?.gender !== undefined ? 'gender'
+            : null;
 
   // Default to most recent AY when none specified — prevents mixing records
   // across academic years (data sheet always scopes to one AY, GIA should too)
   const allYears = [...new Set(allDocs.map(d => d.academicYear).filter(Boolean))].sort();
   const latestYear = allYears[allYears.length - 1] ?? null;
+
+  // If semester was detected without year, find latest year with that semester
+  if (intent.semester && academicYears.length === 0) {
+    const yearsWithSemester = allYears.filter(y => y.includes(intent.semester));
+    if (yearsWithSemester.length > 0) {
+      academicYears.push(yearsWithSemester[yearsWithSemester.length - 1]);
+    }
+  }
+
   const resolvedYears = academicYears.length > 0
     ? academicYears
     : (latestYear ? [latestYear] : []);
@@ -705,6 +1201,29 @@ const formatResultForAI = (result) => {
   let text = `=== COMPUTED DATA (100% ACCURATE — DO NOT MODIFY THESE NUMBERS) ===\n\n`;
   text += `Dataset: ${result.collection}\n`;
 
+  // Handle nested data (e.g., sector breakdown per event)
+  if (result.isNested) {
+    text += `Academic Year: ${result.academicYear}\n`;
+    text += `Mode: Nested Breakdown (${result.groupField} → ${result.secondaryGroupField})\n`;
+    text += `Total Records in scope: ${result.totalRecords}\n\n`;
+
+    Object.entries(result.data).forEach(([primaryKey, secondaryData]) => {
+      text += `--- ${primaryKey} ---\n`;
+      Object.entries(secondaryData)
+        .sort(([, a], [, b]) => (b.Total || 0) - (a.Total || 0))
+        .forEach(([secondaryKey, counts]) => {
+          text += `  ${secondaryKey}:\n`;
+          Object.entries(counts).forEach(([key, val]) => {
+            text += `    ${key}: ${val}\n`;
+          });
+        });
+      text += `\n`;
+    });
+
+    text += `=== END OF COMPUTED DATA ===\n`;
+    return text;
+  }
+
   if (result.isMultiFilter && result.isGroupedByCollege) {
     const filterLabel = result.andFilters
       .map(({ field }) => BOOLEAN_FIELD_LABELS[field] || field)
@@ -844,7 +1363,7 @@ const parseQueryWithLLM = async (message) => {
     if (typeof intent.isConversational !== 'boolean') throw new Error('invalid shape');
 
     // Ensure arrays are always present
-    intent.andFilters   = intent.andFilters   || [];
+    intent.andFilters = intent.andFilters || [];
     intent.filterValues = intent.filterValues || [];
     intent.academicYears = intent.academicYears || [];
 
@@ -859,6 +1378,12 @@ const parseQueryWithLLM = async (message) => {
     // Multiple colleges always means comparison
     if (intent.filterValues.length > 1) intent.wantsComparison = true;
 
+    // ── Default group field for events (mirror keyword parser logic) ─────
+    if (!intent.groupField && intent.collection === 'events') {
+      intent.groupField = 'eventType';
+      intent.wantsAll = true;
+    }
+
     return intent;
   } catch (e) {
     console.warn('⚠️ LLM intent parsing failed, falling back to keyword matching:', e.message);
@@ -869,6 +1394,23 @@ const parseQueryWithLLM = async (message) => {
 export const analyzeWithAI = async (userMessage, dbData, _history = []) => {
   try {
     const intent = await parseQueryWithLLM(userMessage);
+
+    // Debug logging: Show what the system understood from the query
+    console.log('🔍 Parsed Intent:', {
+      collection: intent.collection,
+      groupField: intent.groupField,
+      filterValue: intent.filterValue,
+      filterValues: intent.filterValues,
+      andFilters: intent.andFilters,
+      academicYears: intent.academicYears,
+      wantsSexBreakdown: intent.wantsSexBreakdown,
+      wantsComparison: intent.wantsComparison,
+      wantsAll: intent.wantsAll,
+      isConversational: intent.isConversational,
+    });
+
+    // Debug: Show available data
+    console.log('📊 Available data:', Object.entries(dbData).map(([k, v]) => `${k}: ${v?.length || 0} records`));
 
     // ── Conversational — send directly, no data computation ──
     if (intent.isConversational) {
@@ -897,6 +1439,8 @@ export const analyzeWithAI = async (userMessage, dbData, _history = []) => {
     // ── Data query — compute then send to AI ─────────────────
     const computedResult = computeAnswer(intent, dbData);
     let computedText = formatResultForAI(computedResult);
+
+    console.log('📤 Computed data being sent to backend:', computedText.substring(0, 500) + '...');
 
     // Groq compound-beta has an 8192-token context window. Cap the computed
     // data at 8000 chars so the full payload stays well under the limit.

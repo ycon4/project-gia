@@ -8,9 +8,21 @@ export default function ExcelUploadEmployee({ activeTab, onUploadSuccess, compac
   const [uploadStatus, setUploadStatus] = useState('');
   const [showAYPicker, setShowAYPicker] = useState(false);
   const [selectedFile, setSelectedFile] = useState(null);
-  
+
   const currentYear = new Date().getFullYear();
   const [targetAY, setTargetAY] = useState(`${currentYear}-${currentYear + 1}`);
+
+  // Generate Academic Year options (10 years back to 5 years forward)
+  const generateAYOptions = () => {
+    const options = [];
+    for (let i = -10; i <= 5; i++) {
+      const startYear = currentYear + i;
+      options.push(`${startYear}-${startYear + 1}`);
+    }
+    return options.reverse(); // Most recent first
+  };
+
+  const ayOptions = generateAYOptions();
 
   const normalizeSex = (val) => {
     if (!val) return 'Unknown';
@@ -47,10 +59,13 @@ export default function ExcelUploadEmployee({ activeTab, onUploadSuccess, compac
 
         // 1. Define Expected Headers
         const expected = [
-          "employee_id", "sex", "employee_type", "administrative_officials", 
-          "plantilla_position", "income", "income_order", "ethnicity", "religion", 
-          "place_of_birth", "special_needs"
+          "empId", "empgender", "preferred_pronouns", "emptype", "emp_plantilla",
+          "empsalary_grade", "empethnic", "empreligion", "is_emp_senior",
+          "is_emp_pwd", "deptcoll", "deptcode"
         ];
+
+        // Optional headers (can be present but not required)
+        const optional = ["emp_designation"];
 
         // 2. Validate Headers against the first row
         const firstRowKeys = Object.keys(rawData[0]);
@@ -62,18 +77,21 @@ export default function ExcelUploadEmployee({ activeTab, onUploadSuccess, compac
 
         const cleanedData = rawData.map(row => {
           return {
-            // Direct Mapping from your list
-            employee_id: row.employee_id,
-            sex: normalizeSex(row.sex),
-            employee_type: row.employee_type,
-            administrative_officials: row.administrative_officials,
-            plantilla_position: row.plantilla_position,
-            income_order: row.income_order,
-            ethnicity: row.ethnicity,
-            religion: row.religion,
-            place_of_birth: row.place_of_birth,
-            special_needs: row.special_needs,
-            
+            // Direct Mapping from your new column names
+            empId: row.empId,
+            empgender: normalizeSex(row.empgender),
+            preferred_pronouns: row.preferred_pronouns,
+            emptype: row.emptype,
+            emp_designation: row.emp_designation || null, // Optional field
+            emp_plantilla: row.emp_plantilla,
+            empsalary_grade: row.empsalary_grade,
+            empethnic: row.empethnic,
+            empreligion: row.empreligion,
+            is_emp_senior: row.is_emp_senior,
+            is_emp_pwd: row.is_emp_pwd,
+            deptcoll: row.deptcoll,
+            deptcode: row.deptcode,
+
             // System Metadata
             academicYear: targetAY,
             uploadTimestamp: new Date().toISOString(),
@@ -86,21 +104,21 @@ export default function ExcelUploadEmployee({ activeTab, onUploadSuccess, compac
 
         setUploadStatus('Upload Success!');
         if (onUploadSuccess) onUploadSuccess();
-        
+
         setTimeout(() => {
-            setUploadStatus('');
-            setSelectedFile(null);
+          setUploadStatus('');
+          setSelectedFile(null);
         }, 3000);
 
       } catch (error) {
         console.error("Employee Upload failed:", error);
         setUploadStatus('Upload Error');
-        
+
         // Detailed Alert for the user
         alert(
           `UPLOAD FAILED\n\n${error.message}\n\n` +
           `Please ensure your Excel uses these EXACT headers (lowercase):\n` +
-          `employee_id, sex, employee_type, administrative_officials, plantilla_position, income, income_order, ethnicity, religion, place_of_birth, special_needs`
+          `empId, empgender, preferred_pronouns, emptype, emp_plantilla, empsalary_grade, empethnic, empreligion, is_emp_senior, is_emp_pwd, deptcoll, deptcode`
         );
       } finally {
         setIsUploading(false);
@@ -113,7 +131,7 @@ export default function ExcelUploadEmployee({ activeTab, onUploadSuccess, compac
   return (
     <div className="relative">
       <input type="file" accept=".xlsx, .xls" onChange={onFileChange} className="hidden" id="emp-upload" disabled={isUploading} />
-      
+
       <label
         htmlFor="emp-upload"
         className={compact
@@ -127,22 +145,45 @@ export default function ExcelUploadEmployee({ activeTab, onUploadSuccess, compac
 
       {showAYPicker && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-[24px] shadow-2xl w-full max-w-sm overflow-hidden animate-in fade-in zoom-in duration-200">
-            <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
-              <h3 className="font-black text-slate-900 uppercase tracking-tighter flex items-center gap-2 text-sm">
-                <Calendar className="text-blue-600" size={18} /> Assignment Period
+          <div className="bg-white dark:bg-neutral-900 rounded-[24px] shadow-2xl w-full max-w-sm overflow-hidden animate-in fade-in zoom-in duration-200">
+            <div className="p-6 border-b border-slate-100 dark:border-neutral-800 flex justify-between items-center bg-slate-50/50 dark:bg-neutral-800/50">
+              <h3 className="font-black text-slate-900 dark:text-neutral-100 uppercase tracking-tighter flex items-center gap-2 text-sm">
+                <Calendar className="text-blue-600 dark:text-blue-400" size={18} /> Academic Year
               </h3>
-              <button onClick={() => setShowAYPicker(false)} className="text-slate-400 hover:text-slate-600"><X size={20} /></button>
+              <button onClick={() => setShowAYPicker(false)} className="text-slate-400 hover:text-slate-600 dark:hover:text-neutral-300">
+                <X size={20} />
+              </button>
             </div>
-            <div className="p-6 space-y-5">
-              <input 
-                type="text" 
-                value={targetAY}
-                onChange={(e) => setTargetAY(e.target.value)}
-                className="w-full bg-slate-50 border-2 border-slate-100 rounded-xl px-4 py-3 font-bold text-slate-700 focus:border-blue-500 focus:outline-none transition-all"
-                placeholder="AY 2023-2024"
-              />
-              <button onClick={handleUploadProcess} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-black py-4 rounded-xl text-xs uppercase tracking-[0.2em] transition-all shadow-lg active:scale-[0.98]">
+            <div className="p-6 space-y-4">
+              <p className="text-xs text-slate-600 dark:text-neutral-400 font-medium">
+                Select the academic year for this employee dataset:
+              </p>
+
+              {/* Academic Year Dropdown */}
+              <div className="relative">
+                <select
+                  value={targetAY}
+                  onChange={(e) => setTargetAY(e.target.value)}
+                  className="w-full bg-slate-50 dark:bg-neutral-800 border-2 border-slate-200 dark:border-neutral-700 rounded-xl px-4 py-3 pr-10 font-bold text-slate-700 dark:text-neutral-200 focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none transition-all appearance-none cursor-pointer"
+                >
+                  {ayOptions.map((ay) => (
+                    <option key={ay} value={ay}>
+                      {ay === `${currentYear}-${currentYear + 1}` ? `${ay} (Current)` : ay}
+                    </option>
+                  ))}
+                </select>
+                <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400 dark:text-neutral-500">
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                    <path d="M4 6L8 10L12 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </div>
+              </div>
+
+              <button
+                onClick={handleUploadProcess}
+                disabled={!targetAY}
+                className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 dark:disabled:bg-neutral-700 disabled:text-slate-500 text-white font-black py-4 rounded-xl text-xs uppercase tracking-[0.2em] transition-all shadow-lg active:scale-[0.98]"
+              >
                 Confirm & Sync
               </button>
             </div>

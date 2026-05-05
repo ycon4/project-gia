@@ -16,7 +16,7 @@ const SECTOR_COLORS = {
   Student: '#a673d8',
   Faculty: '#dd6e6b',
   Staff: '#a5df6a',
-  Guest: '#73dae1',
+  'Other Beneficiaries': '#73dae1',
 };
 
 const GENDER_COLORS = { Male: '#73dae1', Female: '#a673d8' };
@@ -25,7 +25,7 @@ const SECTOR_ICONS = {
   Student: GraduationCap,
   Faculty: BookOpen,
   Staff: Briefcase,
-  Guest: UserCircle,
+  'Other Beneficiaries': UserCircle,
 };
 
 // ─── HELPERS ──────────────────────────────────────────────────────────────────
@@ -187,8 +187,8 @@ export default function GeneralDashboard({ events = [], attendanceData = [], com
     // PWD participation (used for inclusion score)
     const pwdYes = filtered.reduce((acc, d) => acc + ((d.pwd_status ?? '').toString().trim() === 'Yes' ? 1 : 0), 0);
 
-    // Sector breakdown (data uses "Guest" from RegistrationForm)
-    const sectors = ['Student', 'Faculty', 'Staff', 'Guest'];
+    // Sector breakdown (data uses "Other Beneficiaries" from RegistrationForm)
+    const sectors = ['Student', 'Faculty', 'Staff', 'Other Beneficiaries'];
     const sectorData = sectors.map((s) => {
       const inSector = filtered.filter((d) => d.sector === s);
       const m = inSector.reduce((acc, d) => acc + (sexKey(d.sex) === 'Male' ? 1 : 0), 0);
@@ -488,7 +488,7 @@ export default function GeneralDashboard({ events = [], attendanceData = [], com
             className="appearance-none bg-transparent outline-none text-[10px] font-bold text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-200 transition-colors cursor-pointer pr-4 [color-scheme:light] dark:[color-scheme:dark]"
             value={selectedSector} onChange={e => setSelectedSector(e.target.value)}>
             <option value="All">All Sectors</option>
-            {['Student', 'Faculty', 'Staff', 'Guest'].map(s => <option key={s} value={s}>{s}</option>)}
+            {['Student', 'Faculty', 'Staff', 'Other Beneficiaries'].map(s => <option key={s} value={s}>{s}</option>)}
           </select>
           <ChevronDown size={10} className="absolute right-0 text-neutral-400 dark:text-neutral-600 pointer-events-none" />
         </div>

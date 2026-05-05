@@ -9,11 +9,9 @@ import {
 
 import { getAllDocuments, deleteAYData, updateDocument } from '../../firebase/services.js';
 import ExcelUploadEnrollment from '../components/excel_upload/ExcelUploadEnrollment.jsx';
-import ExcelUploadEngagement from '../components/excel_upload/ExcelUploadEngagement.jsx';
 import ExcelUploadEmployee from '../components/excel_upload/ExcelUploadEmployment.jsx';
 import StudentEnrollmentVisuals from '../components/visuals/StudentEnrollmentVisuals.jsx';
 import EmployeeVisuals from '../components/visuals/EmployeeVisuals.jsx';
-import StudentEngagementVisuals from '../components/visuals/EngagementVisuals.jsx';
 
 const LILAC = '#a673d8';
 
@@ -37,6 +35,20 @@ const HEADER_LABELS = {
   is_child_lgbtq: 'Child of LGBTQ+',
   is_child_pdl: 'Child of PDL',
   is_child_solo_parent: 'Child of Solo Parent',
+  // New Employee Headers
+  empId: 'Employee ID',
+  empgender: 'Sex',
+  preferred_pronouns: 'Preferred Pronouns',
+  emptype: 'Employee Type',
+  emp_plantilla: 'Plantilla Position',
+  empsalary_grade: 'Salary Grade',
+  empethnic: 'Ethnicity',
+  empreligion: 'Religion',
+  is_emp_senior: 'Senior/Admin Official',
+  is_emp_pwd: 'PWD Status',
+  deptcoll: 'Department/College',
+  deptcode: 'Department Code',
+  // Old Employee Headers (for backward compatibility)
   employee_id: 'Employee ID',
   sex: 'Sex',
   employee_type: 'Employee Type',
@@ -70,12 +82,7 @@ const SECTORS = {
   employee_information: {
     label: 'Employee Info',
     icon: <Briefcase size={16} />,
-    headers: ['employee_id', 'sex', 'employee_type', 'administrative_officials', 'plantilla_position', 'income_order', 'ethnicity', 'religion', 'place_of_birth', 'special_needs'],
-  },
-  student_engagement: {
-    label: 'Student Engagement',
-    icon: <Zap size={16} />,
-    headers: ['student_id', 'sex', 'scholarship_status', 'academic_standing', 'student_council', 'organizations', 'publication'],
+    headers: ['empId', 'empgender', 'preferred_pronouns', 'emptype', 'emp_plantilla', 'empsalary_grade', 'empethnic', 'empreligion', 'is_emp_senior', 'is_emp_pwd', 'deptcoll', 'deptcode'],
   },
 };
 
@@ -403,15 +410,17 @@ export default function DistributionPage() {
           <>
             <button
               onClick={() => { setNewPeriod(''); setModifyPeriodOpen(true); }}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-neutral-200 dark:border-neutral-700 text-xs font-semibold text-neutral-500 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200 hover:border-neutral-300 dark:hover:border-neutral-500 transition-colors"
+              className="p-2 rounded-lg border border-neutral-200 dark:border-neutral-700 text-neutral-500 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200 hover:border-neutral-300 dark:hover:border-neutral-500 transition-colors"
+              title="Modify Period"
             >
-              <Edit3 size={13} /> Modify Period
+              <Edit3 size={16} />
             </button>
             <button
               onClick={() => setClearModalOpen(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-red-200 dark:border-red-700 text-xs font-semibold text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 hover:border-red-300 dark:hover:border-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+              className="p-2 rounded-lg border border-red-200 dark:border-red-700 text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 hover:border-red-300 dark:hover:border-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+              title="Delete Period"
             >
-              <Trash2 size={13} /> Delete Period
+              <Trash2 size={16} />
             </button>
           </>
         )}
@@ -446,11 +455,9 @@ export default function DistributionPage() {
         ) : (
           <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
             {activeTab === 'student_enrollment' ? (
-              <StudentEnrollmentVisuals data={currentInboxData} recordsCount={currentInboxData.length} />
+              <StudentEnrollmentVisuals data={currentInboxData} recordsCount={currentInboxData.length} academicPeriod={activeAY || 'All Years'} />
             ) : activeTab === 'employee_information' ? (
-              <EmployeeVisuals data={currentInboxData} recordsCount={currentInboxData.length} />
-            ) : activeTab === 'student_engagement' ? (
-              <StudentEngagementVisuals data={currentInboxData} recordsCount={currentInboxData.length} />
+              <EmployeeVisuals data={currentInboxData} recordsCount={currentInboxData.length} academicPeriod={activeAY || 'All Years'} />
             ) : (
               <div className="flex flex-col items-center justify-center h-full gap-3 text-neutral-400">
                 <AlertCircle size={32} />

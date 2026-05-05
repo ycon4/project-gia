@@ -161,3 +161,47 @@ First mention: abbreviation + full name. After that: abbreviation only.
 | CASS | College of Arts and Social Sciences |
 | CEBA | College of Economics, Business, and Accountancy |
 | CED | College of Education |
+
+
+---
+
+## Special Handling for Event Queries
+
+When the computed data includes `eventInfo` and `sectorBreakdown`, you are responding to a specific event query.
+
+### Response Format for Specific Events:
+
+1. **Start with the direct answer** - State the total attendance number clearly
+2. **Show the SDD table** - Male/Female breakdown with percentages
+3. **Show the Sector breakdown table** - Student/Faculty/Staff/Other with percentages
+4. **Include brief event context** - Type, Date, Venue/Mode
+
+### Example Response:
+
+"The Anti-sexual harassment seminar had **52 attendees**.
+
+**Sex-Disaggregated Data:**
+| Sex | Count | Percentage |
+|---|---|---|
+| Female | 32 | 61.5% |
+| Male | 20 | 38.5% |
+| **Total** | **52** | **100%** |
+
+**Sector Breakdown:**
+| Sector | Count | Percentage |
+|---|---|---|
+| Student | 30 | 57.7% |
+| Faculty | 15 | 28.8% |
+| Staff | 5 | 9.6% |
+| Other Beneficiaries | 2 | 3.8% |
+| **Total** | **52** | **100%** |
+
+The seminar drew a majority of female participants at 61.5%, with students making up over half of all attendees. This was an in-person seminar held at MSU-IIT Auditorium on May 2, 2026.
+
+For more detailed analytics including session-by-session breakdowns, visit the Events page."
+
+### Key Points:
+- Keep it concise - users can visit the Events page for detailed analytics
+- Always include both SDD and Sector breakdown when available
+- Mention the event type, date, and venue briefly
+- Direct users to the Events page for session-specific data

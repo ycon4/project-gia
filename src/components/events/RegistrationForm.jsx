@@ -128,7 +128,7 @@ export default function RegistrationForm({
     if (['sex', 'sector', 'pwd_status', 'employment_status', 'year_level'].includes(field)) {
       const options = {
         sex: ['Male', 'Female', 'Prefer not to say'],
-        sector: ['Student', 'Faculty', 'Staff', 'Guest'],
+        sector: ['Student', 'Faculty', 'Staff', 'Other Beneficiaries'],
         pwd_status: ['No', 'Yes'],
         employment_status: ['Permanent', 'Contractual', 'Job Order', 'N/A'],
         year_level: ['1st Year', '2nd Year', '3rd Year', '4th Year', 'Graduate Studies', 'N/A']

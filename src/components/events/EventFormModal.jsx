@@ -246,12 +246,35 @@ function SessionTag({ name, onRemove }) {
   );
 }
 
+// ─── Quick-add session presets ────────────────────────────────────────────────
+
+const SESSION_PRESETS = {
+  days: [
+    { label: 'Day 1', value: 'Day 1' },
+    { label: 'Day 2', value: 'Day 2' },
+    { label: 'Day 3', value: 'Day 3' },
+    { label: 'Day 4', value: 'Day 4' },
+    { label: 'Day 5', value: 'Day 5' },
+  ],
+  times: [
+    { label: 'Morning', value: 'Morning Session' },
+    { label: 'Afternoon', value: 'Afternoon Session' },
+    { label: 'Full Day', value: 'Full Day' },
+  ],
+  special: [
+    { label: 'Plenary', value: 'Plenary Session' },
+    { label: 'Workshop', value: 'Workshop Session' },
+    { label: 'Closing', value: 'Closing Ceremony' },
+  ],
+};
+
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export default function EventFormModal({ isOpen, isEditing, initialData, onSubmit, onClose }) {
   const [form, setForm] = useState(DEFAULT_EVENT);
   const [sessionInput, setSessionInput] = useState('');
   const [dateError, setDateError] = useState('');
+  const [visibleDays, setVisibleDays] = useState(3); // Start with 3 days visible
 
   // Sync form state when modal opens
   useEffect(() => {
@@ -259,6 +282,7 @@ export default function EventFormModal({ isOpen, isEditing, initialData, onSubmi
     setForm(isEditing && initialData ? { ...DEFAULT_EVENT, ...initialData } : { ...DEFAULT_EVENT });
     setSessionInput('');
     setDateError('');
+    setVisibleDays(3); // Reset to 3 days when modal opens
   }, [isOpen, isEditing, initialData]);
 
   if (!isOpen) return null;
@@ -526,35 +550,145 @@ export default function EventFormModal({ isOpen, isEditing, initialData, onSubmi
               </button>
             </div>
 
+            {/* Quick-add: Day + Time structure */}
+            <div className="space-y-3">
+              <p className="text-[10px] font-black text-neutral-500 dark:text-neutral-400 uppercase tracking-widest">
+                Quick Add Sessions:
+              </p>
+
+              {/* Days with time options */}
+              {SESSION_PRESETS.days.slice(0, visibleDays).map(day => {
+                const existing = [
+                  ...(form.hasPreReg ? ['Pre-Registration'] : []),
+                  ...form.sessions,
+                ];
+
+                return (
+                  <div key={day.value} className="flex items-center gap-2">
+                    {/* Day label */}
+                    <span className="text-[11px] font-bold text-neutral-600 dark:text-neutral-400 w-12 shrink-0">
+                      {day.label}:
+                    </span>
+
+                    {/* Time buttons */}
+                    <div className="flex gap-1.5 flex-1">
+                      {SESSION_PRESETS.times.map(time => {
+                        const sessionName = time.value === 'Full Day'
+                          ? `${day.value} - Full Day`
+                          : `${day.value} - ${time.value}`;
+                        const alreadyAdded = existing.some(s => s.toLowerCase() === sessionName.toLowerCase());
+
+                        return (
+                          <button
+                            key={time.value}
+                            type="button"
+                            onClick={() => {
+                              if (!alreadyAdded) {
+                                set('sessions', [...form.sessions, sessionName]);
+                              }
+                            }}
+                            disabled={alreadyAdded}
+                            className={`px-2.5 py-1.5 rounded-lg text-[10px] font-bold transition-all flex-1 ${alreadyAdded
+                              ? 'bg-gia-100 dark:bg-gia-900/40 text-gia-600 dark:text-gia-400 border border-gia-200 dark:border-gia-800'
+                              : 'bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 text-neutral-600 dark:text-neutral-400 hover:border-gia-400 dark:hover:border-gia-600 hover:text-gia-600 dark:hover:text-gia-400'
+                              }`}
+                          >
+                            {alreadyAdded ? '✓ ' : ''}{time.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+
+              {/* Add more days button */}
+              {visibleDays < SESSION_PRESETS.days.length && (
+                <button
+                  type="button"
+                  onClick={() => setVisibleDays(v => Math.min(v + 1, SESSION_PRESETS.days.length))}
+                  className="w-full py-2 px-3 rounded-lg border-2 border-dashed border-neutral-300 dark:border-neutral-600 text-neutral-500 dark:text-neutral-400 hover:border-gia-400 dark:hover:border-gia-600 hover:text-gia-600 dark:hover:text-gia-400 text-[10px] font-bold transition-all flex items-center justify-center gap-1.5"
+                >
+                  <Plus size={12} />
+                  Add Day {visibleDays + 1}
+                </button>
+              )}
+
+              {/* Special sessions */}
+              <div>
+                <p className="text-[10px] font-black text-neutral-500 dark:text-neutral-400 mb-2 uppercase tracking-widest">
+                  Special Sessions:
+                </p>
+                <div className="flex flex-wrap gap-1.5">
+                  {SESSION_PRESETS.special.map(preset => {
+                    const existing = [
+                      ...(form.hasPreReg ? ['Pre-Registration'] : []),
+                      ...form.sessions,
+                    ];
+                    const alreadyAdded = existing.some(s => s.toLowerCase() === preset.value.toLowerCase());
+
+                    return (
+                      <button
+                        key={preset.value}
+                        type="button"
+                        onClick={() => {
+                          if (!alreadyAdded) {
+                            set('sessions', [...form.sessions, preset.value]);
+                          }
+                        }}
+                        disabled={alreadyAdded}
+                        className={`px-2.5 py-1.5 rounded-lg text-[10px] font-bold transition-all ${alreadyAdded
+                          ? 'bg-gia-100 dark:bg-gia-900/40 text-gia-600 dark:text-gia-400 border border-gia-200 dark:border-gia-800'
+                          : 'bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 text-neutral-600 dark:text-neutral-400 hover:border-gia-400 dark:hover:border-gia-600 hover:text-gia-600 dark:hover:text-gia-400'
+                          }`}
+                      >
+                        {alreadyAdded ? '✓ ' : '+ '}{preset.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+
             {/* Sessions list */}
             {form.sessions.length > 0 && (
-              <div className="flex flex-wrap gap-1.5">
-                {form.sessions.map((s, i) => (
-                  <SessionTag key={i} name={s} onRemove={() => removeSession(i)} />
-                ))}
+              <div>
+                <p className="text-[10px] font-black text-neutral-500 dark:text-neutral-400 mb-2 uppercase tracking-widest">
+                  Added Sessions:
+                </p>
+                <div className="flex flex-wrap gap-1.5">
+                  {form.sessions.map((s, i) => (
+                    <SessionTag key={i} name={s} onRemove={() => removeSession(i)} />
+                  ))}
+                </div>
               </div>
             )}
 
-            {/* Add session input */}
-            <div className="flex gap-2">
-              <input
-                type="text"
-                className={inputCls + ' flex-1'}
-                placeholder="e.g. Day 1 Attendance, Morning Session..."
-                value={sessionInput}
-                onChange={e => setSessionInput(e.target.value)}
-                onKeyDown={e => {
-                  if (e.key === 'Enter') { e.preventDefault(); addSession(); }
-                }}
-              />
-              <button
-                type="button"
-                onClick={addSession}
-                disabled={!sessionInput.trim()}
-                className="px-3 py-2 bg-gia-600 hover:bg-gia-700 disabled:bg-neutral-200 dark:disabled:bg-neutral-700 disabled:text-neutral-400 text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-colors flex items-center gap-1.5 shrink-0"
-              >
-                <Plus size={13} /> Add
-              </button>
+            {/* Add custom session input */}
+            <div>
+              <p className="text-[10px] font-black text-neutral-500 dark:text-neutral-400 mb-2 uppercase tracking-widest">
+                Or Add Custom:
+              </p>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  className={inputCls + ' flex-1'}
+                  placeholder="e.g. Breakout Session A, Panel Discussion..."
+                  value={sessionInput}
+                  onChange={e => setSessionInput(e.target.value)}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter') { e.preventDefault(); addSession(); }
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={addSession}
+                  disabled={!sessionInput.trim()}
+                  className="px-3 py-2 bg-gia-600 hover:bg-gia-700 disabled:bg-neutral-200 dark:disabled:bg-neutral-700 disabled:text-neutral-400 text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-colors flex items-center gap-1.5 shrink-0"
+                >
+                  <Plus size={13} /> Add
+                </button>
+              </div>
             </div>
 
             {/* Empty state hint */}

@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { ArrowUpDown, ChevronLeft, ChevronRight, Download, SlidersHorizontal, Users, AlertTriangle } from 'lucide-react';
+import { ArrowUpDown, ChevronLeft, ChevronRight, SlidersHorizontal, Users, AlertTriangle, Printer } from 'lucide-react';
+import PrintAttendanceModal from './PrintAttendanceModal';
 
 const normalize = (v) => (v === null || v === undefined ? '' : String(v)).trim();
 
@@ -26,14 +27,15 @@ const formatTimestamp = (row, showDate) => {
   );
 };
 
-export const AttendanceTable = ({ data = [], title = 'Records', onExport }) => {
-  const [sortKey, setSortKey]   = useState('time');
-  const [sortDir, setSortDir]   = useState('desc');
+export const AttendanceTable = ({ data = [], title = 'Records', event, sessions }) => {
+  const [sortKey, setSortKey] = useState('time');
+  const [sortDir, setSortDir] = useState('desc');
   const [pageSize, setPageSize] = useState(25);
-  const [page, setPage]         = useState(1);
+  const [page, setPage] = useState(1);
   const [showDate, setShowDate] = useState(false);
-  const [filters, setFilters]   = useState({ sex: 'All', office: '' });
-  const [visible, setVisible]   = useState({ name: true, sex: true, office: true, gate: true, time: true });
+  const [filters, setFilters] = useState({ sex: 'All', office: '' });
+  const [visible, setVisible] = useState({ name: true, sex: true, office: true, gate: true, time: true });
+  const [showPrintModal, setShowPrintModal] = useState(false);
 
   const visibleColumnsCount = Object.values(visible).filter(Boolean).length;
 
@@ -45,7 +47,7 @@ export const AttendanceTable = ({ data = [], title = 'Records', onExport }) => {
 
   const filtered = useMemo(() => {
     const officeNeedle = normalize(filters.office).toLowerCase();
-    const sexNeedle    = normalize(filters.sex);
+    const sexNeedle = normalize(filters.sex);
     return data.filter(row => {
       if (sexNeedle !== 'All' && normalize(row.sex || row.gender) !== sexNeedle) return false;
       if (officeNeedle && !normalize(row.office_college).toLowerCase().includes(officeNeedle)) return false;
@@ -68,10 +70,10 @@ export const AttendanceTable = ({ data = [], title = 'Records', onExport }) => {
     const dir = sortDir === 'asc' ? 1 : -1;
     const val = (row) => {
       if (sortKey === 'time') { const ms = getTimeMs(row); return ms === null ? (sortDir === 'asc' ? Infinity : -Infinity) : ms; }
-      if (sortKey === 'name')   return normalize(row.fullName).toLowerCase();
-      if (sortKey === 'sex')    return normalize(row.sex || row.gender).toLowerCase();
+      if (sortKey === 'name') return normalize(row.fullName).toLowerCase();
+      if (sortKey === 'sex') return normalize(row.sex || row.gender).toLowerCase();
       if (sortKey === 'office') return normalize(row.office_college).toLowerCase();
-      if (sortKey === 'gate')   return normalize(row.session_name || row.session).toLowerCase();
+      if (sortKey === 'gate') return normalize(row.session_name || row.session).toLowerCase();
       return '';
     };
     return [...filtered].sort((a, b) => {
@@ -83,24 +85,14 @@ export const AttendanceTable = ({ data = [], title = 'Records', onExport }) => {
   }, [filtered, sortKey, sortDir]);
 
   const pageCount = Math.max(1, Math.ceil(sorted.length / pageSize));
-  const safePage  = Math.min(page, pageCount);
-  const pageRows  = useMemo(() => sorted.slice((safePage - 1) * pageSize, safePage * pageSize), [sorted, safePage, pageSize]);
+  const safePage = Math.min(page, pageCount);
+  const pageRows = useMemo(() => sorted.slice((safePage - 1) * pageSize, safePage * pageSize), [sorted, safePage, pageSize]);
 
   useEffect(() => { setPage(1); }, [filters, pageSize, data.length]);
 
   const toggleSort = (key) => {
     if (sortKey === key) setSortDir(p => p === 'asc' ? 'desc' : 'asc');
     else { setSortKey(key); setSortDir(key === 'time' ? 'desc' : 'asc'); }
-  };
-
-  const transformRowForExport = (row) => {
-    const out = {};
-    if (visible.name)   out['Name']           = normalize(row.fullName);
-    if (visible.sex)    out['Sex']            = normalize(row.sex || row.gender) || 'N/A';
-    if (visible.office) out['Office/College'] = normalize(row.office_college) || 'N/A';
-    if (visible.gate)   out['Gate']           = normalize(row.session_name || row.session) || 'General';
-    if (visible.time)   out['Time']           = formatTimestamp(row, showDate);
-    return out;
   };
 
   const Th = ({ label, sortK }) => (
@@ -178,31 +170,41 @@ export const AttendanceTable = ({ data = [], title = 'Records', onExport }) => {
             </details>
 
             <button
-              onClick={() => onExport?.(sorted.map(transformRowForExport))}
-              className="flex items-center gap-2 px-4 py-2 bg-gia-50 dark:bg-gia-950/20 text-gia-700 dark:text-gia-300 rounded-xl font-bold text-xs uppercase tracking-widest hover:bg-gia-100 dark:hover:bg-gia-900/30 transition-colors"
+              onClick={() => setShowPrintModal(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-purple-50 dark:bg-purple-950/20 text-purple-700 dark:text-purple-300 rounded-xl font-bold text-xs uppercase tracking-widest hover:bg-purple-100 dark:hover:bg-purple-900/30 transition-colors"
             >
-              <Download size={14} /> Export
+              <Printer size={14} /> Print
             </button>
           </div>
         </div>
       </div>
+
+      {/* Print Modal */}
+      {showPrintModal && event && (
+        <PrintAttendanceModal
+          event={event}
+          attendanceData={sorted}
+          sessions={sessions}
+          onClose={() => setShowPrintModal(false)}
+        />
+      )}
 
       {/* ── Table ── */}
       <div className="overflow-x-auto">
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="bg-neutral-50/80 dark:bg-neutral-800/60">
-              {visible.name   && <Th label="Name"           sortK="name"   />}
-              {visible.sex    && <Th label="Sex"            sortK="sex"    />}
+              {visible.name && <Th label="Name" sortK="name" />}
+              {visible.sex && <Th label="Sex" sortK="sex" />}
               {visible.office && <Th label="Office/College" sortK="office" />}
-              {visible.gate   && <Th label="Gate"           sortK="gate"   />}
-              {visible.time   && <Th label="Time"           sortK="time"   />}
+              {visible.gate && <Th label="Gate" sortK="gate" />}
+              {visible.time && <Th label="Time" sortK="time" />}
             </tr>
           </thead>
           <tbody className="divide-y divide-neutral-100 dark:divide-neutral-800">
             {pageRows.length > 0 ? pageRows.map(row => {
-              const idDup    = normalize(row.id_number) && (duplicates.id[normalize(row.id_number)] || 0) > 1;
-              const emailDup = normalize(row.email)     && (duplicates.email[normalize(row.email)]   || 0) > 1;
+              const idDup = normalize(row.id_number) && (duplicates.id[normalize(row.id_number)] || 0) > 1;
+              const emailDup = normalize(row.email) && (duplicates.email[normalize(row.email)] || 0) > 1;
               return (
                 <tr key={row.id || row.fullName || JSON.stringify(row).slice(0, 24)}
                   className="hover:bg-gia-50/20 dark:hover:bg-gia-950/10 transition-colors group">

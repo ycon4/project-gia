@@ -1,16 +1,15 @@
 import { useState, useMemo, useEffect } from 'react';
 import {
-  Plus, Calendar, Trash2, Search, Edit3,
+  Plus, Trash2, Search, Edit3, Download,
   BarChart3, PanelRightClose, PanelRight, DatabaseZap, PlusSquare,
   MapPin, Monitor, Users, Tag, CalendarDays, FileText, Wifi,
   UserCircle, Wallet, Building, FileCheck, Target, StickyNote, BookOpen,
-  ClipboardList, Download,
+  ClipboardList,
 } from 'lucide-react';
 import { seedDemoData } from '../utils/seedDemoData';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { addEventSession } from '../../firebase/services';
 import { db } from '../../firebase/config';
-import * as XLSX from 'xlsx';
 import AttendanceTable from '../components/events/AttendanceTable';
 import { SessionQRManager } from '../components/events/SessionQRManager';
 import { EventAnalyticsDashboard } from '../components/events/EventsAnalytics';
@@ -425,13 +424,8 @@ export default function EventsPage({
                   <AttendanceTable
                     title={`${selectedSession} Logs`}
                     data={filteredAttendance}
-                    onExport={(rows) => {
-                      if (!rows?.length) return alert('No records to export');
-                      const ws = XLSX.utils.json_to_sheet(rows);
-                      const wb = XLSX.utils.book_new();
-                      XLSX.utils.book_append_sheet(wb, ws, 'Attendance');
-                      XLSX.writeFile(wb, `${activeEvent.title}_${selectedSession}.xlsx`);
-                    }}
+                    event={activeEvent}
+                    sessions={activeEvent?.sessions || ['Morning', 'Afternoon']}
                   />
                 </div>
               </>

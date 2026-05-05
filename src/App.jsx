@@ -27,7 +27,9 @@ function App() {
 
   const [user, setUser] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
-  const [activeSection, setActiveSection] = useState('chat');
+  const [activeSection, setActiveSection] = useState(
+    () => localStorage.getItem('gia-active-section') || 'chat'
+  );
   const [activeEvent, setActiveEvent] = useState(null);
 
   const [dbData, setDbData] = useState({});
@@ -54,6 +56,11 @@ function App() {
     }
     localStorage.setItem('gia-dark-mode', darkMode);
   }, [darkMode]);
+
+  // ── Persist active section
+  useEffect(() => {
+    localStorage.setItem('gia-active-section', activeSection);
+  }, [activeSection]);
 
   // ── Auth
   useEffect(() => {
@@ -109,22 +116,34 @@ function App() {
   };
 
   const loadDatabaseData = async () => {
+    console.log('🔄 Starting data load...');
     setIsLoadingData(true);
     try {
-      const collections = ['attendance', 'employee_information', 'events', 'student_engagement', 'student_enrollment'];
+      const collections = ['attendance', 'employee_information', 'events', 'student_enrollment'];
+      console.log('📦 Collections to load:', collections);
+
       const results = await Promise.allSettled(collections.map(col => getAllDocuments(col)));
+
       const data = {};
       results.forEach((result, index) => {
         const colName = collections[index];
-        data[colName] = result.status === 'fulfilled' ? result.value : [];
-        if (result.status === 'rejected') console.error(`Error loading "${colName}":`, result.reason);
+        if (result.status === 'fulfilled') {
+          data[colName] = result.value;
+          console.log(`✅ ${colName}: ${result.value.length} records`);
+        } else {
+          data[colName] = [];
+          console.error(`❌ Error loading "${colName}":`, result.reason);
+        }
       });
+
+      console.log('📊 Final data summary:', Object.entries(data).map(([k, v]) => `${k}: ${v.length}`));
+
       setDbData(data);
       setEvents(data['events'] || []);
       setAttendance(data['attendance'] || []);
       setDataLoaded(true);
     } catch (error) {
-      console.error('Critical error in database loader:', error);
+      console.error('❌ Critical error in database loader:', error);
     } finally {
       setIsLoadingData(false);
     }

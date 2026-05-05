@@ -63,7 +63,7 @@ export default function LoginPage() {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="admin@msuiit.edu.ph"
+                placeholder="admin@g.msuiit.edu.ph"
                 required
                 className="w-full bg-slate-50 dark:bg-neutral-800 border border-gia-200/80 dark:border-neutral-600/60 rounded-xl px-4 py-3
                   text-p4-base text-neutral-800 dark:text-neutral-200 placeholder-slate-400 dark:placeholder-slate-500
