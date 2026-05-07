@@ -1367,10 +1367,13 @@ const parseQueryWithLLM = async (message) => {
     intent.filterValues = intent.filterValues || [];
     intent.academicYears = intent.academicYears || [];
 
-    // Single college + boolean filters → add college to andFilters so the
-    // multi-filter engine intersects correctly (mirrors keyword-matching logic)
-    if (intent.filterValues.length === 1 && intent.andFilters.length > 0) {
-      if (!intent.andFilters.find(f => f.field === 'stud_college')) {
+    // Single college → always ensure filterValue and groupField are consistent
+    if (intent.filterValues.length === 1) {
+      intent.filterValue = intent.filterValue || intent.filterValues[0];
+      // groupField must be stud_college whenever we're filtering by college
+      // (LLM sometimes returns "studgender" here, which breaks the filter)
+      intent.groupField = 'stud_college';
+      if (intent.andFilters.length > 0 && !intent.andFilters.find(f => f.field === 'stud_college')) {
         intent.andFilters.push({ field: 'stud_college', value: intent.filterValues[0] });
       }
     }

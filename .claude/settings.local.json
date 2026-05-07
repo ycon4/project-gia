@@ -8,7 +8,8 @@
       "Bash(del \"c:\\\\Users\\\\Admin\\\\Documents\\\\Thesis\\\\GIA Project\\\\project-gia\\\\tw-test.css\")",
       "Bash(npm run:*)",
       "Bash(dir \"c:/Users/Admin/Documents/Thesis/GIA Project/project-gia\" /b)",
-      "WebSearch"
+      "WebSearch",
+      "Bash(npm install *)"
     ]
   }
 }

@@ -4,7 +4,8 @@ import {
   RefreshCcw, Trash2, Printer, FileUp, MoreVertical,
   Database, Users, Briefcase, Zap,
   ChevronLeft, ChevronRight, ChevronDown,
-  ArrowUpDown, ArrowUp, ArrowDown, Edit3, Calendar,
+  Edit3, Calendar,
+  Filter, X, Plus,
 } from 'lucide-react';
 
 import { getAllDocuments, getPaginatedDocuments, getDocumentCount, deleteAYData, updateDocument } from '../../firebase/services.js';
@@ -87,13 +88,6 @@ const SECTORS = {
   },
 };
 
-// Sort comparator — numeric-aware (handles "1st Year" → 1, etc.)
-const smartCompare = (a, b) => {
-  const na = parseInt(a, 10);
-  const nb = parseInt(b, 10);
-  if (!isNaN(na) && !isNaN(nb)) return na - nb;
-  return String(a ?? '').localeCompare(String(b ?? ''));
-};
 
 const ROWS_OPTIONS = [20, 50, 100, 'All'];
 
@@ -115,14 +109,13 @@ export default function DistributionPage() {
   const [modifyPeriodOpen, setModifyPeriodOpen] = useState(false);
   const [newPeriod, setNewPeriod] = useState('');
   const [isModifying, setIsModifying] = useState(false);
-  const [sortCol, setSortCol] = useState(null);
-  const [sortDir, setSortDir] = useState('asc');
+  const [activeFilters, setActiveFilters] = useState([]);
   const datasetRef = useRef(null);
   const ayRef = useRef(null);
 
   useEffect(() => { loadTabData(); }, [activeTab]);
-  useEffect(() => { setCurrentPage(1); }, [searchTerm, activeAY, activeTab, rowsPerPage]);
-  useEffect(() => { setSortCol(null); setSortDir('asc'); }, [activeTab]);
+  useEffect(() => { setCurrentPage(1); }, [searchTerm, activeAY, activeTab, rowsPerPage, activeFilters]);
+  useEffect(() => { setActiveFilters([]); setSearchTerm(''); }, [activeTab, activeAY]);
 
   // Close dropdowns on outside click
   useEffect(() => {
@@ -245,36 +238,29 @@ export default function DistributionPage() {
     }));
   }, [allSectorData, activeAY, activeTab]);
 
-  const filteredData = useMemo(() =>
-    currentInboxData.filter(row =>
-      Object.values(row).some(v => String(v).toLowerCase().includes(searchTerm.toLowerCase()))
-    ),
-    [currentInboxData, searchTerm]);
+  const filteredData = useMemo(() => {
+    let data = currentInboxData;
+    if (searchTerm) {
+      const lower = searchTerm.toLowerCase();
+      data = data.filter(row => Object.values(row).some(v => String(v).toLowerCase().includes(lower)));
+    }
+    for (const { field, value } of activeFilters) {
+      data = data.filter(row => String(row[field] ?? '').toLowerCase() === value.toLowerCase());
+    }
+    return data;
+  }, [currentInboxData, searchTerm, activeFilters]);
 
-  const sortedData = useMemo(() => {
-    if (!sortCol) return filteredData;
-    return [...filteredData].sort((a, b) => {
-      const cmp = smartCompare(a[sortCol], b[sortCol]);
-      return sortDir === 'asc' ? cmp : -cmp;
-    });
-  }, [filteredData, sortCol, sortDir]);
-
-  const effectiveRows = rowsPerPage === 'All' ? sortedData.length || 1 : rowsPerPage;
-  const totalPages = Math.max(1, Math.ceil(sortedData.length / effectiveRows));
+  const effectiveRows = rowsPerPage === 'All' ? filteredData.length || 1 : rowsPerPage;
+  const totalPages = Math.max(1, Math.ceil(filteredData.length / effectiveRows));
   const paginatedData = useMemo(() => {
-    if (rowsPerPage === 'All') return sortedData;
+    if (rowsPerPage === 'All') return filteredData;
     const s = (currentPage - 1) * rowsPerPage;
-    return sortedData.slice(s, s + rowsPerPage);
-  }, [sortedData, currentPage, rowsPerPage]);
+    return filteredData.slice(s, s + rowsPerPage);
+  }, [filteredData, currentPage, rowsPerPage]);
 
-  const showingFrom = sortedData.length === 0 ? 0 : (currentPage - 1) * effectiveRows + 1;
-  const showingTo = Math.min(currentPage * effectiveRows, sortedData.length);
+  const showingFrom = filteredData.length === 0 ? 0 : (currentPage - 1) * effectiveRows + 1;
+  const showingTo = Math.min(currentPage * effectiveRows, filteredData.length);
 
-  const handleSort = (col) => {
-    if (sortCol === col) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
-    else { setSortCol(col); setSortDir('asc'); }
-    setCurrentPage(1);
-  };
   const sector = SECTORS[activeTab];
 
   const UploadButton = activeTab === 'student_engagement'
@@ -443,9 +429,12 @@ export default function DistributionPage() {
           <TableView
             sector={sector}
             paginatedData={paginatedData}
-            filteredData={sortedData}
+            filteredData={filteredData}
+            allData={currentInboxData}
             searchTerm={searchTerm}
             setSearchTerm={setSearchTerm}
+            activeFilters={activeFilters}
+            setActiveFilters={setActiveFilters}
             activeAY={activeAY}
             showingFrom={showingFrom}
             showingTo={showingTo}
@@ -455,9 +444,6 @@ export default function DistributionPage() {
             rowsPerPage={rowsPerPage}
             setRowsPerPage={setRowsPerPage}
             pageNums={pageNums}
-            sortCol={sortCol}
-            sortDir={sortDir}
-            onSort={handleSort}
           />
         ) : (
           <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
@@ -700,15 +686,38 @@ export default function DistributionPage() {
 
 /* ─── Table View ── */
 function TableView({
-  sector, paginatedData, filteredData, searchTerm, setSearchTerm,
+  sector, paginatedData, filteredData, allData, searchTerm, setSearchTerm,
+  activeFilters, setActiveFilters,
   activeAY, showingFrom, showingTo,
   currentPage, setCurrentPage, totalPages,
   rowsPerPage, setRowsPerPage, pageNums,
-  sortCol, sortDir, onSort,
 }) {
+  const [showFilterBuilder, setShowFilterBuilder] = useState(false);
+  const [pendingField, setPendingField] = useState('');
+  const [pendingValue, setPendingValue] = useState('');
+
+  const distinctValues = useMemo(() => {
+    if (!pendingField) return [];
+    return [...new Set(allData.map(r => r[pendingField]).filter(v => v != null && String(v).trim() !== ''))].sort();
+  }, [allData, pendingField]);
+
+  const addFilter = () => {
+    if (!pendingField || !pendingValue) return;
+    if (!activeFilters.find(f => f.field === pendingField && f.value === pendingValue)) {
+      setActiveFilters(prev => [...prev, { field: pendingField, value: pendingValue }]);
+    }
+    setPendingField('');
+    setPendingValue('');
+    setShowFilterBuilder(false);
+  };
+
+  const removeFilter = (idx) => setActiveFilters(prev => prev.filter((_, i) => i !== idx));
+
+  const hasActiveSearch = searchTerm || activeFilters.length > 0;
+
   return (
     <div className="flex flex-col flex-1 min-h-0">
-      {/* Search */}
+      {/* Search + Filter button */}
       <div className="flex items-center gap-3 px-4 py-2.5 border-b border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 shrink-0">
         <Search size={13} className="text-neutral-400 shrink-0" />
         <input
@@ -718,12 +727,97 @@ function TableView({
           value={searchTerm}
           onChange={e => setSearchTerm(e.target.value)}
         />
-        {searchTerm && (
+        {hasActiveSearch && (
           <span className="text-[11px] font-medium text-neutral-400 shrink-0">
             {filteredData.length} result{filteredData.length !== 1 ? 's' : ''}
           </span>
         )}
+        <button
+          onClick={() => { setShowFilterBuilder(o => !o); setPendingField(''); setPendingValue(''); }}
+          className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs font-semibold transition-colors shrink-0"
+          style={showFilterBuilder || activeFilters.length > 0
+            ? { borderColor: LILAC, color: LILAC, backgroundColor: `${LILAC}12` }
+            : { borderColor: '#e5e7eb', color: '#6b7280' }
+          }
+        >
+          <Filter size={11} />
+          Filter
+          {activeFilters.length > 0 && (
+            <span
+              className="flex items-center justify-center w-4 h-4 rounded-full text-[10px] font-bold text-white"
+              style={{ backgroundColor: LILAC }}
+            >
+              {activeFilters.length}
+            </span>
+          )}
+        </button>
       </div>
+
+      {/* Filter builder row */}
+      {showFilterBuilder && (
+        <div className="flex items-center gap-2 px-4 py-2.5 border-b border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800/50 shrink-0 flex-wrap">
+          <select
+            value={pendingField}
+            onChange={e => { setPendingField(e.target.value); setPendingValue(''); }}
+            className="text-xs font-medium bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-lg px-2.5 py-1.5 text-neutral-700 dark:text-neutral-300 outline-none cursor-pointer"
+          >
+            <option value="">Select column…</option>
+            {sector.headers.map(h => (
+              <option key={h} value={h}>{HEADER_LABELS[h] || h.replace(/_/g, ' ')}</option>
+            ))}
+          </select>
+          <select
+            value={pendingValue}
+            onChange={e => setPendingValue(e.target.value)}
+            disabled={!pendingField}
+            className="text-xs font-medium bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-lg px-2.5 py-1.5 text-neutral-700 dark:text-neutral-300 outline-none cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            <option value="">Select value…</option>
+            {distinctValues.map(v => <option key={v} value={v}>{v}</option>)}
+          </select>
+          <button
+            onClick={addFilter}
+            disabled={!pendingField || !pendingValue}
+            className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold text-white disabled:opacity-40 disabled:cursor-not-allowed transition-opacity"
+            style={{ backgroundColor: LILAC }}
+          >
+            <Plus size={11} /> Add
+          </button>
+          <button
+            onClick={() => { setShowFilterBuilder(false); setPendingField(''); setPendingValue(''); }}
+            className="px-2.5 py-1.5 rounded-lg text-xs font-semibold text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300 transition-colors"
+          >
+            Cancel
+          </button>
+        </div>
+      )}
+
+      {/* Active filter chips */}
+      {activeFilters.length > 0 && (
+        <div className="flex items-center gap-2 px-4 py-2 border-b border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 shrink-0 flex-wrap">
+          {activeFilters.map((f, i) => (
+            <span
+              key={i}
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border"
+              style={{ color: LILAC, borderColor: `${LILAC}40`, backgroundColor: `${LILAC}10` }}
+            >
+              <span className="text-neutral-500 dark:text-neutral-400 font-medium">
+                {HEADER_LABELS[f.field] || f.field}:
+              </span>
+              {f.value}
+              <button onClick={() => removeFilter(i)} className="ml-0.5 hover:opacity-70 transition-opacity">
+                <X size={10} />
+              </button>
+            </span>
+          ))}
+          <button
+            onClick={() => setActiveFilters([])}
+            className="text-[11px] font-semibold text-neutral-400 hover:text-red-500 transition-colors"
+          >
+            Clear all
+          </button>
+        </div>
+      )}
 
       {/* Table */}
       <div className="flex-1 overflow-auto min-h-0">
@@ -731,25 +825,14 @@ function TableView({
           <thead className="sticky top-0 z-10">
             <tr className="bg-neutral-50 dark:bg-neutral-800">
               <th className="px-4 py-2.5 text-[10px] font-semibold uppercase tracking-widest text-neutral-500 dark:text-neutral-400 border-b border-r border-neutral-200 dark:border-neutral-700 w-10 text-center">#</th>
-              {sector.headers.map(h => {
-                const active = sortCol === h;
-                const Icon = active ? (sortDir === 'asc' ? ArrowUp : ArrowDown) : ArrowUpDown;
-                return (
-                  <th
-                    key={h}
-                    onClick={() => onSort(h)}
-                    className="px-4 py-2.5 text-[10px] font-semibold uppercase tracking-widest border-b border-r border-neutral-200 dark:border-neutral-700 whitespace-nowrap last:border-r-0 cursor-pointer select-none group"
-                    style={{ color: active ? LILAC : undefined }}
-                  >
-                    <span className="flex items-center gap-1.5">
-                      <span className={active ? '' : 'text-neutral-500 dark:text-neutral-400 group-hover:text-neutral-700 dark:group-hover:text-neutral-200 transition-colors'}>
-                        {HEADER_LABELS[h] || h.replace(/_/g, ' ')}
-                      </span>
-                      <Icon size={10} className={active ? '' : 'text-neutral-300 dark:text-neutral-600 group-hover:text-neutral-400 transition-colors'} style={active ? { color: LILAC } : {}} />
-                    </span>
-                  </th>
-                );
-              })}
+              {sector.headers.map(h => (
+                <th
+                  key={h}
+                  className="px-4 py-2.5 text-[10px] font-semibold uppercase tracking-widest text-neutral-500 dark:text-neutral-400 border-b border-r border-neutral-200 dark:border-neutral-700 whitespace-nowrap last:border-r-0"
+                >
+                  {HEADER_LABELS[h] || h.replace(/_/g, ' ')}
+                </th>
+              ))}
             </tr>
           </thead>
           <tbody>
