@@ -8,14 +8,15 @@ import {
 } from 'lucide-react';
 import { seedDemoData } from '../utils/seedDemoData';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
-import { addEventSession } from '../../firebase/services';
-import { db } from '../../firebase/config';
+import { addEventSession, getAllDocuments } from '../../firebase/services';
+import { db, auth } from '../../firebase/config';
 import AttendanceTable from '../components/events/AttendanceTable';
 import { SessionQRManager } from '../components/events/SessionQRManager';
 import { EventAnalyticsDashboard } from '../components/events/EventsAnalytics';
 import GeneralDashboard from '../components/events/GeneralPage';
 import EventFormModal from '../components/events/EventFormModal';
 import EventPosterGenerator from '../components/events/EventPosterGenerator';
+import { useRole, Permission } from '../contexts/RoleContext.jsx';
 
 // ─── Event info panel helpers ─────────────────────────────────────────────────
 
@@ -61,12 +62,17 @@ function formatTs(ts) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function EventsPage({
-  events = [],
-  attendance = [],
   onCreateEvent = () => { },
   onDeleteEvent = () => { },
   onUpdateEvent = () => { },
 }) {
+  const { role, hasPermission, filterEventsByRole, canModifyEvent, canDeleteEvent } = useRole();
+
+  // Local state for events and attendance - loaded from Firestore
+  const [events, setEvents] = useState([]);
+  const [attendance, setAttendance] = useState([]);
+  const [loadingEvents, setLoadingEvents] = useState(true);
+
   const [activeEvent, setActiveEvent] = useState(null);
   const [attendanceData, setAttendanceData] = useState([]);
   const [selectedSession, setSelectedSession] = useState('Pre-Registration');
@@ -79,6 +85,27 @@ export default function EventsPage({
   const [rightOpen, setRightOpen] = useState(true);
   const [seeding, setSeeding] = useState(false);
   const [showPosterGenerator, setShowPosterGenerator] = useState(false);
+
+  // Load events and attendance data when component mounts
+  useEffect(() => {
+    const loadEventsData = async () => {
+      setLoadingEvents(true);
+      try {
+        const [eventsData, attendanceData] = await Promise.all([
+          getAllDocuments('events'),
+          getAllDocuments('attendance'),
+        ]);
+        setEvents(eventsData);
+        setAttendance(attendanceData);
+      } catch (error) {
+        console.error('Error loading events data:', error);
+      } finally {
+        setLoadingEvents(false);
+      }
+    };
+
+    loadEventsData();
+  }, []);
 
   // Live attendance sync for selected event
   useEffect(() => {
@@ -141,13 +168,29 @@ export default function EventsPage({
     setShowCreateModal(true);
   };
 
-  const handleFormSubmit = (formData) => {
+  const handleFormSubmit = async (formData) => {
     if (isEditing && editingEvent?.id) {
-      onUpdateEvent(editingEvent.id, formData);
+      // Update existing event
+      await onUpdateEvent(editingEvent.id, formData);
+      // Update local state
+      setEvents(prev => prev.map(ev => ev.id === editingEvent.id ? { ...formData, id: editingEvent.id } : ev));
+      if (activeEvent?.id === editingEvent.id) {
+        setActiveEvent({ ...formData, id: editingEvent.id });
+      }
     } else {
-      onCreateEvent(formData);
+      // Create new event
+      const newEvent = await onCreateEvent(formData);
+      // Add to local state
+      if (newEvent) {
+        setEvents(prev => [newEvent, ...prev]);
+      }
     }
   };
+
+  // Filter events based on user role
+  const visibleEvents = useMemo(() => {
+    return filterEventsByRole(events);
+  }, [events, filterEventsByRole]);
 
   // Normalize session name for matching — trims and collapses internal whitespace
   const normSession = (s) => String(s || '').trim().replace(/\s+/g, ' ');
@@ -255,9 +298,11 @@ export default function EventsPage({
                           <button onClick={() => setShowPosterGenerator(true)}
                             className="p-1.5 rounded-lg text-neutral-400 dark:text-neutral-500 hover:text-gia-600 dark:hover:text-gia-400 hover:bg-gia-50 dark:hover:bg-gia-950/20 transition-colors"
                             title="Download poster"><Download size={13} /></button>
-                          <button onClick={() => openEdit(activeEvent)}
-                            className="p-1.5 rounded-lg text-neutral-400 dark:text-neutral-500 hover:text-gia-600 dark:hover:text-gia-400 hover:bg-gia-50 dark:hover:bg-gia-950/20 transition-colors"
-                            title="Edit event"><Edit3 size={13} /></button>
+                          {canModifyEvent(activeEvent.createdBy) && (
+                            <button onClick={() => openEdit(activeEvent)}
+                              className="p-1.5 rounded-lg text-neutral-400 dark:text-neutral-500 hover:text-gia-600 dark:hover:text-gia-400 hover:bg-gia-50 dark:hover:bg-gia-950/20 transition-colors"
+                              title="Edit event"><Edit3 size={13} /></button>
+                          )}
                         </div>
                       </div>
 
@@ -266,6 +311,7 @@ export default function EventsPage({
 
                         {/* Core metadata */}
                         <div className="grid grid-cols-2 gap-x-4 gap-y-3">
+                          {activeEvent.createdByName && <MetaItem icon={UserCircle} label="Created By" value={activeEvent.createdByName} span />}
                           {activeEvent.eventType && <MetaItem icon={Tag} label="Type" value={activeEvent.eventType} />}
                           {activeEvent.mode && <MetaItem icon={activeEvent.mode === 'Online' ? Wifi : Monitor} label="Mode" value={activeEvent.mode} />}
                           {activeEvent.venue && <MetaItem icon={MapPin} label={activeEvent.mode === 'Online' ? 'Platform' : 'Venue'} value={activeEvent.venue} span />}
@@ -473,11 +519,13 @@ export default function EventsPage({
           <nav className="px-1 py-3 space-y-1 shrink-0">
 
             {/* New Event — mirrors "New Chat" (gia purple) */}
-            <button onClick={openCreate} title={!rightOpen ? 'New Event' : undefined}
-              className={`w-full flex items-center py-2 px-2 rounded-md transition-colors duration-150 text-gia-600 hover:bg-gia-50 dark:hover:bg-gia-950/20 ${rightOpen ? 'gap-2.5' : ''}`}>
-              <Plus size={16} className="shrink-0" />
-              {rightOpen && <span className="text-sm font-medium leading-none whitespace-nowrap">New Event</span>}
-            </button>
+            {hasPermission(Permission.EVENT_CREATE) && (
+              <button onClick={openCreate} title={!rightOpen ? 'New Event' : undefined}
+                className={`w-full flex items-center py-2 px-2 rounded-md transition-colors duration-150 text-gia-600 hover:bg-gia-50 dark:hover:bg-gia-950/20 ${rightOpen ? 'gap-2.5' : ''}`}>
+                <Plus size={16} className="shrink-0" />
+                {rightOpen && <span className="text-sm font-medium leading-none whitespace-nowrap">New Event</span>}
+              </button>
+            )}
 
             {/* Overview — mirrors "About" */}
             <button onClick={() => setActiveEvent(null)} title={!rightOpen ? 'Overview' : undefined}
@@ -496,11 +544,11 @@ export default function EventsPage({
               </div>
 
               <div className="flex-1 overflow-y-auto px-1.5 pb-2 space-y-0.5">
-                {events.length === 0 ? (
+                {visibleEvents.length === 0 ? (
                   <p className="text-neutral-400 dark:text-neutral-500 text-[10px] text-center py-4 px-3 leading-relaxed">
                     No events yet. Create one above!
                   </p>
-                ) : events.map(event => {
+                ) : visibleEvents.map(event => {
                   // Determine status dot color
                   const statusColor = event.status === 'Active'
                     ? 'bg-emerald-400'
@@ -524,22 +572,50 @@ export default function EventsPage({
 
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-normal truncate leading-snug">{event.title}</p>
-                        <p className="text-xs opacity-40 mt-0.5">{event.startDate || event.status}</p>
+                        <div className="flex items-center gap-1.5 mt-0.5">
+                          <p className="text-xs opacity-40">{event.startDate || event.status}</p>
+                          {event.createdByName && role !== 'USER' && (
+                            <>
+                              <span className="text-xs opacity-20">•</span>
+                              <p className="text-[10px] opacity-30 truncate" title={`Created by ${event.createdByName}`}>
+                                {event.createdByName}
+                              </p>
+                            </>
+                          )}
+                        </div>
                       </div>
 
-                      {/* Edit / Delete on hover — mirrors chat delete */}
-                      <div className="shrink-0 opacity-0 group-hover:opacity-100 flex gap-0.5 mt-0.5 transition-opacity">
-                        <span
-                          onClick={e => { e.stopPropagation(); openEdit(event); }}
-                          className="p-0.5 hover:text-gia-500 transition-colors cursor-pointer"
-                          title="Edit"
-                        ><Edit3 size={10} /></span>
-                        <span
-                          onClick={e => { e.stopPropagation(); if (window.confirm(`Delete "${event.title}"?`)) onDeleteEvent(event.id, event.title); }}
-                          className="p-0.5 hover:text-rose-500 transition-colors cursor-pointer"
-                          title="Delete"
-                        ><Trash2 size={10} /></span>
-                      </div>
+                      {/* Edit / Delete on hover — only show if user can modify */}
+                      {(canModifyEvent(event.createdBy) || canDeleteEvent(event.createdBy)) && (
+                        <div className="shrink-0 opacity-0 group-hover:opacity-100 flex gap-0.5 mt-0.5 transition-opacity">
+                          {canModifyEvent(event.createdBy) && (
+                            <span
+                              onClick={e => { e.stopPropagation(); openEdit(event); }}
+                              className="p-0.5 hover:text-gia-500 transition-colors cursor-pointer"
+                              title="Edit"
+                            ><Edit3 size={10} /></span>
+                          )}
+                          {canDeleteEvent(event.createdBy) && (
+                            <span
+                              onClick={async (e) => { 
+                                e.stopPropagation(); 
+                                if (window.confirm(`Delete "${event.title}"?`)) {
+                                  try {
+                                    await onDeleteEvent(event.id, event.title);
+                                    // Remove from local state
+                                    setEvents(prev => prev.filter(ev => ev.id !== event.id));
+                                    if (activeEvent?.id === event.id) setActiveEvent(null);
+                                  } catch (error) {
+                                    // Error already handled in App.jsx
+                                  }
+                                }
+                              }}
+                              className="p-0.5 hover:text-rose-500 transition-colors cursor-pointer"
+                              title="Delete"
+                            ><Trash2 size={10} /></span>
+                          )}
+                        </div>
+                      )}
                     </button>
                   );
                 })}
@@ -569,9 +645,9 @@ export default function EventsPage({
           )}
 
           {/* Collapsed dots for event list (when sidebar closed) */}
-          {!rightOpen && events.length > 0 && (
+          {!rightOpen && visibleEvents.length > 0 && (
             <div className="flex-1 flex flex-col items-center pt-3 gap-1.5 overflow-hidden">
-              {events.slice(0, 8).map(event => {
+              {visibleEvents.slice(0, 8).map(event => {
                 // Determine status dot color
                 const statusColor = event.status === 'Active'
                   ? 'bg-emerald-400'

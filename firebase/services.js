@@ -113,6 +113,76 @@ export const getAllDocuments = async (collectionName) => {
 };
 
 /**
+ * Get paginated documents from a collection
+ * @param {string} collectionName - Name of the collection
+ * @param {number} pageSize - Number of documents per page (default: 50)
+ * @param {object} lastDoc - Last document from previous page (for pagination)
+ * @param {string} orderByField - Field to order by (default: 'createdAt')
+ * @returns {Promise<{docs: Array, lastDoc: object, hasMore: boolean}>}
+ */
+export const getPaginatedDocuments = async (collectionName, pageSize = 50, lastDoc = null, orderByField = 'createdAt') => {
+  try {
+    console.log(`📥 Fetching paginated documents from: ${collectionName} (page size: ${pageSize})`);
+    const colRef = collection(db, collectionName);
+
+    let q;
+    if (lastDoc) {
+      q = query(colRef, orderBy(orderByField), limit(pageSize + 1));
+    } else {
+      q = query(colRef, orderBy(orderByField), limit(pageSize + 1));
+    }
+
+    const querySnapshot = await getDocs(q);
+    const docs = [];
+    let newLastDoc = null;
+    let hasMore = false;
+
+    querySnapshot.docs.forEach((doc, index) => {
+      if (index < pageSize) {
+        docs.push({ id: doc.id, ...doc.data() });
+        newLastDoc = doc;
+      } else {
+        hasMore = true;
+      }
+    });
+
+    console.log(`✅ Fetched ${docs.length} documents from ${collectionName}, hasMore: ${hasMore}`);
+    return { docs, lastDoc: newLastDoc, hasMore };
+  } catch (error) {
+    console.error(`❌ Error fetching paginated ${collectionName}:`, error.code, error.message);
+    return { docs: [], lastDoc: null, hasMore: false };
+  }
+};
+
+/**
+ * Get document count from a collection using aggregation
+ * @param {string} collectionName - Name of the collection
+ * @param {Array} conditions - Array of where conditions (optional)
+ * @returns {Promise<number>} - Count of documents
+ */
+export const getDocumentCount = async (collectionName, conditions = []) => {
+  try {
+    console.log(`🔢 Counting documents in: ${collectionName}`);
+    let q = collection(db, collectionName);
+
+    if (conditions.length > 0) {
+      const constraints = conditions.map(([field, operator, value]) =>
+        where(field, operator, value)
+      );
+      q = query(q, ...constraints);
+    }
+
+    const querySnapshot = await getDocs(q);
+    const count = querySnapshot.size;
+    console.log(`✅ Count for ${collectionName}: ${count}`);
+    return count;
+  } catch (error) {
+    console.error(`❌ Error counting ${collectionName}:`, error.code, error.message);
+    return 0;
+  }
+};
+
+/**
  * Query documents with conditions
  * @param {string} collectionName - Name of the collection
  * @param {Array} conditions - Array of where conditions [field, operator, value]
@@ -269,13 +339,16 @@ export const listenToCollection = (collectionName, callback, conditions = []) =>
 };
 
 // Save a new event to Firestore
-export const saveEvent = async (eventData) => {
+export const saveEvent = async (eventData, userId, userName) => {
   try {
     const docRef = await addDoc(collection(db, 'events'), {
       ...eventData,
-      createdAt: serverTimestamp()
+      createdBy: userId,
+      createdByName: userName,
+      createdAt: serverTimestamp(),
+      updatedAt: new Date().toISOString()
     });
-    return { id: docRef.id, ...eventData };
+    return { id: docRef.id, ...eventData, createdBy: userId, createdByName: userName };
   } catch (error) {
     console.error("Error adding event: ", error);
     throw error;
@@ -329,6 +402,111 @@ export const addEventSession = async (eventId, sessionName) => {
     console.error("Error adding session: ", error.code, error.message);
     throw error;
   }
+};
+
+// ==================== USER MANAGEMENT (RBAC) ====================
+
+/**
+ * Get user by UID
+ * @param {string} uid - User ID
+ * @returns {Promise<object|null>} - User data or null
+ */
+export const getUserByUid = async (uid) => {
+  return await getDocument('users', uid);
+};
+
+/**
+ * Get all users (SUPER_ADMIN only)
+ * @returns {Promise<Array>} - Array of users
+ */
+export const getAllUsers = async () => {
+  return await getAllDocuments('users');
+};
+
+/**
+ * Update user role (SUPER_ADMIN only)
+ * @param {string} uid - User ID
+ * @param {string} newRole - New role (USER or ADMIN)
+ * @returns {Promise<void>}
+ */
+export const updateUserRole = async (uid, newRole) => {
+  if (!['USER', 'ADMIN'].includes(newRole)) {
+    throw new Error('Can only assign USER or ADMIN roles');
+  }
+
+  await updateDoc(doc(db, 'users', uid), {
+    role: newRole,
+    updatedAt: new Date().toISOString()
+  });
+};
+
+/**
+ * Update user status (SUPER_ADMIN only)
+ * @param {string} uid - User ID
+ * @param {string} status - Status (Active or Inactive)
+ * @returns {Promise<void>}
+ */
+export const updateUserStatus = async (uid, status) => {
+  if (!['Active', 'Inactive'].includes(status)) {
+    throw new Error('Status must be Active or Inactive');
+  }
+
+  await updateDoc(doc(db, 'users', uid), {
+    status: status,
+    updatedAt: new Date().toISOString()
+  });
+};
+
+/**
+ * Create a new user document (called after Firebase Auth user creation)
+ * @param {string} uid - Firebase Auth UID
+ * @param {object} userData - User data
+ * @returns {Promise<void>}
+ */
+export const createUserDocument = async (uid, userData) => {
+  await setDoc(doc(db, 'users', uid), {
+    uid,
+    email: userData.email,
+    displayName: userData.displayName || userData.email?.split('@')[0] || 'User',
+    role: userData.role || 'USER',
+    employeeId: userData.employeeId || null,
+    department: userData.department || null,
+    status: 'Active',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    createdBy: userData.createdBy || null,
+    lastLogin: null,
+  });
+};
+
+/**
+ * Batch create user documents in Firestore
+ * @param {Array} users - Array of user objects with uid, email, displayName, role
+ * @param {string} createdBy - UID of the SUPER_ADMIN creating the accounts
+ * @returns {Promise<{successful: Array, failed: Array}>}
+ */
+export const batchCreateUserDocuments = async (users, createdBy) => {
+  const successful = [];
+  const failed = [];
+
+  for (const user of users) {
+    try {
+      await createUserDocument(user.uid, {
+        email: user.email,
+        displayName: user.displayName,
+        role: user.role,
+        createdBy,
+      });
+      successful.push(user);
+    } catch (error) {
+      failed.push({
+        ...user,
+        error: error.message,
+      });
+    }
+  }
+
+  return { successful, failed };
 };
 
 

@@ -4,6 +4,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { updateDoc, doc, addDoc, collection } from 'firebase/firestore';
 import { db } from '../../firebase/config';
+import { getAllDocuments } from '../../firebase/services';
 import { analyzeWithAI } from '../services/aiService';
 import ChatChart from '../components/chat/ChatChart';
 
@@ -14,9 +15,15 @@ const makeWelcome = (name) => ({
 });
 
 export default function ChatPage({
-  dbData, isLoadingData, dataLoaded, user, displayName, onRefreshData,
+  user, displayName,
   conversations, setConversations, activeConvId, setActiveConvId,
 }) {
+  // Data loading state - managed locally in ChatPage
+  const [dbData, setDbData] = useState({});
+  const [isLoadingData, setIsLoadingData] = useState(false);
+  const [dataLoaded, setDataLoaded] = useState(false);
+  const dataLoadInitiated = useRef(false);
+
   const [messages, setMessages] = useState(() => [makeWelcome(displayName)]);
   const [chatHistory, setChatHistory] = useState([]);
   const [inputMessage, setInputMessage] = useState('');
@@ -32,6 +39,60 @@ export default function ChatPage({
   const totalRecords = Object.values(dbData).reduce(
     (sum, docs) => sum + (Array.isArray(docs) ? docs.length : 0), 0
   );
+
+  // Load database data when ChatPage mounts
+  useEffect(() => {
+    // Use ref to prevent double-fetch in React StrictMode (dev only)
+    if (dataLoadInitiated.current) {
+      return;
+    }
+
+    if (!dataLoaded && !isLoadingData) {
+      dataLoadInitiated.current = true;
+      loadDatabaseData();
+    }
+  }, []); // Empty dependency array ensures this runs only once on mount
+
+  const loadDatabaseData = async () => {
+    // CRITICAL: Check loading flag FIRST to prevent race conditions
+    if (isLoadingData) {
+      return;
+    }
+
+    // Prevent duplicate fetches if data is already loaded
+    if (dataLoaded) {
+      return;
+    }
+
+    setIsLoadingData(true);
+    try {
+      // Load all collections needed for chat analysis
+      const collections = ['attendance', 'employee_information', 'events', 'student_enrollment'];
+
+      const results = await Promise.allSettled(collections.map(col => getAllDocuments(col)));
+
+      const data = {};
+      results.forEach((result, index) => {
+        const colName = collections[index];
+        if (result.status === 'fulfilled') {
+          data[colName] = result.value;
+        } else {
+          data[colName] = [];
+          console.error(`Error loading "${colName}":`, result.reason);
+        }
+      });
+
+      setDbData(data);
+      setDataLoaded(true);
+      setLastDataUpdate(new Date());
+    } catch (error) {
+      console.error('Critical error in database loader:', error);
+      // Reset ref on error so user can retry
+      dataLoadInitiated.current = false;
+    } finally {
+      setIsLoadingData(false);
+    }
+  };
 
   // Set initial data update time when data loads
   useEffect(() => {
@@ -237,17 +298,17 @@ export default function ChatPage({
                   <div className="flex items-center gap-2 text-neutral-400 dark:text-neutral-500 text-p4-sm">
                     <Database size={13} className="text-green-400" />
                     {totalRecords.toLocaleString()} records ready
-                    {onRefreshData && (
-                      <button
-                        onClick={() => {
-                          onRefreshData();
-                          setLastDataUpdate(new Date());
-                        }}
-                        className="text-neutral-400 dark:text-neutral-600 hover:text-neutral-500 dark:hover:text-neutral-400 transition ml-1"
-                      >
-                        <RefreshCw size={12} />
-                      </button>
-                    )}
+                    <button
+                      onClick={() => {
+                        dataLoadInitiated.current = false;
+                        setDataLoaded(false);
+                        loadDatabaseData();
+                      }}
+                      className="text-neutral-400 dark:text-neutral-600 hover:text-neutral-500 dark:hover:text-neutral-400 transition ml-1"
+                      title="Refresh data"
+                    >
+                      <RefreshCw size={12} />
+                    </button>
                   </div>
                   {lastDataUpdate && (
                     <p className="text-xs text-neutral-400 dark:text-neutral-600 mt-1">

@@ -4,13 +4,13 @@ import { getAuth } from 'firebase/auth';
 import { getAnalytics } from 'firebase/analytics';
 
 const firebaseConfig = {
-  apiKey: "AIzaSyDjkqvg7OkS-rbpP-SG5Mt4eq_jTJsdRxY",
-  authDomain: "project-gia-v2.firebaseapp.com",
-  projectId: "project-gia-v2",
-  storageBucket: "project-gia-v2.firebasestorage.app",
-  messagingSenderId: "485721554493",
-  appId: "1:485721554493:web:3725b26f5b08f8d3b33454",
-  measurementId: "G-QHG7C1W4KL"
+  apiKey: "AIzaSyAMXcFJ5lTM7nrjmU7rHRJn5Ui35kLjCI4",
+  authDomain: "project-gia-v3.firebaseapp.com",
+  projectId: "project-gia-v3",
+  storageBucket: "project-gia-v3.firebasestorage.app",
+  messagingSenderId: "116407887554",
+  appId: "1:116407887554:web:99aa3bb296e0dc3b8fbd5b",
+  measurementId: "G-DSJXSFCWKC"
 };
 
 // Initialize Firebase

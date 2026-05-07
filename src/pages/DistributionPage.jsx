@@ -7,11 +7,12 @@ import {
   ArrowUpDown, ArrowUp, ArrowDown, Edit3, Calendar,
 } from 'lucide-react';
 
-import { getAllDocuments, deleteAYData, updateDocument } from '../../firebase/services.js';
+import { getAllDocuments, getPaginatedDocuments, getDocumentCount, deleteAYData, updateDocument } from '../../firebase/services.js';
 import ExcelUploadEnrollment from '../components/excel_upload/ExcelUploadEnrollment.jsx';
 import ExcelUploadEmployee from '../components/excel_upload/ExcelUploadEmployment.jsx';
 import StudentEnrollmentVisuals from '../components/visuals/StudentEnrollmentVisuals.jsx';
 import EmployeeVisuals from '../components/visuals/EmployeeVisuals.jsx';
+import { useRole, Permission } from '../contexts/RoleContext.jsx';
 
 const LILAC = '#a673d8';
 
@@ -97,6 +98,7 @@ const smartCompare = (a, b) => {
 const ROWS_OPTIONS = [20, 50, 100, 'All'];
 
 export default function DistributionPage() {
+  const { hasPermission } = useRole();
   const [allSectorData, setAllSectorData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('student_enrollment');
@@ -135,6 +137,9 @@ export default function DistributionPage() {
   const loadTabData = async () => {
     try {
       setLoading(true);
+
+      // Load all documents for all collections
+      // Note: For very large datasets (10,000+), consider implementing pagination
       const result = await getAllDocuments(activeTab);
       setAllSectorData(result);
       const years = [...new Set(result.map(i => i.academicYear))].sort().reverse();
@@ -380,7 +385,7 @@ export default function DistributionPage() {
         <div className="flex">
           {[
             { id: 'visuals', label: 'Visuals' },
-            { id: 'table', label: 'Data Sheet' },
+            ...(hasPermission(Permission.DATA_VIEW_DATASETS) ? [{ id: 'table', label: 'Data Sheet' }] : []),
           ].map(tab => (
             <button
               key={tab.id}
@@ -405,8 +410,8 @@ export default function DistributionPage() {
         >
           <Printer size={13} /> Print
         </button>
-        {UploadButton}
-        {activeAY && (
+        {hasPermission(Permission.DATA_IMPORT) && UploadButton}
+        {hasPermission(Permission.DATA_MODIFY) && activeAY && (
           <>
             <button
               onClick={() => { setNewPeriod(''); setModifyPeriodOpen(true); }}
@@ -415,13 +420,15 @@ export default function DistributionPage() {
             >
               <Edit3 size={16} />
             </button>
-            <button
-              onClick={() => setClearModalOpen(true)}
-              className="p-2 rounded-lg border border-red-200 dark:border-red-700 text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 hover:border-red-300 dark:hover:border-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
-              title="Delete Period"
-            >
-              <Trash2 size={16} />
-            </button>
+            {hasPermission(Permission.DATA_DELETE) && (
+              <button
+                onClick={() => setClearModalOpen(true)}
+                className="p-2 rounded-lg border border-red-200 dark:border-red-700 text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 hover:border-red-300 dark:hover:border-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                title="Delete Period"
+              >
+                <Trash2 size={16} />
+              </button>
+            )}
           </>
         )}
       </div>

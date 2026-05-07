@@ -4,7 +4,7 @@ import giaLogo from './assets/GIA Logo.svg';
 import {
   MessageCircle, BarChart3, Home as HomeIcon, LogOut,
   CalendarDays, PanelLeftClose, PanelLeft, SquarePen, Trash2, MessageSquare,
-  Moon, Sun, ChevronUp, Pencil, X,
+  Moon, Sun, ChevronUp, Pencil, X, Users,
 } from 'lucide-react';
 import AboutPage from './pages/AboutPage';
 import DistributionPage from './pages/DistributionPage';
@@ -12,11 +12,13 @@ import ChatPage from './pages/ChatPage';
 import ChatsPage from './pages/ChatsPage';
 import EventsPage from './pages/EventsPage';
 import LoginPage from './pages/LoginPage';
+import UserManagementPage from './pages/UserManagementPage';
 import PublicRegister from './components/events/PublicRegister';
 import FloatingChatButton from './components/FloatingChatButton';
+import { RoleProvider, useRole } from './contexts/RoleContext';
 import { getAllDocuments, saveEvent, updateDocument, removeEvent } from '../firebase/services';
 import { db, auth } from '../firebase/config';
-import { collection, getDocs, query, where, deleteDoc, doc } from 'firebase/firestore';
+import { collection, getDocs, query, where, deleteDoc, doc, updateDoc, onSnapshot } from 'firebase/firestore';
 import { onAuthStateChanged, signOut, updateProfile } from 'firebase/auth';
 
 function App() {
@@ -27,16 +29,7 @@ function App() {
 
   const [user, setUser] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
-  const [activeSection, setActiveSection] = useState(
-    () => localStorage.getItem('gia-active-section') || 'chat'
-  );
-  const [activeEvent, setActiveEvent] = useState(null);
-
-  const [dbData, setDbData] = useState({});
-  const [isLoadingData, setIsLoadingData] = useState(false);
-  const [dataLoaded, setDataLoaded] = useState(false);
-  const [events, setEvents] = useState([]);
-  const [attendance, setAttendance] = useState([]);
+  const [activeSection, setActiveSection] = useState('chat'); // Always start with chat
 
   const [isRegisterMode, setIsRegisterMode] = useState(false);
 
@@ -57,10 +50,13 @@ function App() {
     localStorage.setItem('gia-dark-mode', darkMode);
   }, [darkMode]);
 
-  // ── Persist active section
+  // ── Persist active section (but don't restore on login)
   useEffect(() => {
-    localStorage.setItem('gia-active-section', activeSection);
-  }, [activeSection]);
+    // Only persist, don't restore from localStorage on mount
+    if (user) {
+      localStorage.setItem('gia-active-section', activeSection);
+    }
+  }, [activeSection, user]);
 
   // ── Auth
   useEffect(() => {
@@ -68,9 +64,32 @@ function App() {
       setUser(currentUser);
       setDisplayName(currentUser?.displayName || '');
       setAuthLoading(false);
+
+      // Reset to chat page on login/logout
+      if (currentUser) {
+        setActiveSection('chat');
+      }
     });
     return unsubscribe;
   }, []);
+
+  // ── Sync displayName from Firestore in real-time
+  useEffect(() => {
+    if (!user) return;
+
+    const userDocRef = doc(db, 'users', user.uid);
+    const unsubscribe = onSnapshot(userDocRef, (snapshot) => {
+      if (snapshot.exists()) {
+        const userData = snapshot.data();
+        // Only update if the document belongs to the current user
+        if (userData.uid === user.uid && userData.displayName) {
+          setDisplayName(userData.displayName);
+        }
+      }
+    });
+
+    return unsubscribe;
+  }, [user]);
 
   // ── Kiosk detection — just flag the mode, PublicRegister handles its own data fetch
   useEffect(() => {
@@ -102,59 +121,40 @@ function App() {
     }
   };
 
-  // ── Load db data
-  useEffect(() => {
-    loadDatabaseData();
-  }, []);
-
-  const handleLogout = () => signOut(auth);
+  const handleLogout = () => {
+    const confirmed = window.confirm('Are you sure you want to log out?');
+    if (confirmed) {
+      signOut(auth);
+    }
+  };
 
   const handleUpdateProfile = async (newName) => {
     if (!auth.currentUser) return;
-    await updateProfile(auth.currentUser, { displayName: newName });
-    setDisplayName(newName);
-  };
-
-  const loadDatabaseData = async () => {
-    console.log('🔄 Starting data load...');
-    setIsLoadingData(true);
     try {
-      const collections = ['attendance', 'employee_information', 'events', 'student_enrollment'];
-      console.log('📦 Collections to load:', collections);
+      // Update Firebase Auth profile
+      await updateProfile(auth.currentUser, { displayName: newName });
 
-      const results = await Promise.allSettled(collections.map(col => getAllDocuments(col)));
-
-      const data = {};
-      results.forEach((result, index) => {
-        const colName = collections[index];
-        if (result.status === 'fulfilled') {
-          data[colName] = result.value;
-          console.log(`✅ ${colName}: ${result.value.length} records`);
-        } else {
-          data[colName] = [];
-          console.error(`❌ Error loading "${colName}":`, result.reason);
-        }
+      // Update Firestore user document
+      const userRef = doc(db, 'users', auth.currentUser.uid);
+      await updateDoc(userRef, {
+        displayName: newName,
+        updatedAt: new Date().toISOString(),
       });
 
-      console.log('📊 Final data summary:', Object.entries(data).map(([k, v]) => `${k}: ${v.length}`));
-
-      setDbData(data);
-      setEvents(data['events'] || []);
-      setAttendance(data['attendance'] || []);
-      setDataLoaded(true);
+      setDisplayName(newName);
     } catch (error) {
-      console.error('❌ Critical error in database loader:', error);
-    } finally {
-      setIsLoadingData(false);
+      console.error('Error updating profile:', error);
+      alert('Failed to update profile. Please try again.');
     }
   };
 
   const handleCreateEvent = async (newEventData) => {
     try {
-      const savedEvent = await saveEvent(newEventData);
-      setEvents(prev => [savedEvent, ...prev]);
-    } catch {
+      const savedEvent = await saveEvent(newEventData, user.uid, displayName || user.email);
+      return savedEvent; // Return the saved event so EventsPage can add it to its local state
+    } catch (error) {
       alert('Failed to save event to database.');
+      throw error;
     }
   };
 
@@ -162,11 +162,10 @@ function App() {
     try {
       if (!id) throw new Error('The Event ID is missing!');
       await updateDocument('events', id, updatedEvent);
-      setEvents(prev => prev.map(ev => ev.id === id ? updatedEvent : ev));
-      setActiveEvent(updatedEvent);
       alert('This event is successfully updated!');
     } catch (error) {
       alert(`Update failed: ${error.message}`);
+      throw error;
     }
   };
 
@@ -175,11 +174,10 @@ function App() {
     try {
       // removeEvent deletes the event doc AND all its attendance records in one batch
       await removeEvent(id);
-      setEvents(prev => prev.filter(ev => ev.id !== id));
-      if (activeEvent?.id === id) setActiveEvent(null);
       alert('The event and all its attendance records have been removed.');
-    } catch {
+    } catch (error) {
       alert('Could not delete. Check your Firestore permissions.');
+      throw error;
     }
   };
 
@@ -214,103 +212,103 @@ function App() {
   if (!user && !isRegisterMode) return <LoginPage darkMode={darkMode} />;
 
   return (
-    <div className={`flex bg-neutral-50 dark:bg-neutral-950 relative ${isRegisterMode ? 'min-h-screen' : 'h-screen overflow-hidden'}`}>
-      {/* Decorative background */}
-      <div className="fixed inset-0 pointer-events-none -z-10">
-        <div className="absolute top-[-15%] left-[-5%] w-[50%] h-[50%] bg-gia-100/30 dark:bg-gia-900/10 rounded-full blur-[160px]" />
-        <div className="absolute bottom-[-15%] right-[-5%] w-[50%] h-[50%] bg-gia-50/50 dark:bg-gia-950/30 rounded-full blur-[160px]" />
-      </div>
+    <RoleProvider user={user}>
+      <div className={`flex bg-neutral-50 dark:bg-neutral-950 relative ${isRegisterMode ? 'min-h-screen' : 'h-screen overflow-hidden'}`}>
+        {/* Decorative background */}
+        <div className="fixed inset-0 pointer-events-none -z-10">
+          <div className="absolute top-[-15%] left-[-5%] w-[50%] h-[50%] bg-gia-100/30 dark:bg-gia-900/10 rounded-full blur-[160px]" />
+          <div className="absolute bottom-[-15%] right-[-5%] w-[50%] h-[50%] bg-gia-50/50 dark:bg-gia-950/30 rounded-full blur-[160px]" />
+        </div>
 
-      {/* Sidebar */}
-      {!isRegisterMode && (
-        <Sidebar
-          open={sidebarOpen}
-          onToggle={() => setSidebarOpen(o => !o)}
-          activeSection={activeSection}
-          setActiveSection={setActiveSection}
-          onLogout={handleLogout}
-          darkMode={darkMode}
-          onToggleDark={() => setDarkMode(d => !d)}
-          conversations={conversations}
-          activeConvId={activeConvId}
-          onSelectConv={handleSelectConv}
-          onDeleteConv={handleDeleteConv}
-          onNewChat={handleNewChat}
-          loadingConvs={loadingConvs}
-          user={user}
-          displayName={displayName}
-          onEditProfile={() => setEditProfileOpen(true)}
-        />
-      )}
-
-      {/* Main content */}
-      <div
-        className={`flex flex-col flex-1 min-w-0 transition-[margin] duration-300 ease-in-out ${isRegisterMode ? '' : 'min-h-0'} ${!isRegisterMode ? (sidebarOpen ? 'ml-56' : 'ml-10') : ''
-          }`}
-      >
-        {isRegisterMode ? (
-          // PublicRegister is fully self-contained — fetches its own event data,
-          // handles loading/not-found/error states, and submits attendance itself.
-          <PublicRegister />
-        ) : activeSection === 'chat' ? (
-          <ChatPage
-            dbData={dbData}
-            isLoadingData={isLoadingData}
-            dataLoaded={dataLoaded}
+        {/* Sidebar */}
+        {!isRegisterMode && (
+          <Sidebar
+            open={sidebarOpen}
+            onToggle={() => setSidebarOpen(o => !o)}
+            activeSection={activeSection}
+            setActiveSection={setActiveSection}
+            onLogout={handleLogout}
+            darkMode={darkMode}
+            onToggleDark={() => setDarkMode(d => !d)}
+            conversations={conversations}
+            activeConvId={activeConvId}
+            onSelectConv={handleSelectConv}
+            onDeleteConv={handleDeleteConv}
+            onNewChat={handleNewChat}
+            loadingConvs={loadingConvs}
             user={user}
             displayName={displayName}
-            onRefreshData={loadDatabaseData}
-            conversations={conversations}
-            setConversations={setConversations}
-            activeConvId={activeConvId}
-            setActiveConvId={setActiveConvId}
+            onEditProfile={() => setEditProfileOpen(true)}
           />
-        ) : activeSection === 'chats' ? (
-          <main className="flex-1 overflow-y-auto">
-            <ChatsPage
+        )}
+
+        {/* Main content */}
+        <div
+          className={`flex flex-col flex-1 min-w-0 transition-[margin] duration-300 ease-in-out ${isRegisterMode ? '' : 'min-h-0'} ${!isRegisterMode ? (sidebarOpen ? 'ml-56' : 'ml-10') : ''
+            }`}
+        >
+          {isRegisterMode ? (
+            // PublicRegister is fully self-contained — fetches its own event data,
+            // handles loading/not-found/error states, and submits attendance itself.
+            <PublicRegister />
+          ) : activeSection === 'chat' ? (
+            <ChatPage
+              user={user}
+              displayName={displayName}
               conversations={conversations}
-              loadingConvs={loadingConvs}
-              onSelectConv={handleSelectConv}
-              onDeleteConv={handleDeleteConv}
-              onNewChat={handleNewChat}
+              setConversations={setConversations}
+              activeConvId={activeConvId}
+              setActiveConvId={setActiveConvId}
             />
-          </main>
-        ) : activeSection === 'event' ? (
-          <main className="flex-1 min-h-0 flex overflow-hidden">
-            <EventsPage
-              events={events}
-              attendance={attendance}
-              onCreateEvent={handleCreateEvent}
-              onUpdateEvent={handleUpdateEvent}
-              onDeleteEvent={handleDeleteEvent}
-            />
-          </main>
-        ) : (
-          <main className="flex-1 overflow-y-auto px-8 py-8">
-            <div className="transition-all duration-500 ease-in-out">
-              {activeSection === 'home' && <AboutPage onGoToDashboard={() => setActiveSection('data')} onNewChat={handleNewChat} />}
-              {activeSection === 'data' && <DistributionPage />}
-            </div>
-          </main>
+          ) : activeSection === 'chats' ? (
+            <main className="flex-1 overflow-y-auto">
+              <ChatsPage
+                conversations={conversations}
+                loadingConvs={loadingConvs}
+                onSelectConv={handleSelectConv}
+                onDeleteConv={handleDeleteConv}
+                onNewChat={handleNewChat}
+              />
+            </main>
+          ) : activeSection === 'event' ? (
+            <main className="flex-1 min-h-0 flex overflow-hidden">
+              <EventsPage
+                onCreateEvent={handleCreateEvent}
+                onUpdateEvent={handleUpdateEvent}
+                onDeleteEvent={handleDeleteEvent}
+              />
+            </main>
+          ) : activeSection === 'users' ? (
+            <main className="flex-1 overflow-y-auto">
+              <UserManagementPage />
+            </main>
+          ) : (
+            <main className="flex-1 overflow-y-auto px-8 py-8">
+              <div className="transition-all duration-500 ease-in-out">
+                {activeSection === 'home' && <AboutPage onGoToDashboard={() => setActiveSection('data')} onNewChat={handleNewChat} />}
+                {activeSection === 'data' && <DistributionPage />}
+              </div>
+            </main>
+          )}
+        </div>
+
+        {!isRegisterMode && activeSection !== 'data' && activeSection !== 'event' && activeSection !== 'users' && (
+          <FloatingChatButton
+            onClick={handleNewChat}
+            isOnChatPage={activeSection === 'chat' || activeSection === 'chats'}
+          />
+        )}
+
+        {editProfileOpen && (
+          <ProfileModal
+            user={user}
+            displayName={displayName}
+            onSave={handleUpdateProfile}
+            onClose={() => setEditProfileOpen(false)}
+          />
         )}
       </div>
-
-      {!isRegisterMode && activeSection !== 'data' && activeSection !== 'event' && (
-        <FloatingChatButton
-          onClick={handleNewChat}
-          isOnChatPage={activeSection === 'chat' || activeSection === 'chats'}
-        />
-      )}
-
-      {editProfileOpen && (
-        <ProfileModal
-          user={user}
-          displayName={displayName}
-          onSave={handleUpdateProfile}
-          onClose={() => setEditProfileOpen(false)}
-        />
-      )}
-    </div>
+    </RoleProvider>
   );
 }
 
@@ -335,12 +333,29 @@ function Sidebar({
   conversations, activeConvId, onSelectConv, onDeleteConv, onNewChat, loadingConvs,
   user, displayName, onEditProfile,
 }) {
+  const { role, loading } = useRole();
+
+  // Reset activeSection if user doesn't have permission for current section
+  useEffect(() => {
+    if (loading) return;
+
+    // If user is on 'users' page but not SUPER_ADMIN, redirect to home
+    if (activeSection === 'users' && role !== 'SUPER_ADMIN') {
+      setActiveSection('home');
+    }
+  }, [role, loading, activeSection, setActiveSection]);
+
   const navItems = [
     { id: 'home', label: 'About', icon: HomeIcon },
     { id: 'event', label: 'Events', icon: CalendarDays },
     { id: 'data', label: 'Distribution', icon: BarChart3 },
     { id: 'chats', label: 'Chats', icon: MessageCircle },
   ];
+
+  // Add Users item only for SUPER_ADMIN
+  if (role === 'SUPER_ADMIN') {
+    navItems.push({ id: 'users', label: 'Users', icon: Users });
+  }
 
   return (
     <aside
@@ -501,6 +516,7 @@ function SideNavItem({ open, active, onClick, icon, label, danger, newChat }) {
 }
 
 function ProfileButton({ open, user, displayName, onEditProfile, onLogout }) {
+  const { role } = useRole();
   const [menuOpen, setMenuOpen] = useState(false);
   const [menuPos, setMenuPos] = useState({ bottom: 0, left: 0 });
   const btnRef = useRef(null);
@@ -527,6 +543,14 @@ function ProfileButton({ open, user, displayName, onEditProfile, onLogout }) {
             <div className="px-3 py-2.5 border-b border-neutral-100 dark:border-neutral-700">
               <p className="text-xs font-semibold text-neutral-800 dark:text-neutral-200 truncate">{name}</p>
               <p className="text-[10px] text-neutral-400 dark:text-neutral-500 truncate">{user?.email}</p>
+              {role && (
+                <div className={`text-[9px] font-bold mt-1.5 px-1.5 py-0.5 rounded inline-block ${role === 'SUPER_ADMIN' ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400' :
+                  role === 'ADMIN' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' :
+                    'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400'
+                  }`}>
+                  {role}
+                </div>
+              )}
             </div>
             <button
               onClick={() => { onEditProfile(); setMenuOpen(false); }}
@@ -549,7 +573,7 @@ function ProfileButton({ open, user, displayName, onEditProfile, onLogout }) {
         ref={btnRef}
         onClick={handleToggle}
         title={!open ? name : undefined}
-        className={`w-full flex items-center py-2 px-2 rounded-md transition-colors hover:bg-neutral-100 dark:hover:bg-neutral-800 ${open ? 'gap-2.5' : ''}`}
+        className={`w-full flex items-center py-2 px-2 rounded-md transition-colors hover:bg-neutral-100 dark:hover:bg-neutral-800 relative ${open ? 'gap-2.5' : ''}`}
       >
         <span className={`shrink-0 rounded-full bg-[#a673d8] text-white flex items-center justify-center font-bold leading-none ${open ? 'w-6 h-6 text-xs' : 'w-4 h-4 text-[9px]'}`}>
           {initial}
@@ -558,9 +582,23 @@ function ProfileButton({ open, user, displayName, onEditProfile, onLogout }) {
           <>
             <span className="flex-1 min-w-0 text-left">
               <span className="text-sm font-normal text-neutral-700 dark:text-neutral-300 leading-none truncate block">{name}</span>
+              {role && (
+                <span className={`text-[9px] font-bold mt-1 px-1.5 py-0.5 rounded inline-block ${role === 'SUPER_ADMIN' ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400' :
+                  role === 'ADMIN' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' :
+                    'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400'
+                  }`}>
+                  {role}
+                </span>
+              )}
             </span>
             <ChevronUp size={13} className={`shrink-0 text-neutral-400 transition-transform duration-200 ${menuOpen ? '' : 'rotate-180'}`} />
           </>
+        )}
+        {!open && role && (
+          <span className={`absolute -top-1 -right-1 w-2 h-2 rounded-full ${role === 'SUPER_ADMIN' ? 'bg-purple-500' :
+            role === 'ADMIN' ? 'bg-blue-500' :
+              'bg-gray-500'
+            }`} title={role} />
         )}
       </button>
     </div>
