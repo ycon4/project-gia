@@ -93,7 +93,7 @@ IMPORTANT: If the query mentions a specific event name (e.g., "Anti-sexual haras
    - CRITICAL: If query mentions "employee" + "ethnicity" → use "empethnic" (NOT "studethnic")
    - CRITICAL: If query mentions "employee" + "gender/sex" → use "empgender" (NOT "studgender")
 4. For every boolean attribute mentioned, add {"field": <field>, "value": "Yes"} to andFilters.
-5. If a specific college is mentioned: add its full name to filterValues. If only one college: also set filterValue.
+5. If a specific college is mentioned: add its full name to filterValues AND set filterValue to that same name. ALWAYS set groupField = "stud_college" when a college filter is present — never use "studgender" as groupField when a college is mentioned.
 6. If user asks "from what college", "which college", "by college", "per college" — set groupField = "stud_college".
 7. If user asks for all colleges without naming one — set wantsAll = true and groupField = "stud_college".
 8. Extract academic years matching YYYY-YYYY into academicYears array.
@@ -110,6 +110,8 @@ IMPORTANT: If the query mentions a specific event name (e.g., "Anti-sexual haras
 - "What's the SDD for each event?" → {"collection": "events", "groupField": "title", "wantsSexBreakdown": true, "wantsAll": true}
 - "Show me sector breakdown of all events" → {"collection": "events", "groupField": "sector", "wantsSexBreakdown": true, "wantsAll": true}
 - "What's the SDD by sector for events?" → {"collection": "events", "groupField": "sector", "wantsSexBreakdown": true, "wantsAll": true}
+- "Male and female students in CCS" → {"collection": "student_enrollment", "groupField": "stud_college", "filterValue": "College of Computer Studies", "filterValues": ["College of Computer Studies"], "wantsSexBreakdown": true, "wantsAll": false}
+- "How many male and female students are in COE?" → {"collection": "student_enrollment", "groupField": "stud_college", "filterValue": "College of Engineering", "filterValues": ["College of Engineering"], "wantsSexBreakdown": true}
 - "How many students are enrolled?" → {"collection": "student_enrollment", "wantsAll": true, "groupField": "stud_college"}
 - "Show me employee religion breakdown" → {"collection": "employee_information", "groupField": "empreligion", "wantsSexBreakdown": true, "wantsAll": true}
 - "What's the ethnicity distribution of employees?" → {"collection": "employee_information", "groupField": "empethnic", "wantsSexBreakdown": true, "wantsAll": true}

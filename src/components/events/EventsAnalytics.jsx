@@ -249,7 +249,7 @@ export const EventAnalyticsDashboard = ({ attendanceData = [], filteredAttendanc
   return (
     <div className="space-y-6">
       {/* Stat Cards — grid layout changes based on statsOnly prop */}
-      {!chartsOnly && <div className={`grid gap-3 ${statsOnly ? 'grid-cols-1' : 'grid-cols-2 gap-6'}`}>
+      {!chartsOnly && <div className="grid grid-cols-2 gap-3">
         {/* Row 1 */}
         <StatCard label="Total" value={stats.total} sub={selectedSession} Icon={Users} colorClass="text-sky-600" bgClass="bg-sky-50 dark:bg-sky-950/20" />
         {targetNum ? (
