@@ -9,6 +9,7 @@ export default function EventPosterGenerator({ event, isOpen, onClose }) {
   const [isGenerating, setIsGenerating] = useState(false);
   const [selectedTheme, setSelectedTheme] = useState('violet');
   const [isCopied, setIsCopied] = useState(false);
+  const [linkCopied, setLinkCopied] = useState(false);
 
   // Color themes
   const themes = {
@@ -179,6 +180,12 @@ export default function EventPosterGenerator({ event, isOpen, onClose }) {
     } finally {
       setIsGenerating(false);
     }
+  };
+
+  const handleCopyLink = () => {
+    navigator.clipboard.writeText(registrationUrl);
+    setLinkCopied(true);
+    setTimeout(() => setLinkCopied(false), 2000);
   };
 
   return (
@@ -413,54 +420,86 @@ export default function EventPosterGenerator({ event, isOpen, onClose }) {
         </div>
 
         {/* Footer - Actions */}
-        <div className="px-6 py-4 border-t border-neutral-100 dark:border-neutral-800 shrink-0 flex items-center justify-between gap-3">
-          <p className="text-[10px] text-neutral-400 dark:text-neutral-500 font-medium">
-            Poster will be downloaded at 3072x1536px resolution
-          </p>
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 text-xs font-bold text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-xl transition-colors"
-            >
-              Close
-            </button>
-            <button
-              type="button"
-              onClick={handleCopyImage}
-              disabled={isGenerating}
-              className="px-5 py-2 bg-neutral-600 hover:bg-neutral-700 disabled:opacity-40 text-white rounded-xl text-xs font-black uppercase tracking-widest transition-all shadow-sm flex items-center gap-2"
-            >
-              {isCopied ? (
-                <>
-                  <Check size={13} /> Copied!
-                </>
-              ) : isGenerating ? (
-                <>
-                  <Loader2 size={13} className="animate-spin" /> Copying...
-                </>
-              ) : (
-                <>
-                  <Copy size={13} /> Copy Image
-                </>
-              )}
-            </button>
-            <button
-              type="button"
-              onClick={() => handleDownload('png')}
-              disabled={isGenerating}
-              className="px-5 py-2 bg-gia-600 hover:bg-gia-700 disabled:opacity-40 text-white rounded-xl text-xs font-black uppercase tracking-widest transition-all shadow-sm flex items-center gap-2"
-            >
-              {isGenerating ? (
-                <>
-                  <Loader2 size={13} className="animate-spin" /> Generating...
-                </>
-              ) : (
-                <>
-                  <Download size={13} /> Download PNG
-                </>
-              )}
-            </button>
+        <div className="px-6 py-4 border-t border-neutral-100 dark:border-neutral-800 shrink-0">
+          {/* Registration Link */}
+          <div className="mb-3 p-3 bg-neutral-50 dark:bg-neutral-800/50 rounded-lg border border-neutral-200 dark:border-neutral-700">
+            <div className="flex items-center justify-between gap-3">
+              <div className="min-w-0 flex-1">
+                <p className="text-[9px] font-bold uppercase tracking-widest text-neutral-400 dark:text-neutral-500 mb-1">
+                  Registration Link
+                </p>
+                <p className="text-xs font-mono text-neutral-700 dark:text-neutral-300 truncate">
+                  {registrationUrl}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={handleCopyLink}
+                className="px-3 py-1.5 bg-gia-600 hover:bg-gia-700 text-white rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 shrink-0"
+              >
+                {linkCopied ? (
+                  <>
+                    <Check size={12} /> Copied!
+                  </>
+                ) : (
+                  <>
+                    <Copy size={12} /> Copy Link
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+
+          {/* Download Actions */}
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-[10px] text-neutral-400 dark:text-neutral-500 font-medium">
+              Poster will be downloaded at 3072x1536px resolution
+            </p>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-4 py-2 text-xs font-bold text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-xl transition-colors"
+              >
+                Close
+              </button>
+              <button
+                type="button"
+                onClick={handleCopyImage}
+                disabled={isGenerating}
+                className="px-5 py-2 bg-neutral-600 hover:bg-neutral-700 disabled:opacity-40 text-white rounded-xl text-xs font-black uppercase tracking-widest transition-all shadow-sm flex items-center gap-2"
+              >
+                {isCopied ? (
+                  <>
+                    <Check size={13} /> Copied!
+                  </>
+                ) : isGenerating ? (
+                  <>
+                    <Loader2 size={13} className="animate-spin" /> Copying...
+                  </>
+                ) : (
+                  <>
+                    <Copy size={13} /> Copy Image
+                  </>
+                )}
+              </button>
+              <button
+                type="button"
+                onClick={() => handleDownload('png')}
+                disabled={isGenerating}
+                className="px-5 py-2 bg-gia-600 hover:bg-gia-700 disabled:opacity-40 text-white rounded-xl text-xs font-black uppercase tracking-widest transition-all shadow-sm flex items-center gap-2"
+              >
+                {isGenerating ? (
+                  <>
+                    <Loader2 size={13} className="animate-spin" /> Generating...
+                  </>
+                ) : (
+                  <>
+                    <Download size={13} /> Download PNG
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         </div>
       </div>

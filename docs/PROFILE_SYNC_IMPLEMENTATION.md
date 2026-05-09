@@ -4,7 +4,7 @@
 This document describes how user profile updates (specifically displayName) are synchronized across Firebase Auth, Firestore, and the UI in real-time.
 
 ## Problem
-Previously, when a user edited their profile name:
+Previoux`sly, when a user edited their profile name:
 - ✅ Firebase Auth was updated
 - ❌ Firestore `users` collection was NOT updated
 - ❌ User Management page did NOT reflect the change
