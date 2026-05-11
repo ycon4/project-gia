@@ -352,7 +352,8 @@ export default function EventPosterGenerator({ event, isOpen, onClose }) {
                     {/* Registration Link - Always show */}
                     <div className="text-white px-3 py-2 rounded-lg w-full" style={{ backgroundColor: currentTheme.primary }}>
                       <p className="text-[9px] font-black uppercase tracking-wide break-all leading-tight">
-                        Register: {registrationUrl.replace('https://', '').replace('http://', '')}
+                        {/* If registrationUrl is somehow empty, this keeps the box from collapsing */}
+                        Register: {registrationUrl ? registrationUrl.replace('https://', '').replace('http://', '') : 'Loading link...'}
                       </p>
                     </div>
                   </div>

@@ -187,9 +187,15 @@ export default function EventsPage({
     }
   };
 
-  // Filter events based on user role
+  // Filter events based on user role and sort by newest first
   const visibleEvents = useMemo(() => {
-    return filterEventsByRole(events);
+    const filtered = filterEventsByRole(events);
+    // Sort by createdAt timestamp, newest first
+    return filtered.sort((a, b) => {
+      const timeA = a.createdAt?.toMillis?.() || a.createdAt?.getTime?.() || 0;
+      const timeB = b.createdAt?.toMillis?.() || b.createdAt?.getTime?.() || 0;
+      return timeB - timeA; // Descending order (newest first)
+    });
   }, [events, filterEventsByRole]);
 
   // Normalize session name for matching — trims and collapses internal whitespace
@@ -597,8 +603,8 @@ export default function EventsPage({
                           )}
                           {canDeleteEvent(event.createdBy) && (
                             <span
-                              onClick={async (e) => { 
-                                e.stopPropagation(); 
+                              onClick={async (e) => {
+                                e.stopPropagation();
                                 if (window.confirm(`Delete "${event.title}"?`)) {
                                   try {
                                     await onDeleteEvent(event.id, event.title);
