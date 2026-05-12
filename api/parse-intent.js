@@ -96,7 +96,7 @@ IMPORTANT: If the query mentions a specific event name (e.g., "Anti-sexual haras
 5. If a specific college is mentioned: add its full name to filterValues AND set filterValue to that same name. ALWAYS set groupField = "stud_college" when a college filter is present — never use "studgender" as groupField when a college is mentioned.
 6. If user asks "from what college", "which college", "by college", "per college" — set groupField = "stud_college".
 7. If user asks for all colleges without naming one — set wantsAll = true and groupField = "stud_college".
-8. Extract academic years matching YYYY-YYYY into academicYears array.
+8. Extract academic years into academicYears array. IMPORTANT: always include the semester suffix in each entry (e.g. "2024-2025 1st Semester", "2024-2025 2nd Semester"). If the user says "from 1st to 2nd semester of 2024-2025", extract BOTH as separate entries. If the user says "2024-2025 1st semester, 2nd semester" — the "2nd semester" inherits the last base year mentioned, so add "2024-2025 2nd Semester". Always pair each semester mention with its nearest preceding base year.
 9. wantsSexBreakdown = true if: male/female/sex/gender/breakdown/SDD/sex-disaggregated/sector mentioned, OR any boolean filter is present, OR event-specific query.
 10. wantsComparison = true if: multiple colleges, multiple years, or compare/versus/vs mentioned.
 11. Default collection = "student_enrollment" for student questions.
@@ -112,6 +112,9 @@ IMPORTANT: If the query mentions a specific event name (e.g., "Anti-sexual haras
 - "What's the SDD by sector for events?" → {"collection": "events", "groupField": "sector", "wantsSexBreakdown": true, "wantsAll": true}
 - "Male and female students in CCS" → {"collection": "student_enrollment", "groupField": "stud_college", "filterValue": "College of Computer Studies", "filterValues": ["College of Computer Studies"], "wantsSexBreakdown": true, "wantsAll": false}
 - "How many male and female students are in COE?" → {"collection": "student_enrollment", "groupField": "stud_college", "filterValue": "College of Engineering", "filterValues": ["College of Engineering"], "wantsSexBreakdown": true}
+- "Students in CSM from 2024-2025 1st semester to 2nd semester" → {"collection": "student_enrollment", "groupField": "stud_college", "filterValue": "College of Science and Mathematics", "filterValues": ["College of Science and Mathematics"], "academicYears": ["2024-2025 1st Semester", "2024-2025 2nd Semester"], "wantsComparison": true}
+- "Students of CSM from 2024-2025 1st semester, 2nd semester, and 2025-2026 1st semester" → {"collection": "student_enrollment", "groupField": "stud_college", "filterValue": "College of Science and Mathematics", "filterValues": ["College of Science and Mathematics"], "academicYears": ["2024-2025 1st Semester", "2024-2025 2nd Semester", "2025-2026 1st Semester"], "wantsComparison": true}
+- "Compare CCS enrollment 1st sem vs 2nd sem 2024-2025" → {"collection": "student_enrollment", "groupField": "stud_college", "filterValue": "College of Computer Studies", "filterValues": ["College of Computer Studies"], "academicYears": ["2024-2025 1st Semester", "2024-2025 2nd Semester"], "wantsComparison": true}
 - "How many students are enrolled?" → {"collection": "student_enrollment", "wantsAll": true, "groupField": "stud_college"}
 - "Show me employee religion breakdown" → {"collection": "employee_information", "groupField": "empreligion", "wantsSexBreakdown": true, "wantsAll": true}
 - "What's the ethnicity distribution of employees?" → {"collection": "employee_information", "groupField": "empethnic", "wantsSexBreakdown": true, "wantsAll": true}

@@ -391,31 +391,45 @@ const parseQuery = (message) => {
     return intent;
   }
 
-  // ── Extract ALL academic years ─────────────────────────────
-  const yearMatches = lower.matchAll(/20\d\d[-–]20\d\d/g);
-  for (const match of yearMatches) {
-    const yearPart = match[0].replace('–', '-');
-    // Check if semester is mentioned near the year
-    const semesterMatch = lower.match(/(1st|first|2nd|second)\s*(semester|sem)/i);
-    if (semesterMatch) {
-      const semester = semesterMatch[1].toLowerCase().includes('1') || semesterMatch[1].toLowerCase().includes('first')
-        ? '1st Semester'
-        : '2nd Semester';
-      intent.academicYears.push(`${yearPart} ${semester}`);
-    } else {
-      intent.academicYears.push(yearPart);
+  // ── Extract ALL academic years (position-aware) ───────────
+  // Pairs each semester mention with the nearest preceding base year,
+  // so "2024-2025 1st semester, 2nd semester, and 2025-2026 1st semester"
+  // correctly produces three distinct periods instead of duplicating one.
+  const yearRegex = /20\d\d[-–]20\d\d/g;
+  const semRegex = /(1st|first|2nd|second)\s*(?:semester|sem)/gi;
+
+  const yearPositions = [];
+  let _ym;
+  while ((_ym = yearRegex.exec(lower)) !== null) {
+    yearPositions.push({ year: _ym[0].replace('–', '-'), pos: _ym.index });
+  }
+
+  const semPositions = [];
+  let _sm;
+  while ((_sm = semRegex.exec(lower)) !== null) {
+    const sem = /1|first/i.test(_sm[1]) ? '1st Semester' : '2nd Semester';
+    semPositions.push({ sem, pos: _sm.index });
+  }
+
+  if (yearPositions.length > 0 && semPositions.length > 0) {
+    // Pair each semester with the nearest year that appears before it
+    for (const { sem, pos } of semPositions) {
+      const precedingYear = [...yearPositions].reverse().find(y => y.pos <= pos);
+      if (precedingYear) {
+        const period = `${precedingYear.year} ${sem}`;
+        if (!intent.academicYears.includes(period)) intent.academicYears.push(period);
+      }
+    }
+  } else if (yearPositions.length > 0) {
+    // Years mentioned but no semester — add the raw years
+    for (const { year } of yearPositions) {
+      if (!intent.academicYears.includes(year)) intent.academicYears.push(year);
     }
   }
 
   // Detect semester without year (will use latest year)
-  if (intent.academicYears.length === 0) {
-    const semesterMatch = lower.match(/(1st|first|2nd|second)\s*(semester|sem)/i);
-    if (semesterMatch) {
-      const semester = semesterMatch[1].toLowerCase().includes('1') || semesterMatch[1].toLowerCase().includes('first')
-        ? '1st Semester'
-        : '2nd Semester';
-      intent.semester = semester; // Store for later combination with latest year
-    }
+  if (intent.academicYears.length === 0 && semPositions.length > 0) {
+    intent.semester = semPositions[0].sem;
   }
 
   // ── Comparison intent ──────────────────────────────────────
@@ -1157,9 +1171,30 @@ const computeAnswer = (intent, dbData) => {
 
   // ── Year-by-year comparison ────────────────────────────────
   if (wantsComparison && resolvedYears.length > 0) {
-    const yearsToUse = resolvedYears.length === 1
-      ? allYears
-      : resolvedYears;
+    // Expand bare years (e.g. "2024-2025") to all their semesters in the DB.
+    // This handles queries like "from 2024-2025 to 2025-2026" where the user
+    // didn't specify a semester — we include every semester that exists.
+    const expandYears = (years) => {
+      const out = [];
+      for (const y of years) {
+        if (/Semester|Summer/i.test(y)) {
+          out.push(y); // already has semester suffix
+        } else {
+          const sems = allYears.filter(ay => ay.startsWith(y));
+          sems.length > 0 ? out.push(...sems) : out.push(y);
+        }
+      }
+      return [...new Set(out)];
+    };
+
+    const expanded = expandYears(resolvedYears);
+    const yearsToUse = expanded.length === 1
+      ? (() => {
+          const baseYear = expanded[0].split(' ')[0];
+          const sameBase = allYears.filter(y => y.startsWith(baseYear));
+          return sameBase.length >= 2 ? sameBase : allYears;
+        })()
+      : expanded;
     const yearResults = {};
     yearsToUse.forEach(year => {
       const yearDocs = allDocs.filter(d => d.academicYear === year);
@@ -1381,6 +1416,19 @@ const parseQueryWithLLM = async (message) => {
     // Multiple colleges always means comparison
     if (intent.filterValues.length > 1) intent.wantsComparison = true;
 
+    // Always supplement LLM academicYears with the keyword parser's position-aware
+    // extraction. The LLM often misses implicit base-year references like
+    // "1st sem, 2nd sem, and 2025-2026 1st sem" where "2nd sem" inherits the
+    // prior year. The keyword parser handles this correctly, so we union both sets.
+    const kwParsed = parseQuery(message);
+    if (kwParsed.academicYears.length > 0) {
+      const merged = new Set([...intent.academicYears, ...kwParsed.academicYears]);
+      intent.academicYears = [...merged];
+    }
+
+    // Multiple academic years always means comparison (mirrors keyword-parser logic)
+    if (intent.academicYears.length > 1) intent.wantsComparison = true;
+
     // ── Default group field for events (mirror keyword parser logic) ─────
     if (!intent.groupField && intent.collection === 'events') {
       intent.groupField = 'eventType';
@@ -1459,7 +1507,8 @@ USER QUESTION: ${userMessage}
 
 INSTRUCTIONS:
 - Use ONLY the numbers from the COMPUTED DATA section above.
-- Present a markdown table first. Always. Use proper pipe | syntax with a header row, a separator row (---|---|---), and one data row per group. Never write values inline like "Male: 5, Female: 9" — every value must be in its own cell.
+- Always start your response with a small italic header showing the academic period, exactly like this (fill in the actual value from "Academic Year" in the data above): *Academic Year: [value]*
+- Present a markdown table immediately after that header. Always. Use proper pipe | syntax with a header row, a separator row (---|---|---), and one data row per group. Never write values inline like "Male: 5, Female: 9" — every value must be in its own cell.
 - Always add a narrative paragraph after the table. Walk through the numbers naturally in plain language.
 - Never modify, recalculate, or derive any figure.
 - Never open with a preamble or close with a summary remark.
