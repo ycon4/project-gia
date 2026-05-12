@@ -16,6 +16,7 @@ import { EventAnalyticsDashboard } from '../components/events/EventsAnalytics';
 import GeneralDashboard from '../components/events/GeneralPage';
 import EventFormModal from '../components/events/EventFormModal';
 import EventPosterGenerator from '../components/events/EventPosterGenerator';
+import EventReportExporter from '../components/events/EventReportExporter';
 import { useRole, Permission } from '../contexts/RoleContext.jsx';
 
 // ─── Event info panel helpers ─────────────────────────────────────────────────
@@ -85,6 +86,7 @@ export default function EventsPage({
   const [rightOpen, setRightOpen] = useState(true);
   const [seeding, setSeeding] = useState(false);
   const [showPosterGenerator, setShowPosterGenerator] = useState(false);
+  const [showReportExporter, setShowReportExporter] = useState(false);
 
   // Load events and attendance data when component mounts
   useEffect(() => {
@@ -301,6 +303,12 @@ export default function EventsPage({
                               ? 'bg-rose-50 dark:bg-rose-950/20 text-rose-500 dark:text-rose-400'
                               : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400'
                             }`}>{activeEvent.status || 'Active'}</span>
+                          <button onClick={() => {
+                            console.log('Export report button clicked');
+                            setShowReportExporter(true);
+                          }}
+                            className="p-1.5 rounded-lg text-neutral-400 dark:text-neutral-500 hover:text-gia-600 dark:hover:text-gia-400 hover:bg-gia-50 dark:hover:bg-gia-950/20 transition-colors"
+                            title="Export report"><FileText size={13} /></button>
                           <button onClick={() => setShowPosterGenerator(true)}
                             className="p-1.5 rounded-lg text-neutral-400 dark:text-neutral-500 hover:text-gia-600 dark:hover:text-gia-400 hover:bg-gia-50 dark:hover:bg-gia-950/20 transition-colors"
                             title="Download poster"><Download size={13} /></button>
@@ -717,6 +725,14 @@ export default function EventsPage({
         event={activeEvent}
         isOpen={showPosterGenerator}
         onClose={() => setShowPosterGenerator(false)}
+      />
+
+      {/* ── Event Report Exporter ── */}
+      <EventReportExporter
+        event={activeEvent}
+        attendanceData={attendanceData}
+        isOpen={showReportExporter}
+        onClose={() => setShowReportExporter(false)}
       />
     </div>
   );
