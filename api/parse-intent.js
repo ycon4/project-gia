@@ -1,6 +1,6 @@
 const GROQ_API_KEY = process.env.GROQ_API_KEY;
 const API_URL = 'https://api.groq.com/openai/v1/chat/completions';
-const MODEL = 'llama-3.3-70b-versatile';
+const MODEL = 'llama-3.1-8b-instant';
 
 const PARSE_INTENT_PROMPT = `You are an intent parser for GIA, a student data assistant for MSU-IIT GADC.
 Read the user's question and return ONLY a single valid JSON object — no markdown, no explanation.
@@ -92,6 +92,9 @@ IMPORTANT: If the query mentions a specific event name (e.g., "Anti-sexual haras
    - CRITICAL: If query mentions "employee" + "religion" → use "empreligion" (NOT "studreligion")
    - CRITICAL: If query mentions "employee" + "ethnicity" → use "empethnic" (NOT "studethnic")
    - CRITICAL: If query mentions "employee" + "gender/sex" → use "empgender" (NOT "studgender")
+   - CRITICAL (reverse): If query mentions "student/students" + "ethnicity" → collection = "student_enrollment", groupField = "studethnic"
+   - CRITICAL (reverse): If query mentions "student/students" + "religion" → collection = "student_enrollment", groupField = "studreligion"
+   - CRITICAL (reverse): If query mentions "student/students" + "gender/sex" → collection = "student_enrollment", groupField = "studgender"
 4. For every boolean attribute mentioned, add {"field": <field>, "value": "Yes"} to andFilters.
 5. If a specific college is mentioned: add its full name to filterValues AND set filterValue to that same name. ALWAYS set groupField = "stud_college" when a college filter is present — never use "studgender" as groupField when a college is mentioned.
 6. If user asks "from what college", "which college", "by college", "per college" — set groupField = "stud_college".
@@ -119,7 +122,10 @@ IMPORTANT: If the query mentions a specific event name (e.g., "Anti-sexual haras
 - "Show me employee religion breakdown" → {"collection": "employee_information", "groupField": "empreligion", "wantsSexBreakdown": true, "wantsAll": true}
 - "What's the ethnicity distribution of employees?" → {"collection": "employee_information", "groupField": "empethnic", "wantsSexBreakdown": true, "wantsAll": true}
 - "Show me PWD employees" → {"collection": "employee_information", "andFilters": [{"field": "is_emp_pwd", "value": "Yes"}], "wantsSexBreakdown": true}
-- "How many senior employees?" → {"collection": "employee_information", "andFilters": [{"field": "is_emp_senior", "value": "Yes"}], "wantsSexBreakdown": true}`;
+- "How many senior employees?" → {"collection": "employee_information", "andFilters": [{"field": "is_emp_senior", "value": "Yes"}], "wantsSexBreakdown": true}
+- "Male and female students by ethnicity" → {"collection": "student_enrollment", "groupField": "studethnic", "wantsSexBreakdown": true, "wantsAll": true}
+- "Student religion breakdown" → {"collection": "student_enrollment", "groupField": "studreligion", "wantsSexBreakdown": true, "wantsAll": true}
+- "Show me students by province" → {"collection": "student_enrollment", "groupField": "currentadd_prov", "wantsSexBreakdown": true, "wantsAll": true}`;
 
 
 const fetchWithRetry = async (url, options, retries = 2, delayMs = 2000) => {

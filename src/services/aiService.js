@@ -330,6 +330,32 @@ const CONVERSATIONAL_PATTERNS = [
   /^(help|what can i ask|how do i use|what do you know)\b/i,
 ];
 
+// Predictive / out-of-scope patterns — caught before data computation so GIA
+// declines cleanly instead of computing data and then half-refusing.
+const OUT_OF_SCOPE_PATTERNS = [
+  // Predictive analytics
+  /\b(project|projection|projections|forecast|forecasts|predict|prediction|predictions|estimate|estimates)\b/i,
+  /\btrend(s)?\s+(into|for|through|until|up to|by)\s+20\d\d/i,
+  /\b(future|upcoming)\s+(enrollment|students|count|number)/i,
+  /\bin\s+20(2[6-9]|[3-9]\d)\b/i,
+  /\bby\s+(the\s+)?(year\s+)?20(2[6-9]|[3-9]\d)\b/i,
+  /\bfrom\s+20\d\d\s+(to|-)\s+20(2[6-9]|[3-9]\d)\b/i,
+
+  // Administrative / procedural questions about MSU-IIT
+  // Use non-adjacent patterns so intervening words (e.g. "freshman") don't break the match
+  /\badmission(s)?\b/i,  // any mention of "admission" is administrative, not GADC data
+  /\bhow\s+(do|can|does|to)\s+(i|you|one|students?)\s+(apply|enroll|register|qualify|get\s+in|be\s+admitted)\b/i,
+  /\b(entrance|qualifying)\s+(exam|test|examination|criteria|requirement)\b/i,
+  /\b(application)\s+(process|form|requirement|for\s+admission)\b/i,
+  /\bapply\s+(for|to)\s+(msu-?iit|the\s+(university|school|institute|program|college))\b/i,
+  /\b(tuition|fee|fees|financial\s+aid)\b/i,
+  /\b(curriculum|syllabus|course\s+offering|subject\s+offering|academic\s+calendar)\b/i,
+  /\b(grading\s+system|gpa\s+requirement|academic\s+policy)\b/i,
+  /\b(dorm|dormitory|housing|accommodation|canteen|facilities)\b/i,
+  /\bhow\s+(does|do|is)\s+(msu-?iit|the\s+(university|school|institute))\b/i,
+  /\b(freshman|freshmen)\b/i,  // freshman questions are always admissions/procedural
+];
+
 const DATA_KEYWORDS = [
   'enrollment', 'enrolled', 'enroll', 'college', 'program', 'course', 'degree',
   'year level',
@@ -514,6 +540,13 @@ const parseQuery = (message) => {
     if (!intent.collection && FIELD_TO_COLLECTION[intent.groupField]) {
       intent.collection = FIELD_TO_COLLECTION[intent.groupField];
     }
+  }
+
+  // Remap ambiguous employee-defaulting fields to student equivalents when
+  // collection is already confirmed as student_enrollment (e.g. "students by ethnicity").
+  if (intent.collection === 'student_enrollment') {
+    const studentRemap = { empethnic: 'studethnic', empreligion: 'studreligion', empgender: 'studgender' };
+    if (studentRemap[intent.groupField]) intent.groupField = studentRemap[intent.groupField];
   }
 
   // ── Multi-condition boolean detection ─────────────────────
@@ -1146,14 +1179,16 @@ const computeAnswer = (intent, dbData) => {
 
   // ── Multi-college comparison ───────────────────────────────
   if (wantsComparison && filterValues.length > 1) {
+    // Scope docs to the resolved years (one semester, multiple semesters, etc.)
+    // Use includes() so the filter works for any number of resolved years.
+    let collegeDocs = allDocs;
+    if (resolvedYears.length >= 1) {
+      const filtered = allDocs.filter(d => resolvedYears.includes(d.academicYear));
+      collegeDocs = filtered.length > 0 ? filtered : allDocs;
+    }
     const collegeResults = {};
     filterValues.forEach(collegeName => {
-      let docs = allDocs;
-      if (resolvedYears.length === 1) {
-        const filtered = allDocs.filter(d => d.academicYear === resolvedYears[0]);
-        docs = filtered.length > 0 ? filtered : allDocs;
-      }
-      const computed = computeForDocs(docs, 'stud_college', collegeName, wantsSexBreakdown, sexField);
+      const computed = computeForDocs(collegeDocs, 'stud_college', collegeName, wantsSexBreakdown, sexField);
       collegeResults[collegeName] = computed;
     });
 
@@ -1402,6 +1437,22 @@ const parseQueryWithLLM = async (message) => {
     intent.filterValues = intent.filterValues || [];
     intent.academicYears = intent.academicYears || [];
 
+    // ── Sanitize LLM output ──────────────────────────────────
+    // filterValues must only contain real college names — the LLM sometimes
+    // stuffs ['male','female'] or other words in here.
+    const validColleges = new Set(Object.values(COLLEGE_ALIASES));
+    intent.filterValues = intent.filterValues.filter(v => validColleges.has(v));
+
+    // Merge filterValue into filterValues when the LLM splits colleges between
+    // the two fields (e.g. "COE vs CCS" → filterValue='COE', filterValues=['CCS']).
+    // This ensures the comparison path always sees all colleges regardless of mention order.
+    if (intent.filterValue && validColleges.has(intent.filterValue) && !intent.filterValues.includes(intent.filterValue)) {
+      intent.filterValues.unshift(intent.filterValue);
+    }
+    // Deduplicate and clear singular filterValue when multiple colleges are present
+    intent.filterValues = [...new Set(intent.filterValues)];
+    if (intent.filterValues.length > 1) intent.filterValue = null;
+
     // Single college → always ensure filterValue and groupField are consistent
     if (intent.filterValues.length === 1) {
       intent.filterValue = intent.filterValue || intent.filterValues[0];
@@ -1422,9 +1473,22 @@ const parseQueryWithLLM = async (message) => {
     // prior year. The keyword parser handles this correctly, so we union both sets.
     const kwParsed = parseQuery(message);
     if (kwParsed.academicYears.length > 0) {
-      const merged = new Set([...intent.academicYears, ...kwParsed.academicYears]);
-      intent.academicYears = [...merged];
+      const merged = [...new Set([...intent.academicYears, ...kwParsed.academicYears])];
+      // Drop bare years (e.g. '2025-2026') when a semester-specific entry already
+      // covers them (e.g. '2025-2026 1st Semester'). The LLM often returns the bare
+      // year in addition to the full string, causing the year count to become 2 and
+      // bypassing the single-year filter in computeAnswer.
+      intent.academicYears = merged.filter(y => {
+        if (/Semester|Summer/i.test(y)) return true;
+        return !merged.some(other => /Semester|Summer/i.test(other) && other.startsWith(y));
+      });
     }
+
+    // Always use the keyword parser's andFilters — the LLM hallucinates boolean
+    // conditions that aren't in the query (e.g. adding all student vulnerability
+    // flags for a simple "by ethnicity" question). The keyword parser only fires
+    // when the keyword is literally present in the message.
+    intent.andFilters = kwParsed.andFilters;
 
     // Multiple academic years always means comparison (mirrors keyword-parser logic)
     if (intent.academicYears.length > 1) intent.wantsComparison = true;
@@ -1433,6 +1497,20 @@ const parseQueryWithLLM = async (message) => {
     if (!intent.groupField && intent.collection === 'events') {
       intent.groupField = 'eventType';
       intent.wantsAll = true;
+    }
+
+    // If the LLM defaulted to employee_information but the keyword parser is confident
+    // this is a student query (e.g. "students by ethnicity"), trust the keyword parser.
+    // This happens because ambiguous words like "ethnicity" bias the LLM toward employee fields.
+    if (intent.collection === 'employee_information' && kwParsed.collection === 'student_enrollment') {
+      intent.collection = 'student_enrollment';
+    }
+
+    // Remap ambiguous employee-defaulting fields to student equivalents when
+    // collection is student_enrollment (whether set by LLM or corrected above).
+    if (intent.collection === 'student_enrollment') {
+      const studentRemap = { empethnic: 'studethnic', empreligion: 'studreligion', empgender: 'studgender' };
+      if (studentRemap[intent.groupField]) intent.groupField = studentRemap[intent.groupField];
     }
 
     return intent;
@@ -1462,6 +1540,25 @@ export const analyzeWithAI = async (userMessage, dbData, _history = []) => {
 
     // Debug: Show available data
     console.log('📊 Available data:', Object.entries(dbData).map(([k, v]) => `${k}: ${v?.length || 0} records`));
+
+    // ── Out-of-scope — call API so GIA responds contextually to the specific topic ──
+    if (OUT_OF_SCOPE_PATTERNS.some(p => p.test(userMessage))) {
+      try {
+        const declinePrompt = `SYSTEM INSTRUCTION: The user's message is outside GIA's scope. Do NOT answer the question. In one to two warm, natural sentences: acknowledge what they asked about by name, explain you're focused only on GADC data and Gender and Development topics at MSU-IIT, and offer to help with enrollment, employee info, events, or GAD programs instead. No table, no data, no bullet points.
+
+USER QUESTION: ${userMessage}`;
+        const declineRes = await fetchWithRetry(
+          API_URL,
+          { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: declinePrompt, history: [] }) },
+          2, 2000
+        );
+        if (declineRes?.ok) {
+          const declineData = await declineRes.json();
+          if (declineData.reply) return { reply: declineData.reply, chartData: null };
+        }
+      } catch (_) {}
+      return { reply: "That's a bit outside what I cover — I'm focused on GADC data and Gender and Development topics at MSU-IIT. Anything about enrollment, employee info, or GAD programs I can help with?", chartData: null };
+    }
 
     // ── Conversational — send directly, no data computation ──
     if (intent.isConversational) {

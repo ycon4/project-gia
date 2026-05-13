@@ -3,7 +3,7 @@ import { join } from 'path';
 
 const GROQ_API_KEY = process.env.GROQ_API_KEY;
 const API_URL = 'https://api.groq.com/openai/v1/chat/completions';
-const MODEL = 'llama-3.3-70b-versatile';
+const MODEL = 'llama-3.1-8b-instant';
 
 // ─── Load prompt from backend/prompt.txt ────────────────────
 // api/chat.js is one level up from backend/, so we go ../backend/prompt.txt

@@ -13,7 +13,7 @@ const GROQ_API_KEY = process.env.GROQ_API_KEY;
 const PORT = process.env.PORT || 3001;
 
 const API_URL = 'https://api.groq.com/openai/v1/chat/completions';
-const MODEL = 'llama-3.3-70b-versatile';
+const MODEL = 'llama-3.1-8b-instant';
 
 app.use(cors({
   origin: ['http://localhost:5173', 'http://localhost:5174', 'http://localhost:5175', 'http://localhost:3000', 'http://127.0.0.1:5173'],
@@ -201,6 +201,9 @@ Read the user's question and return ONLY a single valid JSON object — no markd
    - CRITICAL: If query mentions "employee" + "religion" → use "empreligion" (NOT "studreligion")
    - CRITICAL: If query mentions "employee" + "ethnicity" → use "empethnic" (NOT "studethnic")
    - CRITICAL: If query mentions "employee" + "gender/sex" → use "empgender" (NOT "studgender")
+   - CRITICAL (reverse): If query mentions "student/students" + "ethnicity" → collection = "student_enrollment", groupField = "studethnic"
+   - CRITICAL (reverse): If query mentions "student/students" + "religion" → collection = "student_enrollment", groupField = "studreligion"
+   - CRITICAL (reverse): If query mentions "student/students" + "gender/sex" → collection = "student_enrollment", groupField = "studgender"
 3. For every boolean attribute mentioned, add {"field": <field>, "value": "Yes"} to andFilters.
 4. If a specific college is mentioned: add its full name to filterValues. If only one college: also set filterValue.
 5. If user asks "from what college", "which college", "by college", "per college" — set groupField = "stud_college".
