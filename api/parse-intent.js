@@ -81,8 +81,9 @@ IMPORTANT: If the query mentions a specific event name (e.g., "Anti-sexual haras
 
 ## Rules:
 1. isConversational = true ONLY for pure chat (greetings, thanks, "who are you"). Any data question = false.
-2. For event-specific queries (mentions seminar/workshop/training/symposium/conference/forum/webinar):
-   - If asking about a SPECIFIC event (e.g., "Anti-sexual harassment seminar"): Set collection = "events", extract event name and set eventTitle
+2. For event-specific queries:
+   - Triggers: seminar/workshop/training/symposium/conference/forum/webinar OR words like "attended", "attendees", "participants" followed by a named event OR a proper noun event name (e.g. "National Women's Month", "Gender Summit", "Orientation").
+   - If asking about a SPECIFIC named event: Set collection = "events", extract the event name and set eventTitle (strip question words like "how many attended the"). IMPORTANT: event names do NOT need to contain "seminar"/"workshop" etc. — any proper noun after "attended"/"attendance for"/"participants of" is an event title.
    - If asking about ALL events individually (e.g., "per event", "each event", "by event"): Set collection = "events", groupField = "title"
    - If asking about event types/categories: Set collection = "events", groupField = "eventType"
    - Always set wantsSexBreakdown = true for event queries
@@ -109,6 +110,9 @@ IMPORTANT: If the query mentions a specific event name (e.g., "Anti-sexual haras
 ## Examples:
 - "How many people attended the Anti-sexual harassment seminar?" → {"collection": "events", "eventTitle": "anti-sexual harassment seminar", "wantsSexBreakdown": true}
 - "Show me attendance for the Leadership training" → {"collection": "events", "eventTitle": "leadership training", "wantsSexBreakdown": true}
+- "How many attended the National Women's Month?" → {"collection": "events", "eventTitle": "national women's month", "wantsSexBreakdown": true}
+- "How many attendees were in the Gender Summit?" → {"collection": "events", "eventTitle": "gender summit", "wantsSexBreakdown": true}
+- "Who attended the orientation?" → {"collection": "events", "eventTitle": "orientation", "wantsSexBreakdown": true}
 - "Show me SDD breakdown per event" → {"collection": "events", "groupField": "title", "wantsSexBreakdown": true, "wantsAll": true}
 - "What's the SDD for each event?" → {"collection": "events", "groupField": "title", "wantsSexBreakdown": true, "wantsAll": true}
 - "Show me sector breakdown of all events" → {"collection": "events", "groupField": "sector", "wantsSexBreakdown": true, "wantsAll": true}

@@ -204,7 +204,8 @@ Read the user's question and return ONLY a single valid JSON object — no markd
    - CRITICAL (reverse): If query mentions "student/students" + "ethnicity" → collection = "student_enrollment", groupField = "studethnic"
    - CRITICAL (reverse): If query mentions "student/students" + "religion" → collection = "student_enrollment", groupField = "studreligion"
    - CRITICAL (reverse): If query mentions "student/students" + "gender/sex" → collection = "student_enrollment", groupField = "studgender"
-3. For every boolean attribute mentioned, add {"field": <field>, "value": "Yes"} to andFilters.
+3. For event-specific queries: if the query uses words like "attended", "attendees", "participants", "attendance for/of" followed by a named event — OR mentions a proper noun event name (e.g. "National Women's Month", "Gender Summit", "Orientation") — set collection = "events" and eventTitle = the extracted event name. Event names do NOT need to contain "seminar"/"workshop"/etc. Always set wantsSexBreakdown = true for event queries.
+4. For every boolean attribute mentioned, add {"field": <field>, "value": "Yes"} to andFilters.
 4. If a specific college is mentioned: add its full name to filterValues. If only one college: also set filterValue.
 5. If user asks "from what college", "which college", "by college", "per college" — set groupField = "stud_college".
 6. If user asks for all colleges without naming one — set wantsAll = true and groupField = "stud_college".

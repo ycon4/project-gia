@@ -504,9 +504,27 @@ const parseQuery = (message) => {
       }
     }
   }
-  // Attendance — generic attendance queries (not event-specific)
+  // Attendance — check for "attended/attendance for [event name]" pattern first.
+  // If there's a named event after "attended/attendance for/of", treat it as an events query.
   else if (/\battendance|\battended|\bpresent|\babsent/i.test(lower)) {
-    intent.collection = 'attendance';
+    // Try to extract a specific event title from "attended the X" / "attendance for X" patterns.
+    const eventNameMatch = lower
+      .replace(/how many (people|participants|attendees)?\s*(attended|joined|participated in)(\s+the)?/gi, '')
+      .replace(/what('s| is) the (attendance|turnout|participation) (for|of|in)(\s+the)?/gi, '')
+      .replace(/show me (the )?(attendance|participants|data) (for|of|in)(\s+the)?/gi, '')
+      .replace(/\bwho\s+attended(\s+the)?/gi, '')
+      .replace(/\bhow many\s+attended(\s+the)?/gi, '')
+      .replace(/\?/g, '')
+      .trim();
+
+    // If something remains after stripping question words, treat as event title
+    if (eventNameMatch && eventNameMatch.length > 3) {
+      intent.collection = 'events';
+      intent.eventTitle = eventNameMatch;
+      intent.wantsSexBreakdown = true;
+    } else {
+      intent.collection = 'attendance';
+    }
   }
   // Enrollment — broadest, catches natural phrases like "how many students in COE"
   else if (/\benrollment|\benrolled|\benroll|\bcollege|\bprogram|\bcourse|\bdegree|\bstudent|\bundergraduate|\byear level|\bpwd|\bsolo parent|\bworking student|\bfirst gen|\bindigenous|\blgbtq|\bpdl/i.test(lower)) {
@@ -798,44 +816,61 @@ const computeAnswer = (intent, dbData) => {
 
     // ── CHECK IF SPECIFIC EVENT IS REQUESTED ────────────────
     if (intent.eventTitle) {
-      // Try to find specific event by fuzzy matching title
-      const searchTitle = simplifyStr(intent.eventTitle);
-      console.log('🔍 Searching for event with title:', intent.eventTitle);
-      console.log('🔍 Simplified search title:', searchTitle);
-      console.log('🔍 Available events:', events.map(e => ({ id: e.id, title: e.title })));
+      // Fuzzy title normalizer for the SEARCH query — strips parenthetical qualifiers
+      // (e.g. "(March)") and gate/session suffixes ("Day 1", "Pre-Registration") so
+      // "National Women's Month (March)" matches "National Women's Month - Day 1" etc.
+      const fuzzyTitle = s => s.toString().trim().toLowerCase()
+        .replace(/[‘’‚‛′‵]/g, "'") // normalize curly/smart apostrophes
+        .replace(/\([^)]*\)/g, '')   // strip (anything in parens)
+        .replace(/[-–]\s*(day\s*\d+|pre.?reg\w*|session\s*\d+|gate\s*\d+|registration).*/i, '') // strip gate suffixes
+        .replace(/[,;\-]/g, ' ').replace(/\s+/g, ' ').trim();
 
-      const matchedEvent = events.find(e => {
-        const eventTitle = simplifyStr(e.title || '');
-        const matches = eventTitle.includes(searchTitle) || searchTitle.includes(eventTitle);
-        console.log(`  Checking "${e.title}" (simplified: "${eventTitle}") - Match: ${matches}`);
-        return matches;
+      const searchTitle = fuzzyTitle(intent.eventTitle);
+      console.log('🔍 Searching for events matching:', searchTitle);
+
+      // Use filter (not find) so all gates/sessions of the same event are aggregated.
+      const matchedEvents = events.filter(e => {
+        const t = fuzzyTitle(e.title || '');
+        return t.includes(searchTitle) || searchTitle.includes(t);
       });
 
-      console.log('✅ Matched event:', matchedEvent ? matchedEvent.title : 'NONE');
+      console.log('✅ Matched events:', matchedEvents.map(e => e.title));
 
-      if (matchedEvent) {
-        // Get attendance ONLY for this specific event
-        const eventAttendees = attendance.filter(a => String(a.eventId) === String(matchedEvent.id));
+      if (matchedEvents.length > 0) {
+        // Collect attendance across ALL matched events (all gates/sessions).
+        const matchedIds = new Set(matchedEvents.map(e => String(e.id)));
+        const eventAttendees = attendance.filter(a => matchedIds.has(String(a.eventId)));
 
-        console.log(`📊 Event ID: ${matchedEvent.id}`);
-        console.log(`📊 Total attendance records: ${attendance.length}`);
-        console.log(`📊 Filtered attendees for this event: ${eventAttendees.length}`);
+        // Deduplicate by id_number — one person attending 3 sessions creates 3 records.
+        // Unique headcount is the real attendance figure; total entries is secondary context.
+        const seenIds = new Set();
+        const uniqueAttendees = eventAttendees.filter(a => {
+          const pid = a.id_number || a.email;
+          if (!pid) return true; // no identifier — include, can't deduplicate
+          if (seenIds.has(pid)) return false;
+          seenIds.add(pid);
+          return true;
+        });
+        const totalEntries = eventAttendees.length;
+        const uniqueCount = uniqueAttendees.length;
 
-        // Calculate sex breakdown
+        console.log(`📊 Gates matched: ${matchedEvents.length}, Unique attendees: ${uniqueCount}, Total entries: ${totalEntries}`);
+
+        // Calculate sex breakdown on UNIQUE attendees
         const sexCounts = {};
-        eventAttendees.forEach(a => {
+        uniqueAttendees.forEach(a => {
           const sex = a.sex || a.gender || 'Unknown';
           sexCounts[sex] = (sexCounts[sex] || 0) + 1;
         });
 
-        // Calculate sector breakdown
+        // Calculate sector breakdown on UNIQUE attendees
         const sectorCounts = {};
-        eventAttendees.forEach(a => {
+        uniqueAttendees.forEach(a => {
           const sector = a.sector || 'Unknown';
           sectorCounts[sector] = (sectorCounts[sector] || 0) + 1;
         });
 
-        const total = eventAttendees.length;
+        const total = uniqueCount;
 
         // Build SDD data
         const sddData = {};
@@ -853,26 +888,34 @@ const computeAnswer = (intent, dbData) => {
           sectorData[`${sector} %`] = `${pct}%`;
         });
 
+        // Use the first matched event for metadata; display name is the shared title root
+        const primaryEvent = matchedEvents[0];
+        const displayTitle = matchedEvents.length > 1
+          ? primaryEvent.title.replace(/[-–]\s*(day\s*\d+|pre.?reg\w*|session\s*\d+|gate\s*\d+).*/i, '').trim()
+          : primaryEvent.title;
+
         return {
           collection: COLLECTION_DISPLAY_NAMES[collection] || collection,
           academicYear: 'All Years',
           isComparison: false,
           groupField: 'title',
-          filterValue: matchedEvent.title,
+          filterValue: displayTitle,
           sexField: 'sex',
-          totalRecords: total,
+          totalRecords: uniqueCount,
+          uniqueCount,
+          totalEntries,
           data: {
-            [matchedEvent.title]: { Total: total, ...sddData }
+            [displayTitle]: { Total: uniqueCount, ...sddData }
           },
           sectorBreakdown: sectorData,
           eventInfo: {
-            title: matchedEvent.title,
-            type: matchedEvent.eventType,
-            date: matchedEvent.startDate,
-            venue: matchedEvent.venue,
-            mode: matchedEvent.mode,
-            organizer: matchedEvent.organizer,
-            status: matchedEvent.status,
+            title: displayTitle,
+            type: primaryEvent.eventType,
+            date: primaryEvent.startDate,
+            venue: primaryEvent.venue,
+            mode: primaryEvent.mode,
+            organizer: primaryEvent.organizer,
+            status: primaryEvent.status,
           }
         };
       } else {
@@ -1341,6 +1384,31 @@ const formatResultForAI = (result) => {
       });
       text += `\n`;
     });
+  } else if (result.eventInfo) {
+    // Specific event query with unique-attendee deduplication
+    const ev = result.eventInfo;
+    text += `Event: ${ev.title}\n`;
+    text += `Unique Attendees (each person counted once): ${result.uniqueCount}\n`;
+    if (result.totalEntries !== result.uniqueCount) {
+      text += `Total Attendance Entries (including repeat sessions): ${result.totalEntries}\n`;
+    }
+    text += `\nSEX BREAKDOWN (unique attendees):\n`;
+    Object.entries(result.data[ev.title] || {}).forEach(([key, val]) => {
+      text += `  ${key}: ${val}\n`;
+    });
+    if (result.sectorBreakdown && Object.keys(result.sectorBreakdown).length > 0) {
+      text += `\nSECTOR BREAKDOWN (unique attendees):\n`;
+      Object.entries(result.sectorBreakdown)
+        .sort(([, a], [, b]) => (typeof b === 'number' ? b : 0) - (typeof a === 'number' ? a : 0))
+        .forEach(([sector, val]) => {
+          text += `  ${sector}: ${val}\n`;
+        });
+    }
+    text += `\nEVENT DETAILS:\n`;
+    if (ev.type) text += `  Type: ${ev.type}\n`;
+    if (ev.date) text += `  Date: ${ev.date}\n`;
+    if (ev.venue) text += `  Venue: ${ev.venue}\n`;
+    if (ev.mode) text += `  Mode: ${ev.mode}\n`;
   } else {
     text += `Academic Year: ${result.academicYear}\n`;
     text += `Total Records in scope: ${result.totalRecords}\n`;
@@ -1489,6 +1557,26 @@ const parseQueryWithLLM = async (message) => {
     // flags for a simple "by ethnicity" question). The keyword parser only fires
     // when the keyword is literally present in the message.
     intent.andFilters = kwParsed.andFilters;
+
+    // The LLM sometimes returns collection='attendance' + filterValue='<event name>'
+    // for "how many attended [Event]" queries instead of collection='events' + eventTitle.
+    // The attendance collection has no filterable event-name field, so this produces
+    // wrong results. Reroute: any filterValue on the attendance collection that isn't
+    // a boolean ('Yes') is almost certainly an event title.
+    if (intent.collection === 'attendance' && intent.filterValue && intent.filterValue !== 'Yes') {
+      intent.eventTitle = intent.eventTitle || intent.filterValue.toLowerCase();
+      intent.collection = 'events';
+      intent.filterValue = null;
+      intent.filterValues = [];
+      intent.wantsSexBreakdown = true;
+    }
+
+    // If eventTitle was extracted (by LLM or by kwParsed), this is definitively
+    // an events query regardless of what collection the LLM chose.
+    if (intent.eventTitle) {
+      intent.collection = 'events';
+      intent.wantsSexBreakdown = true;
+    }
 
     // Multiple academic years always means comparison (mirrors keyword-parser logic)
     if (intent.academicYears.length > 1) intent.wantsComparison = true;

@@ -218,18 +218,22 @@ First mention: abbreviation + full name. After that: abbreviation only.
 
 ## Special Handling for Event Queries
 
-When the computed data includes `eventInfo` and `sectorBreakdown`, you are responding to a specific event query.
+When the computed data includes `EVENT DETAILS` and `SEX BREAKDOWN`, you are responding to a specific event query.
+
+The data will include:
+- **Unique Attendees** — each person counted once across all sessions. This is the real headcount.
+- **Total Attendance Entries** — may be higher if the same person attended multiple sessions; shown only when it differs from unique attendees.
 
 ### Response Format for Specific Events:
 
-1. **Start with the direct answer** - State the total attendance number clearly
-2. **Show the SDD table** - Male/Female breakdown with percentages
-3. **Show the Sector breakdown table** - Student/Faculty/Staff/Other with percentages
-4. **Include brief event context** - Type, Date, Venue/Mode
+1. **Start with the direct answer** - State the unique attendee count as the attendance figure.
+2. **Show the SDD table** - Male/Female breakdown with percentages (based on unique attendees).
+3. **Show the Sector breakdown table** - Student/Faculty/Staff/Other with percentages (based on unique attendees).
+4. **Include brief event context** - Type, Date, Venue/Mode.
 
 ### Example Response:
 
-"The Anti-sexual harassment seminar had **52 attendees**.
+"The Anti-sexual harassment seminar had **52 unique attendees**.
 
 **Sex-Disaggregated Data:**
 | Sex | Count | Percentage |
@@ -247,12 +251,13 @@ When the computed data includes `eventInfo` and `sectorBreakdown`, you are respo
 | Other Beneficiaries | 2 | 3.8% |
 | **Total** | **52** | **100%** |
 
-The seminar drew a majority of female participants at 61.5%, with students making up over half of all attendees. This was an in-person seminar held at MSU-IIT Auditorium on May 2, 2026.
+Females made up the majority at 61.5%, with students comprising over half of all participants. The seminar was held in-person at MSU-IIT Auditorium on May 2, 2026.
 
-For more detailed analytics including session-by-session breakdowns, visit the Events page."
+For session-by-session breakdowns, visit the Events page."
 
 ### Key Points:
-- Keep it concise - users can visit the Events page for detailed analytics
-- Always include both SDD and Sector breakdown when available
-- Mention the event type, date, and venue briefly
-- Direct users to the Events page for session-specific data
+- Always use "Unique Attendees" as the primary attendance figure — this counts each person once.
+- If "Total Attendance Entries" is provided and differs from unique attendees, you may briefly note it (e.g., "283 unique attendees across 5 sessions, with 410 total session entries").
+- Keep it concise - users can visit the Events page for detailed analytics.
+- Always include both SDD and Sector breakdown when available.
+- Mention the event type, date, and venue briefly.
