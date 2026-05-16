@@ -41,7 +41,7 @@ export default function ProtectedRoute({
 
   // Check role requirement (hierarchical)
   if (requiredRole) {
-    const roleHierarchy = { USER: 1, ADMIN: 2, SUPER_ADMIN: 3 };
+    const roleHierarchy = { USER: 1, SECRETARIAT: 2, ADMIN: 3 };
     if (roleHierarchy[role] < roleHierarchy[requiredRole]) {
       return fallback || (
         <div className="min-h-screen bg-neutral-50 dark:bg-neutral-950 flex items-center justify-center">

@@ -339,8 +339,8 @@ function Sidebar({
   useEffect(() => {
     if (loading) return;
 
-    // If user is on 'users' page but not SUPER_ADMIN, redirect to home
-    if (activeSection === 'users' && role !== 'SUPER_ADMIN') {
+    // If user is on 'users' page but not ADMIN, redirect to home
+    if (activeSection === 'users' && role !== 'ADMIN') {
       setActiveSection('home');
     }
   }, [role, loading, activeSection, setActiveSection]);
@@ -352,8 +352,8 @@ function Sidebar({
     { id: 'chats', label: 'Chats', icon: MessageCircle },
   ];
 
-  // Add Users item only for SUPER_ADMIN
-  if (role === 'SUPER_ADMIN') {
+  // Add Users item only for ADMIN
+  if (role === 'ADMIN') {
     navItems.push({ id: 'users', label: 'Users', icon: Users });
   }
 
@@ -544,11 +544,11 @@ function ProfileButton({ open, user, displayName, onEditProfile, onLogout }) {
               <p className="text-xs font-semibold text-neutral-800 dark:text-neutral-200 truncate">{name}</p>
               <p className="text-[10px] text-neutral-400 dark:text-neutral-500 truncate">{user?.email}</p>
               {role && (
-                <div className={`text-[9px] font-bold mt-1.5 px-1.5 py-0.5 rounded inline-block ${role === 'SUPER_ADMIN' ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400' :
-                  role === 'ADMIN' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' :
+                <div className={`text-[9px] font-bold mt-1.5 px-1.5 py-0.5 rounded inline-block ${role === 'ADMIN' ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400' :
+                  role === 'SECRETARIAT' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' :
                     'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400'
                   }`}>
-                  {role}
+                  {role === 'ADMIN' ? 'Admin' : role === 'SECRETARIAT' ? 'Secretariat' : 'Public View'}
                 </div>
               )}
             </div>
@@ -583,11 +583,11 @@ function ProfileButton({ open, user, displayName, onEditProfile, onLogout }) {
             <span className="flex-1 min-w-0 text-left">
               <span className="text-sm font-normal text-neutral-700 dark:text-neutral-300 leading-none truncate block">{name}</span>
               {role && (
-                <span className={`text-[9px] font-bold mt-1 px-1.5 py-0.5 rounded inline-block ${role === 'SUPER_ADMIN' ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400' :
-                  role === 'ADMIN' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' :
+                <span className={`text-[9px] font-bold mt-1 px-1.5 py-0.5 rounded inline-block ${role === 'ADMIN' ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400' :
+                  role === 'SECRETARIAT' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' :
                     'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400'
                   }`}>
-                  {role}
+                  {role === 'ADMIN' ? 'Admin' : role === 'SECRETARIAT' ? 'Secretariat' : 'Public View'}
                 </span>
               )}
             </span>
@@ -595,10 +595,10 @@ function ProfileButton({ open, user, displayName, onEditProfile, onLogout }) {
           </>
         )}
         {!open && role && (
-          <span className={`absolute -top-1 -right-1 w-2 h-2 rounded-full ${role === 'SUPER_ADMIN' ? 'bg-purple-500' :
-            role === 'ADMIN' ? 'bg-blue-500' :
-              'bg-gray-500'
-            }`} title={role} />
+          <span className={`absolute -top-1 -right-1 w-2 h-2 rounded-full ${role === 'ADMIN' ? 'bg-purple-500' :
+              role === 'SECRETARIAT' ? 'bg-blue-500' :
+                'bg-gray-500'
+            }`} title={role === 'ADMIN' ? 'Admin' : role === 'SECRETARIAT' ? 'Secretariat' : 'Public View'} />
         )}
       </button>
     </div>

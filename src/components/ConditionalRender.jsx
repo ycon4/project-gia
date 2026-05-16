@@ -15,7 +15,7 @@ export default function ConditionalRender({
 
   // Check role requirement (hierarchical)
   if (requiredRole) {
-    const roleHierarchy = { USER: 1, ADMIN: 2, SUPER_ADMIN: 3 };
+    const roleHierarchy = { USER: 1, SECRETARIAT: 2, ADMIN: 3 };
     if (!role || roleHierarchy[role] < roleHierarchy[requiredRole]) {
       return fallback;
     }

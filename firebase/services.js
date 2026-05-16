@@ -416,7 +416,7 @@ export const getUserByUid = async (uid) => {
 };
 
 /**
- * Get all users (SUPER_ADMIN only)
+ * Get all users (ADMIN only)
  * @returns {Promise<Array>} - Array of users
  */
 export const getAllUsers = async () => {
@@ -424,14 +424,14 @@ export const getAllUsers = async () => {
 };
 
 /**
- * Update user role (SUPER_ADMIN only)
+ * Update user role (ADMIN only)
  * @param {string} uid - User ID
- * @param {string} newRole - New role (USER or ADMIN)
+ * @param {string} newRole - New role (SECRETARIAT or ADMIN)
  * @returns {Promise<void>}
  */
 export const updateUserRole = async (uid, newRole) => {
-  if (!['USER', 'ADMIN'].includes(newRole)) {
-    throw new Error('Can only assign USER or ADMIN roles');
+  if (!['SECRETARIAT', 'ADMIN'].includes(newRole)) {
+    throw new Error('Can only assign SECRETARIAT or ADMIN roles');
   }
 
   await updateDoc(doc(db, 'users', uid), {
@@ -441,7 +441,7 @@ export const updateUserRole = async (uid, newRole) => {
 };
 
 /**
- * Update user status (SUPER_ADMIN only)
+ * Update user status (ADMIN only)
  * @param {string} uid - User ID
  * @param {string} status - Status (Active or Inactive)
  * @returns {Promise<void>}
@@ -482,7 +482,7 @@ export const createUserDocument = async (uid, userData) => {
 /**
  * Batch create user documents in Firestore
  * @param {Array} users - Array of user objects with uid, email, displayName, role
- * @param {string} createdBy - UID of the SUPER_ADMIN creating the accounts
+ * @param {string} createdBy - UID of the ADMIN creating the accounts
  * @returns {Promise<{successful: Array, failed: Array}>}
  */
 export const batchCreateUserDocuments = async (users, createdBy) => {

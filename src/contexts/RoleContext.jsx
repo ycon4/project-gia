@@ -39,7 +39,7 @@ const ROLE_PERMISSIONS = {
     Permission.EVENT_EDIT_OWN,
     Permission.EVENT_DELETE_OWN,
   ],
-  ADMIN: [
+  SECRETARIAT: [
     Permission.CHAT_ACCESS,
     Permission.DATA_VIEW_VISUALS,
     Permission.DATA_VIEW_DATASETS,
@@ -51,7 +51,7 @@ const ROLE_PERMISSIONS = {
     Permission.EVENT_EDIT_ALL,
     Permission.EVENT_DELETE_ALL,
   ],
-  SUPER_ADMIN: [
+  ADMIN: [
     Permission.CHAT_ACCESS,
     Permission.DATA_VIEW_VISUALS,
     Permission.DATA_VIEW_DATASETS,
@@ -171,8 +171,8 @@ export function RoleProvider({ children, user }) {
   const canModifyEvent = (eventCreatorId) => {
     if (!role || !user) return false;
 
-    // ADMIN and SUPER_ADMIN can modify any event
-    if (role === 'ADMIN' || role === 'SUPER_ADMIN') {
+    // SECRETARIAT and ADMIN can modify any event
+    if (role === 'SECRETARIAT' || role === 'ADMIN') {
       return true;
     }
 
@@ -193,8 +193,8 @@ export function RoleProvider({ children, user }) {
   const filterEventsByRole = (events) => {
     if (!role || !user) return [];
 
-    // ADMIN and SUPER_ADMIN see all events
-    if (role === 'ADMIN' || role === 'SUPER_ADMIN') {
+    // SECRETARIAT and ADMIN see all events
+    if (role === 'SECRETARIAT' || role === 'ADMIN') {
       return events;
     }
 

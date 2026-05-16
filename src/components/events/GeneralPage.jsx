@@ -8,18 +8,54 @@ import {
   Users, TrendingUp, Target, FileText,
   Calendar, Filter, Printer, Download, RefreshCcw,
   BookOpen, Briefcase, UserCircle, GraduationCap, Building2,
-  ChevronDown, Award, BarChart2, Layers, User, Accessibility
+  ChevronDown, Award, BarChart2, Layers, User, Accessibility, Palette
 } from 'lucide-react';
 
-// ─── CONSTANTS ────────────────────────────────────────────────────────────────
-const SECTOR_COLORS = {
-  Student: '#a673d8',
-  Faculty: '#dd6e6b',
-  Staff: '#a5df6a',
-  'Other Beneficiaries': '#73dae1',
+// ─── COLOR THEMES ─────────────────────────────────────────────────────────────
+const COLOR_THEMES = {
+  original: {
+    name: 'Original (Default)',
+    Male: '#73dae1',
+    Female: '#a673d8',
+    palette: ['#dd6e6b', '#a673d8', '#a5df6a', '#73dae1', '#6366f1', '#f59e0b', '#8b5cf6', '#ec4899'],
+  },
+  purpleAmber: {
+    name: 'Purple & Amber',
+    Male: '#f59e0b',
+    Female: '#c084fc',
+    palette: ['#c084fc', '#d8b4fe', '#f59e0b', '#10b981', '#f43f5e', '#3b82f6', '#8b5cf6', '#ec4899'],
+  },
+  ocean: {
+    name: 'Ocean Blue',
+    Male: '#0ea5e9',
+    Female: '#06b6d4',
+    palette: ['#0ea5e9', '#06b6d4', '#14b8a6', '#22d3ee', '#3b82f6', '#60a5fa', '#0891b2', '#0284c7'],
+  },
+  forest: {
+    name: 'Forest Green',
+    Male: '#10b981',
+    Female: '#84cc16',
+    palette: ['#10b981', '#84cc16', '#22c55e', '#4ade80', '#059669', '#65a30d', '#16a34a', '#86efac'],
+  },
+  sunset: {
+    name: 'Sunset Warm',
+    Male: '#f59e0b',
+    Female: '#ef4444',
+    palette: ['#f59e0b', '#ef4444', '#f97316', '#fb923c', '#dc2626', '#fbbf24', '#ea580c', '#fb7185'],
+  },
+  berry: {
+    name: 'Berry Mix',
+    Male: '#ec4899',
+    Female: '#a855f7',
+    palette: ['#ec4899', '#a855f7', '#d946ef', '#f472b6', '#c026d3', '#e879f9', '#db2777', '#c084fc'],
+  },
+  professional: {
+    name: 'Professional',
+    Male: '#3b82f6',
+    Female: '#8b5cf6',
+    palette: ['#3b82f6', '#8b5cf6', '#6366f1', '#60a5fa', '#7c3aed', '#a78bfa', '#2563eb', '#9333ea'],
+  },
 };
-
-const GENDER_COLORS = { Male: '#73dae1', Female: '#a673d8' };
 
 const SECTOR_ICONS = {
   Student: GraduationCap,
@@ -161,7 +197,37 @@ export default function GeneralDashboard({ events = [], attendanceData = [], com
   const [selectedSector, setSelectedSector] = useState('All');
   const [selectedEvent, setSelectedEvent] = useState('All');
   const [selectedStatus, setSelectedStatus] = useState('All');
+  const [currentTheme, setCurrentTheme] = useState('original');
+  const [showThemeMenu, setShowThemeMenu] = useState(false);
   const reportRef = useRef(null);
+  const themeRef = useRef(null);
+
+  // Close theme menu when clicking outside
+  useEffect(() => {
+    const handler = (e) => {
+      if (themeRef.current && !themeRef.current.contains(e.target)) {
+        setShowThemeMenu(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  // Get colors from current theme
+  const COLORS = useMemo(() => COLOR_THEMES[currentTheme], [currentTheme]);
+
+  // Dynamic sector and gender colors based on theme
+  const SECTOR_COLORS = useMemo(() => ({
+    Student: COLORS.Female,
+    Faculty: COLORS.Male,
+    Staff: COLORS.palette[2],
+    'Other Beneficiaries': COLORS.palette[3],
+  }), [COLORS]);
+
+  const GENDER_COLORS = useMemo(() => ({
+    Male: COLORS.Male,
+    Female: COLORS.Female,
+  }), [COLORS]);
 
   // ── Filtered base data ──
   const filtered = useMemo(() => {
@@ -529,10 +595,39 @@ export default function GeneralDashboard({ events = [], attendanceData = [], com
           <RefreshCcw size={11} /> Reset
         </button>
 
-        <button onClick={handlePrint}
-          className="ml-auto flex items-center gap-2 text-neutral-600 dark:text-neutral-500 hover:text-neutral-900 dark:hover:text-white px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-neutral-200 dark:hover:bg-gia-700/30 transition-colors">
-          <Printer size={13} /> Print / Export
-        </button>
+        <span className="text-neutral-300 dark:text-neutral-800 select-none">|</span>
+
+        {/* Theme Selector */}
+        <div className="relative" ref={themeRef}>
+          <button
+            onClick={() => setShowThemeMenu(!showThemeMenu)}
+            className="flex items-center gap-1.5 text-[10px] font-black uppercase text-neutral-400 dark:text-neutral-600 hover:text-neutral-900 dark:hover:text-neutral-300 transition-colors"
+            title="Change color theme"
+          >
+            <Palette size={11} /> Theme
+          </button>
+
+          {showThemeMenu && (
+            <div className="absolute right-0 top-full mt-1 z-20 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg shadow-xl overflow-hidden min-w-[160px]">
+              {Object.entries(COLOR_THEMES).map(([key, theme]) => (
+                <button
+                  key={key}
+                  onClick={() => {
+                    setCurrentTheme(key);
+                    setShowThemeMenu(false);
+                  }}
+                  className={`w-full flex items-center justify-between gap-2 px-3 py-2 text-xs text-left transition-colors ${currentTheme === key
+                    ? 'bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400 font-semibold'
+                    : 'text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-700'
+                    }`}
+                >
+                  <span>{theme.name}</span>
+                  {currentTheme === key && <span className="text-xs">✓</span>}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* ── SCROLLABLE CONTENT ── */}
@@ -558,13 +653,13 @@ export default function GeneralDashboard({ events = [], attendanceData = [], com
 
           {/* ── KPI STRIP ── */}
           <div className={`grid gap-6 ${compact ? 'grid-cols-2' : 'grid-cols-2 md:grid-cols-4'}`}>
-            <KPICard label="Total Participants" value={stats.total.toLocaleString()} icon={Users} accent="#dd6e6b"
+            <KPICard label="Total Participants" value={stats.total.toLocaleString()} icon={Users} accent={COLORS.palette[0]}
               sub={`${events.length} event(s) total`} change={stats.changes.total} />
-            <KPICard label="Female Participants" value={stats.female.toLocaleString()} icon={UserCircle} accent="#a673d8"
+            <KPICard label="Female Participants" value={stats.female.toLocaleString()} icon={UserCircle} accent={COLORS.Female}
               sub={`${stats.femalePct}% of total`} change={stats.changes.female} />
-            <KPICard label="Male Participants" value={stats.male.toLocaleString()} icon={User} accent="#73dae1"
+            <KPICard label="Male Participants" value={stats.male.toLocaleString()} icon={User} accent={COLORS.Male}
               sub={`${pct(stats.male, stats.total)}% of total`} change={stats.changes.male} />
-            <KPICard label="PWD Participants" value={stats.pwdYes.toLocaleString()} icon={Accessibility} accent="#a5df6a"
+            <KPICard label="PWD Participants" value={stats.pwdYes.toLocaleString()} icon={Accessibility} accent={COLORS.palette[3]}
               sub={`${stats.pwdYesPct}% of total`} change={stats.changes.pwd} />
           </div>
 
@@ -577,10 +672,10 @@ export default function GeneralDashboard({ events = [], attendanceData = [], com
                 <h3 className="text-base font-black leading-none text-neutral-900 dark:text-neutral-100">Participation Trend</h3>
               </div>
               <div className="flex items-center gap-4">
-                <div className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full inline-block" style={{ background: '#dd6e6b' }} /><span className="text-[9px] font-bold text-neutral-400 uppercase tracking-wider">Total</span></div>
-                <div className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full inline-block" style={{ background: '#a673d8' }} /><span className="text-[9px] font-bold text-neutral-400 uppercase tracking-wider">Female</span></div>
-                <div className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full inline-block" style={{ background: '#73dae1' }} /><span className="text-[9px] font-bold text-neutral-400 uppercase tracking-wider">Male</span></div>
-                <div className="flex items-center gap-1.5"><span className="w-5 inline-block border-t-2 border-dashed" style={{ borderColor: '#a5df6a' }} /><span className="text-[9px] font-bold text-neutral-400 uppercase tracking-wider">Target</span></div>
+                <div className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full inline-block" style={{ background: COLORS.palette[0] }} /><span className="text-[9px] font-bold text-neutral-400 uppercase tracking-wider">Total</span></div>
+                <div className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full inline-block" style={{ background: COLORS.Female }} /><span className="text-[9px] font-bold text-neutral-400 uppercase tracking-wider">Female</span></div>
+                <div className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full inline-block" style={{ background: COLORS.Male }} /><span className="text-[9px] font-bold text-neutral-400 uppercase tracking-wider">Male</span></div>
+                <div className="flex items-center gap-1.5"><span className="w-5 inline-block border-t-2 border-dashed" style={{ borderColor: COLORS.palette[3] }} /><span className="text-[9px] font-bold text-neutral-400 uppercase tracking-wider">Target</span></div>
               </div>
             </div>
 
@@ -592,16 +687,16 @@ export default function GeneralDashboard({ events = [], attendanceData = [], com
                 <AreaChart data={stats.eventChart} margin={{ top: 10, right: 24, left: 0, bottom: 0 }}>
                   <defs>
                     <linearGradient id="gTotal" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#dd6e6b" stopOpacity={0.35} />
-                      <stop offset="95%" stopColor="#dd6e6b" stopOpacity={0} />
+                      <stop offset="5%" stopColor={COLORS.palette[0]} stopOpacity={0.35} />
+                      <stop offset="95%" stopColor={COLORS.palette[0]} stopOpacity={0} />
                     </linearGradient>
                     <linearGradient id="gFemale" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#a673d8" stopOpacity={0.35} />
-                      <stop offset="95%" stopColor="#a673d8" stopOpacity={0} />
+                      <stop offset="5%" stopColor={COLORS.Female} stopOpacity={0.35} />
+                      <stop offset="95%" stopColor={COLORS.Female} stopOpacity={0} />
                     </linearGradient>
                     <linearGradient id="gMale" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#73dae1" stopOpacity={0.30} />
-                      <stop offset="95%" stopColor="#73dae1" stopOpacity={0} />
+                      <stop offset="5%" stopColor={COLORS.Male} stopOpacity={0.30} />
+                      <stop offset="95%" stopColor={COLORS.Male} stopOpacity={0} />
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.06)'} />
@@ -616,10 +711,10 @@ export default function GeneralDashboard({ events = [], attendanceData = [], com
                     itemStyle={{ fontWeight: 700 }}
                     cursor={{ stroke: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)', strokeWidth: 1 }}
                   />
-                  <Area type="monotone" dataKey="Total" stroke="#dd6e6b" strokeWidth={2} fill="url(#gTotal)" dot={{ r: 3, fill: '#dd6e6b', strokeWidth: 0 }} activeDot={{ r: 5, fill: '#dd6e6b' }} />
-                  <Area type="monotone" dataKey="Female" stroke="#a673d8" strokeWidth={2} fill="url(#gFemale)" dot={{ r: 3, fill: '#a673d8', strokeWidth: 0 }} activeDot={{ r: 5, fill: '#a673d8' }} />
-                  <Area type="monotone" dataKey="Male" stroke="#73dae1" strokeWidth={2} fill="url(#gMale)" dot={{ r: 3, fill: '#73dae1', strokeWidth: 0 }} activeDot={{ r: 5, fill: '#73dae1' }} />
-                  <Area type="monotone" dataKey="Target" stroke="#a5df6a" strokeWidth={2} strokeDasharray="5 4" fill="none" dot={{ r: 3, fill: '#a5df6a', strokeWidth: 0 }} activeDot={{ r: 5, fill: '#a5df6a' }} connectNulls />
+                  <Area type="monotone" dataKey="Total" stroke={COLORS.palette[0]} strokeWidth={2} fill="url(#gTotal)" dot={{ r: 3, fill: COLORS.palette[0], strokeWidth: 0 }} activeDot={{ r: 5, fill: COLORS.palette[0] }} />
+                  <Area type="monotone" dataKey="Female" stroke={COLORS.Female} strokeWidth={2} fill="url(#gFemale)" dot={{ r: 3, fill: COLORS.Female, strokeWidth: 0 }} activeDot={{ r: 5, fill: COLORS.Female }} />
+                  <Area type="monotone" dataKey="Male" stroke={COLORS.Male} strokeWidth={2} fill="url(#gMale)" dot={{ r: 3, fill: COLORS.Male, strokeWidth: 0 }} activeDot={{ r: 5, fill: COLORS.Male }} />
+                  <Area type="monotone" dataKey="Target" stroke={COLORS.palette[3]} strokeWidth={2} strokeDasharray="5 4" fill="none" dot={{ r: 3, fill: COLORS.palette[3], strokeWidth: 0 }} activeDot={{ r: 5, fill: COLORS.palette[3] }} connectNulls />
                 </AreaChart>
               </ResponsiveContainer>
             )}
@@ -725,8 +820,8 @@ export default function GeneralDashboard({ events = [], attendanceData = [], com
                             </span>
                           </div>
                           <div className="h-4 bg-neutral-100 dark:bg-neutral-800 rounded-full overflow-hidden flex">
-                            <div className="h-full transition-all" style={{ width: `${femaleShare * 100}%`, backgroundColor: '#a673d8' }} />
-                            <div className="h-full transition-all" style={{ width: `${(1 - femaleShare) * 100}%`, backgroundColor: '#73dae1' }} />
+                            <div className="h-full transition-all" style={{ width: `${femaleShare * 100}%`, backgroundColor: COLORS.Female }} />
+                            <div className="h-full transition-all" style={{ width: `${(1 - femaleShare) * 100}%`, backgroundColor: COLORS.Male }} />
                           </div>
                         </div>
                       );
@@ -746,12 +841,12 @@ export default function GeneralDashboard({ events = [], attendanceData = [], com
                             <p className="text-[9px] text-neutral-400 dark:text-neutral-500">{top?.total} total</p>
                           </div>
                           <div>
-                            <p className="text-[8px] font-black uppercase tracking-widest mb-0.5" style={{ color: '#a673d8' }}>Highest Female</p>
+                            <p className="text-[8px] font-black uppercase tracking-widest mb-0.5" style={{ color: COLORS.Female }}>Highest Female</p>
                             <p className="text-[10px] font-bold text-neutral-700 dark:text-neutral-300 truncate">{topFemale?.name}</p>
                             <p className="text-[9px] text-neutral-400 dark:text-neutral-500">{topFemale?.female} F ({pct(topFemale?.female, topFemale?.total)}%)</p>
                           </div>
                           <div>
-                            <p className="text-[8px] font-black uppercase tracking-widest mb-0.5" style={{ color: '#73dae1' }}>Highest Male</p>
+                            <p className="text-[8px] font-black uppercase tracking-widest mb-0.5" style={{ color: COLORS.Male }}>Highest Male</p>
                             <p className="text-[10px] font-bold text-neutral-700 dark:text-neutral-300 truncate">{topMale?.name}</p>
                             <p className="text-[9px] text-neutral-400 dark:text-neutral-500">{topMale?.male} M ({pct(topMale?.male, topMale?.total)}%)</p>
                           </div>
@@ -774,12 +869,12 @@ export default function GeneralDashboard({ events = [], attendanceData = [], com
                 <AreaChart data={stats.trend}>
                   <defs>
                     <linearGradient id="gTotal" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#6366f1" stopOpacity={0.15} />
-                      <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
+                      <stop offset="5%" stopColor={COLORS.palette[4]} stopOpacity={0.15} />
+                      <stop offset="95%" stopColor={COLORS.palette[4]} stopOpacity={0} />
                     </linearGradient>
                     <linearGradient id="gFemale" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#a673d8" stopOpacity={0.15} />
-                      <stop offset="95%" stopColor="#a673d8" stopOpacity={0} />
+                      <stop offset="5%" stopColor={COLORS.Female} stopOpacity={0.15} />
+                      <stop offset="95%" stopColor={COLORS.Female} stopOpacity={0} />
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
@@ -788,9 +883,9 @@ export default function GeneralDashboard({ events = [], attendanceData = [], com
                   <Tooltip contentStyle={{ borderRadius: 12, border: 'none', fontSize: 11 }} />
                   <Legend iconType="circle" iconSize={8}
                     formatter={v => <span style={{ fontSize: 10, fontWeight: 700 }}>{v}</span>} />
-                  <Area type="monotone" dataKey="Total" stroke="#6366f1" strokeWidth={2} fill="url(#gTotal)" dot={{ r: 3 }} />
-                  <Area type="monotone" dataKey="Male" stroke="#73dae1" strokeWidth={2} fill="none" dot={{ r: 3 }} />
-                  <Area type="monotone" dataKey="Female" stroke="#a673d8" strokeWidth={2} fill="url(#gFemale)" dot={{ r: 3 }} />
+                  <Area type="monotone" dataKey="Total" stroke={COLORS.palette[4]} strokeWidth={2} fill="url(#gTotal)" dot={{ r: 3 }} />
+                  <Area type="monotone" dataKey="Male" stroke={COLORS.Male} strokeWidth={2} fill="none" dot={{ r: 3 }} />
+                  <Area type="monotone" dataKey="Female" stroke={COLORS.Female} strokeWidth={2} fill="url(#gFemale)" dot={{ r: 3 }} />
                 </AreaChart>
               </ResponsiveContainer>
             )}
@@ -988,12 +1083,12 @@ export default function GeneralDashboard({ events = [], attendanceData = [], com
                             }`}>{ev.status || 'Active'}</span>
                         </td>
                         <td className="px-4 py-3 text-xs font-black text-neutral-900 dark:text-neutral-100">{ev.total}</td>
-                        <td className="px-4 py-3 text-xs font-bold" style={{ color: '#73dae1' }}>{ev.male}</td>
-                        <td className="px-4 py-3 text-xs font-bold" style={{ color: '#a673d8' }}>{ev.female}</td>
+                        <td className="px-4 py-3 text-xs font-bold" style={{ color: COLORS.Male }}>{ev.male}</td>
+                        <td className="px-4 py-3 text-xs font-bold" style={{ color: COLORS.Female }}>{ev.female}</td>
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-2">
                             <div className="w-16 h-1.5 bg-neutral-100 dark:bg-neutral-800 rounded-full overflow-hidden">
-                              <div className="h-full rounded-full" style={{ width: `${ev.femalePct}%`, backgroundColor: '#a673d8' }} />
+                              <div className="h-full rounded-full" style={{ width: `${ev.femalePct}%`, backgroundColor: COLORS.Female }} />
                             </div>
                             <span className="text-[10px] font-black text-neutral-700 dark:text-neutral-300">{ev.femalePct}%</span>
                           </div>
@@ -1011,7 +1106,7 @@ export default function GeneralDashboard({ events = [], attendanceData = [], com
           <div className="flex items-start gap-6 pb-4">
             {!compact && (
               <div className="shrink-0 flex flex-col items-center gap-1 pt-1">
-                <span className="text-5xl font-black leading-none" style={{ color: '#a5df6a' }}>
+                <span className="text-5xl font-black leading-none" style={{ color: COLORS.palette[3] }}>
                   {stats.femalePct}%
                 </span>
                 <span className="text-[8px] font-black uppercase tracking-widest text-neutral-400 dark:text-neutral-500 text-center">Female<br />Composition</span>
