@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Search, UserCog, Shield, ShieldCheck, User, Mail, Calendar, CheckCircle2, XCircle, Loader2, UserPlus, X, ChevronDown, Upload, Trash2, UserX, MoreVertical } from 'lucide-react';
+import { Search, UserCog, Shield, ShieldCheck, User, Mail, Calendar, CheckCircle2, XCircle, Loader2, UserPlus, X, ChevronDown, Upload, Trash2, UserX, MoreVertical, BarChart2 } from 'lucide-react';
 import { collection, query, onSnapshot, doc, updateDoc, serverTimestamp, writeBatch, getDocs, deleteDoc } from 'firebase/firestore';
 import { db, auth } from '../../firebase/config';
 import { batchCreateAccounts } from '../../firebase/auth';
@@ -20,7 +20,9 @@ export default function UserManagementPage() {
   const [creating, setCreating] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [statsOpen, setStatsOpen] = useState(false);
   const menuRef = useRef(null);
+  const statsRef = useRef(null);
 
   // Dark mode detection
   const [isDark, setIsDark] = useState(() => document.documentElement.classList.contains('dark'));
@@ -37,6 +39,9 @@ export default function UserManagementPage() {
     const handleClickOutside = (event) => {
       if (menuRef.current && !menuRef.current.contains(event.target)) {
         setMenuOpen(false);
+      }
+      if (statsRef.current && !statsRef.current.contains(event.target)) {
+        setStatsOpen(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -354,59 +359,88 @@ export default function UserManagementPage() {
               Manage user roles and permissions
             </p>
           </div>
-          <button
-            onClick={handleRefresh}
-            disabled={loading}
-            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 disabled:opacity-50 text-white rounded-xl text-sm font-bold transition-all shadow-lg shadow-purple-500/20"
-          >
-            <Loader2 size={16} className={loading ? 'animate-spin' : 'hidden'} />
-            Refresh
-          </button>
-        </div>
+          <div className="flex items-center gap-3">
+            {/* Stats Menu */}
+            <div className="relative" ref={statsRef}>
+              <button
+                onClick={() => setStatsOpen(!statsOpen)}
+                className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-neutral-900 border-2 border-neutral-200 dark:border-neutral-800 hover:border-purple-300 dark:hover:border-purple-700 text-neutral-700 dark:text-neutral-300 rounded-xl text-sm font-bold transition-all shadow-sm hover:shadow-md"
+                title="View Statistics"
+              >
+                <BarChart2 size={16} />
+                Stats
+              </button>
 
-        {/* Stats */}
-        <div className="grid grid-cols-4 gap-4">
-          <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-4 shadow-sm hover:shadow-md transition-shadow">
-            <div className="flex items-center gap-2 mb-2">
-              <div className="p-2 rounded-xl bg-neutral-100 dark:bg-neutral-800">
-                <User size={16} className="text-neutral-600 dark:text-neutral-400" />
-              </div>
-              <p className="text-[10px] font-black uppercase tracking-widest text-neutral-400">Total</p>
+              {statsOpen && (
+                <div className="absolute right-0 top-full mt-2 w-64 bg-white dark:bg-neutral-900 border-2 border-neutral-200 dark:border-neutral-800 rounded-xl shadow-2xl overflow-hidden z-30">
+                  <div className="p-3 bg-gradient-to-r from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-800/20 border-b-2 border-neutral-200 dark:border-neutral-800">
+                    <h3 className="text-xs font-black text-neutral-900 dark:text-neutral-100 uppercase tracking-wider">
+                      User Statistics
+                    </h3>
+                  </div>
+                  <div className="p-2">
+                    {/* Total */}
+                    <div className="flex items-center justify-between px-3 py-2.5 hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-lg transition-colors">
+                      <div className="flex items-center gap-2">
+                        <div className="p-1.5 rounded-lg bg-neutral-100 dark:bg-neutral-800">
+                          <User size={14} className="text-neutral-600 dark:text-neutral-400" />
+                        </div>
+                        <span className="text-sm font-semibold text-neutral-700 dark:text-neutral-300">Total Users</span>
+                      </div>
+                      <span className="text-lg font-black text-neutral-900 dark:text-neutral-100">{users.length}</span>
+                    </div>
+
+                    {/* Admin */}
+                    <div className="flex items-center justify-between px-3 py-2.5 hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded-lg transition-colors">
+                      <div className="flex items-center gap-2">
+                        <div className="p-1.5 rounded-lg bg-purple-100 dark:bg-purple-900/30">
+                          <ShieldCheck size={14} className="text-purple-600 dark:text-purple-400" />
+                        </div>
+                        <span className="text-sm font-semibold text-purple-700 dark:text-purple-400">Admin</span>
+                      </div>
+                      <span className="text-lg font-black text-purple-900 dark:text-purple-100">
+                        {users.filter(u => u.role === 'ADMIN').length}
+                      </span>
+                    </div>
+
+                    {/* Secretariat */}
+                    <div className="flex items-center justify-between px-3 py-2.5 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors">
+                      <div className="flex items-center gap-2">
+                        <div className="p-1.5 rounded-lg bg-blue-100 dark:bg-blue-900/30">
+                          <Shield size={14} className="text-blue-600 dark:text-blue-400" />
+                        </div>
+                        <span className="text-sm font-semibold text-blue-700 dark:text-blue-400">Secretariat</span>
+                      </div>
+                      <span className="text-lg font-black text-blue-900 dark:text-blue-100">
+                        {users.filter(u => u.role === 'SECRETARIAT').length}
+                      </span>
+                    </div>
+
+                    {/* Public */}
+                    <div className="flex items-center justify-between px-3 py-2.5 hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-lg transition-colors">
+                      <div className="flex items-center gap-2">
+                        <div className="p-1.5 rounded-lg bg-neutral-100 dark:bg-neutral-800">
+                          <User size={14} className="text-neutral-600 dark:text-neutral-400" />
+                        </div>
+                        <span className="text-sm font-semibold text-neutral-700 dark:text-neutral-300">Public View</span>
+                      </div>
+                      <span className="text-lg font-black text-neutral-900 dark:text-neutral-100">
+                        {users.filter(u => u.role === 'USER' || !u.role).length}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
-            <p className="text-3xl font-black text-neutral-900 dark:text-neutral-100">{users.length}</p>
-          </div>
-          <div className="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-800/20 border border-purple-200 dark:border-purple-800/50 rounded-2xl p-4 shadow-sm hover:shadow-md transition-shadow">
-            <div className="flex items-center gap-2 mb-2">
-              <div className="p-2 rounded-xl bg-purple-200 dark:bg-purple-800/50">
-                <ShieldCheck size={16} className="text-purple-700 dark:text-purple-400" />
-              </div>
-              <p className="text-[10px] font-black uppercase tracking-widest text-purple-600 dark:text-purple-400">Admin</p>
-            </div>
-            <p className="text-3xl font-black text-purple-900 dark:text-purple-100">
-              {users.filter(u => u.role === 'ADMIN').length}
-            </p>
-          </div>
-          <div className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 border border-blue-200 dark:border-blue-800/50 rounded-2xl p-4 shadow-sm hover:shadow-md transition-shadow">
-            <div className="flex items-center gap-2 mb-2">
-              <div className="p-2 rounded-xl bg-blue-200 dark:bg-blue-800/50">
-                <Shield size={16} className="text-blue-700 dark:text-blue-400" />
-              </div>
-              <p className="text-[10px] font-black uppercase tracking-widest text-blue-600 dark:text-blue-400">Secretariat</p>
-            </div>
-            <p className="text-3xl font-black text-blue-900 dark:text-blue-100">
-              {users.filter(u => u.role === 'SECRETARIAT').length}
-            </p>
-          </div>
-          <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-4 shadow-sm hover:shadow-md transition-shadow">
-            <div className="flex items-center gap-2 mb-2">
-              <div className="p-2 rounded-xl bg-neutral-100 dark:bg-neutral-800">
-                <User size={16} className="text-neutral-600 dark:text-neutral-400" />
-              </div>
-              <p className="text-[10px] font-black uppercase tracking-widest text-neutral-400">Public</p>
-            </div>
-            <p className="text-3xl font-black text-neutral-900 dark:text-neutral-100">
-              {users.filter(u => u.role === 'USER' || !u.role).length}
-            </p>
+
+            <button
+              onClick={handleRefresh}
+              disabled={loading}
+              className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 disabled:opacity-50 text-white rounded-xl text-sm font-bold transition-all shadow-lg shadow-purple-500/20"
+            >
+              <Loader2 size={16} className={loading ? 'animate-spin' : 'hidden'} />
+              Refresh
+            </button>
           </div>
         </div>
 
