@@ -88,6 +88,9 @@ export const DEFAULT_EVENT = {
   venue: '',
   mode: 'In-person',
   status: 'Active',
+  submissionStatus: 'draft', // New field for draft/submitted status
+  submittedAt: null, // New field for submission timestamp
+  submittedBy: null, // New field for who submitted it
   startDate: '',
   endDate: '',
   targetParticipants: '',

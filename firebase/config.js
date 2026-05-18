@@ -16,6 +16,9 @@ const firebaseConfig = {
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 
+// Initialize a secondary app for creating users without logging out the admin
+const secondaryApp = initializeApp(firebaseConfig, 'Secondary');
+
 // Initialize Firestore with settings to handle connection issues
 export const db = getFirestore(app);
 
@@ -35,8 +38,11 @@ try {
   console.warn('⚠️ Persistence setup error:', err);
 }
 
-// Initialize Auth
+// Initialize Auth (primary for admin)
 export const auth = getAuth(app);
+
+// Initialize secondary Auth (for creating users without logging out admin)
+export const secondaryAuth = getAuth(secondaryApp);
 
 // Initialize Analytics (optional)
 export const analytics = getAnalytics(app);

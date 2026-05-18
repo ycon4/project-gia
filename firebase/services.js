@@ -468,10 +468,10 @@ export const createUserDocument = async (uid, userData) => {
     uid,
     email: userData.email,
     displayName: userData.displayName || userData.email?.split('@')[0] || 'User',
-    role: userData.role || 'USER',
+    role: userData.role || 'SECRETARIAT', // Default to SECRETARIAT instead of USER
     employeeId: userData.employeeId || null,
     department: userData.department || null,
-    status: 'Active',
+    status: 'Active', // Always set to Active for new accounts
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
     createdBy: userData.createdBy || null,
@@ -510,3 +510,122 @@ export const batchCreateUserDocuments = async (users, createdBy) => {
 };
 
 
+
+// ==================== EVENT SUBMISSION SYSTEM ====================
+
+/**
+ * Submit an event for admin review (SECRETARIAT only)
+ * @param {string} eventId - Event ID
+ * @param {string} submittedBy - User ID who submitted
+ * @returns {Promise<void>}
+ */
+export const submitEvent = async (eventId, submittedBy) => {
+  try {
+    await updateDoc(doc(db, 'events', eventId), {
+      submissionStatus: 'submitted',
+      submittedAt: new Date().toISOString(),
+      submittedBy: submittedBy,
+      updatedAt: new Date().toISOString()
+    });
+    console.log(`Event ${eventId} submitted successfully!`);
+  } catch (error) {
+    console.error("Error submitting event: ", error.code, error.message);
+    throw error;
+  }
+};
+
+/**
+ * Withdraw an event back to draft status (SECRETARIAT only)
+ * @param {string} eventId - Event ID
+ * @returns {Promise<void>}
+ */
+export const withdrawEvent = async (eventId) => {
+  try {
+    await updateDoc(doc(db, 'events', eventId), {
+      submissionStatus: 'draft',
+      submittedAt: null,
+      submittedBy: null,
+      updatedAt: new Date().toISOString()
+    });
+    console.log(`Event ${eventId} withdrawn to draft successfully!`);
+  } catch (error) {
+    console.error("Error withdrawing event: ", error.code, error.message);
+    throw error;
+  }
+};
+
+/**
+ * Create event with submission status (automatically set based on user role)
+ * @param {object} eventData - Event data
+ * @param {string} createdBy - User ID who created the event
+ * @param {string} userRole - Role of the user creating the event
+ * @returns {Promise<string>} - Document ID
+ */
+export const createEventWithSubmissionStatus = async (eventData, createdBy, userRole) => {
+  try {
+    // Determine initial submission status based on role
+    const submissionStatus = userRole === 'SECRETARIAT' ? 'draft' : 'submitted';
+
+    const eventWithStatus = {
+      ...eventData,
+      createdBy,
+      submissionStatus,
+      submittedAt: submissionStatus === 'submitted' ? new Date().toISOString() : null,
+      submittedBy: submissionStatus === 'submitted' ? createdBy : null,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+
+    const docRef = await addDoc(collection(db, 'events'), eventWithStatus);
+    console.log('Event created with ID:', docRef.id, 'Status:', submissionStatus);
+    return docRef.id;
+  } catch (error) {
+    console.error('Error creating event:', error);
+    throw error;
+  }
+};
+
+// ==================== ROLE MIGRATION UTILITIES ====================
+
+/**
+ * Update all users with 'USER' role to 'SECRETARIAT' role
+ * This is a one-time migration function to fix the role display issue
+ * @returns {Promise<{updated: number, errors: Array}>}
+ */
+export const migrateUserRolesToSecretariat = async () => {
+  try {
+    const usersSnapshot = await getDocs(collection(db, 'users'));
+    const updates = [];
+    const errors = [];
+    let updated = 0;
+
+    for (const userDoc of usersSnapshot.docs) {
+      const userData = userDoc.data();
+
+      // Only update users with 'USER' role to 'SECRETARIAT'
+      if (userData.role === 'USER') {
+        try {
+          await updateDoc(doc(db, 'users', userDoc.id), {
+            role: 'SECRETARIAT',
+            updatedAt: new Date().toISOString()
+          });
+          updated++;
+          console.log(`✅ Updated user ${userData.email} from USER to SECRETARIAT`);
+        } catch (error) {
+          errors.push({
+            uid: userDoc.id,
+            email: userData.email,
+            error: error.message
+          });
+          console.error(`❌ Failed to update user ${userData.email}:`, error);
+        }
+      }
+    }
+
+    console.log(`🎯 Migration complete: ${updated} users updated, ${errors.length} errors`);
+    return { updated, errors };
+  } catch (error) {
+    console.error('❌ Migration failed:', error);
+    throw error;
+  }
+};

@@ -14,6 +14,7 @@ import EventsPage from './pages/EventsPage';
 import LoginPage from './pages/LoginPage';
 import UserManagementPage from './pages/UserManagementPage';
 import PublicRegister from './components/events/PublicRegister';
+import PublicPortalPage from './pages/PublicPortalPage';
 import FloatingChatButton from './components/FloatingChatButton';
 import { RoleProvider, useRole } from './contexts/RoleContext';
 import { getAllDocuments, saveEvent, updateDocument, removeEvent } from '../firebase/services';
@@ -32,6 +33,7 @@ function App() {
   const [activeSection, setActiveSection] = useState('chat'); // Always start with chat
 
   const [isRegisterMode, setIsRegisterMode] = useState(false);
+  const [isPublicPortalMode, setIsPublicPortalMode] = useState(false);
 
   const [conversations, setConversations] = useState([]);
   const [activeConvId, setActiveConvId] = useState(null);
@@ -93,8 +95,11 @@ function App() {
 
   // ── Kiosk detection — just flag the mode, PublicRegister handles its own data fetch
   useEffect(() => {
-    if (window.location.pathname.startsWith('/register/')) {
+    const path = window.location.pathname;
+    if (path.startsWith('/register/')) {
       setIsRegisterMode(true);
+    } else if (path === '/public' || path.startsWith('/public/')) {
+      setIsPublicPortalMode(true);
     }
   }, []);
 
@@ -208,6 +213,11 @@ function App() {
       <div className="text-gia-600 font-bold text-p4-sm animate-pulse tracking-widest uppercase">Loading...</div>
     </div>
   );
+
+  // Public portal route - no authentication required
+  if (isPublicPortalMode) {
+    return <PublicPortalPage />;
+  }
 
   if (!user && !isRegisterMode) return <LoginPage darkMode={darkMode} />;
 
@@ -596,8 +606,8 @@ function ProfileButton({ open, user, displayName, onEditProfile, onLogout }) {
         )}
         {!open && role && (
           <span className={`absolute -top-1 -right-1 w-2 h-2 rounded-full ${role === 'ADMIN' ? 'bg-purple-500' :
-              role === 'SECRETARIAT' ? 'bg-blue-500' :
-                'bg-gray-500'
+            role === 'SECRETARIAT' ? 'bg-blue-500' :
+              'bg-gray-500'
             }`} title={role === 'ADMIN' ? 'Admin' : role === 'SECRETARIAT' ? 'Secretariat' : 'Public View'} />
         )}
       </button>

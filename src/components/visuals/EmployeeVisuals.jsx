@@ -7,13 +7,22 @@ import { ChevronDown, Palette, Copy, Check, Download, FileText, MoreVertical } f
 import html2canvas from 'html2canvas';
 import ReportGeneratorModal from './ReportGeneratorModal';
 
-// Color theme definitions
+// ─── MSU-IIT PROFESSIONAL SYSTEM COLOR THEMES ──────────────────────────────────
 const COLOR_THEMES = {
-  default: {
-    name: 'GIA Purple & Amber',
-    Male: '#f59e0b',
-    Female: '#c084fc',
-    palette: ['#c084fc', '#d8b4fe', '#f59e0b', '#10b981', '#f43f5e', '#3b82f6', '#8b5cf6', '#ec4899'],
+  original: {
+    name: 'MSU-IIT Official (Maroon & Gold)',
+    Male: '#741112',    // Academic Maroon
+    Female: '#D4AF37',  // Academic Gold
+    palette: [
+      '#530B0C', // Deep Velvet Maroon
+      '#741112', // Signature Maroon
+      '#9B2A2B', // Terracotta Crimson
+      '#D4AF37', // Academic Gold
+      '#ECC142', // Sunlit Amber
+      '#475569', // Slate Gray (Neutral balance)
+      '#334155', // Charcoal
+      '#1E293B'  // Dark Navy
+    ],
   },
   ocean: {
     name: 'Ocean Blue',
@@ -27,23 +36,11 @@ const COLOR_THEMES = {
     Female: '#84cc16',
     palette: ['#10b981', '#84cc16', '#22c55e', '#4ade80', '#059669', '#65a30d', '#16a34a', '#86efac'],
   },
-  sunset: {
-    name: 'Sunset Warm',
+  purpleAmber: {
+    name: 'Purple & Amber',
     Male: '#f59e0b',
-    Female: '#ef4444',
-    palette: ['#f59e0b', '#ef4444', '#f97316', '#fb923c', '#dc2626', '#fbbf24', '#ea580c', '#fb7185'],
-  },
-  berry: {
-    name: 'Berry Mix',
-    Male: '#ec4899',
-    Female: '#a855f7',
-    palette: ['#ec4899', '#a855f7', '#d946ef', '#f472b6', '#c026d3', '#e879f9', '#db2777', '#c084fc'],
-  },
-  professional: {
-    name: 'Professional',
-    Male: '#3b82f6',
-    Female: '#8b5cf6',
-    palette: ['#3b82f6', '#8b5cf6', '#6366f1', '#60a5fa', '#7c3aed', '#a78bfa', '#2563eb', '#9333ea'],
+    Female: '#c084fc',
+    palette: ['#c084fc', '#d8b4fe', '#f59e0b', '#10b981', '#f43f5e', '#3b82f6', '#8b5cf6', '#ec4899'],
   },
 };
 
@@ -84,7 +81,7 @@ function CustomTooltip({ active, payload, label }) {
 export default function EmployeeVisuals({ data, recordsCount = 0, academicPeriod = 'Academic Year' }) {
   const [activeChart, setActiveChart] = useState(0);
   const [dropdownOpen, setDropdownOpen] = useState(false);
-  const [currentTheme, setCurrentTheme] = useState('default');
+  const [currentTheme, setCurrentTheme] = useState('original');
   const [showThemeMenu, setShowThemeMenu] = useState(false);
   const [copied, setCopied] = useState(false);
   const [downloaded, setDownloaded] = useState(false);

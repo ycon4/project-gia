@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { signInWithEmailAndPassword } from 'firebase/auth';
-import { auth } from '../../firebase/config';
+import { signInWithEmailAndPassword, signOut } from 'firebase/auth';
+import { doc, getDoc } from 'firebase/firestore';
+import { auth, db } from '../../firebase/config'; // Added db import to pull firestore status
 import { ShieldCheck } from 'lucide-react';
 import giaLogo from '../assets/GIA Logo.svg';
 
@@ -14,9 +15,31 @@ export default function LoginPage() {
     e.preventDefault();
     setError('');
     setLoading(true);
+
     try {
-      await signInWithEmailAndPassword(auth, email, password);
-    } catch {
+      // 1. Authenticate credentials via standard Firebase Auth engine
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      const uid = userCredential.user.uid;
+
+      // 2. Fetch matching security verification document from Firestore
+      const userDocRef = doc(db, 'users', uid);
+      const userSnapshot = await getDoc(userDocRef);
+
+      // 🛑 EMERGENCY GAUNTLET CHECK:
+      // If no document exists or status isn't active, immediately kick them out!
+      if (!userSnapshot.exists() || userSnapshot.data().status !== 'Active') {
+        // Clear auth state token to prevent unauthorized background listeners from firing
+        await signOut(auth);
+        setError('Access Denied. Your workspace clearance is currently locked or revoked.');
+        return;
+      }
+
+      // Success! If the user is active, the auth state changes normally,
+      // and your React Router/Protected Routing layout handles redirection.
+
+    } catch (err) {
+      console.error("Authentication exception:", err);
+      // Fallback message for general user credential mismatches
       setError('Invalid email or password. Please try again.');
     } finally {
       setLoading(false);

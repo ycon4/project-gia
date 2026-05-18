@@ -1,0 +1,143 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // ═══════════════════════════════════════════════════════════════════════════
+    // HELPER FUNCTIONS
+    // ═══════════════════════════════════════════════════════════════════════════
+    
+    // Check if user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Check if user is an admin
+    function isAdmin() {
+      return isAuthenticated() && 
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'ADMIN';
+    }
+    
+    // Check if user is secretariat or admin
+    function isSecretariatOrAdmin() {
+      return isAuthenticated() && 
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['SECRETARIAT', 'ADMIN'];
+    }
+    
+    // Check if user owns the resource
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    
+    // ═══════════════════════════════════════════════════════════════════════════
+    // PUBLIC PORTAL COLLECTIONS (READ-ONLY FOR EVERYONE)
+    // ═══════════════════════════════════════════════════════════════════════════
+    
+    // Student Enrollment Data - Public Read Access
+    match /student_enrollment/{document} {
+      // ✅ ALLOW: Anyone can read (for public portal analytics)
+      allow read: if true;
+      
+      // ❌ DENY: Only authenticated admins can write
+      allow create, update, delete: if isAdmin();
+      allow write: if isAdmin();
+    }
+    
+    // Employee Information Data - Public Read Access (if needed in future)
+    match /employee_information/{document} {
+      // ✅ ALLOW: Anyone can read (for public portal analytics)
+      allow read: if true;
+      
+      // ❌ DENY: Only authenticated admins can write
+      allow create, update, delete: if isAdmin();
+      allow write: if isAdmin();
+    }
+    
+    
+    // ═══════════════════════════════════════════════════════════════════════════
+    // EVENTS & ATTENDANCE (MIXED ACCESS)
+    // ═══════════════════════════════════════════════════════════════════════════
+    
+    // Events - Public can read, authenticated users can manage
+    match /events/{eventId} {
+      // ✅ ALLOW: Anyone can read events (for public event listings)
+      allow read: if true;
+      
+      // ❌ DENY: Only secretariat/admin can create, update, delete
+      allow create, update, delete: if isSecretariatOrAdmin();
+      allow write: if isSecretariatOrAdmin();
+    }
+    
+    // Attendance Records - Public can register, authenticated can manage
+    match /attendance/{attendanceId} {
+      // ✅ ALLOW: Anyone can read (for public attendance stats)
+      allow read: if true;
+      
+      // ✅ ALLOW: Anyone can create (for public event registration)
+      allow create: if true;
+      
+      // ❌ DENY: Only secretariat/admin can update or delete
+      allow update, delete: if isSecretariatOrAdmin();
+    }
+    
+    
+    // ═══════════════════════════════════════════════════════════════════════════
+    // PRIVATE COLLECTIONS (AUTHENTICATION REQUIRED)
+    // ═══════════════════════════════════════════════════════════════════════════
+    
+    // User Accounts - Strict Access Control
+    match /users/{userId} {
+      // ✅ ALLOW: User can read their own profile OR admin can read any
+      allow read: if isOwner(userId) || isAdmin();
+      
+      // ✅ ALLOW: Only admins can create users
+      allow create: if isAdmin();
+      
+      // ✅ ALLOW: User can update their own profile OR admin can update any
+      allow update: if isOwner(userId) || isAdmin();
+      
+      // ❌ DENY: Only admins can delete users
+      allow delete: if isAdmin();
+    }
+    
+    // User Directory (Employee Directory) - Admin Only
+    match /user_directory/{directoryId} {
+      // ✅ ALLOW: Only authenticated users can read
+      allow read: if isAuthenticated();
+      
+      // ❌ DENY: Only admins can write
+      allow create, update, delete: if isAdmin();
+      allow write: if isAdmin();
+    }
+    
+    // Conversations (Chat History) - User-Specific Access
+    match /conversations/{conversationId} {
+      // ✅ ALLOW: User can only access their own conversations
+      allow read: if isAuthenticated() && 
+                     resource.data.userId == request.auth.uid;
+      
+      // ✅ ALLOW: User can create their own conversations
+      allow create: if isAuthenticated() && 
+                       request.resource.data.userId == request.auth.uid;
+      
+      // ✅ ALLOW: User can update their own conversations
+      allow update: if isAuthenticated() && 
+                       resource.data.userId == request.auth.uid;
+      
+      // ✅ ALLOW: User can delete their own conversations
+      allow delete: if isAuthenticated() && 
+                       resource.data.userId == request.auth.uid;
+    }
+    
+    
+    // ═══════════════════════════════════════════════════════════════════════════
+    // FALLBACK RULE (DENY ALL UNMATCHED COLLECTIONS)
+    // ═══════════════════════════════════════════════════════════════════════════
+    
+    // Any collection not explicitly defined above requires authentication
+    match /{document=**} {
+      allow read, write: if isAuthenticated();
+    }
+  }
+}

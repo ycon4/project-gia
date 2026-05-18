@@ -1,23 +1,31 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  LineChart, Line, PieChart, Pie, Cell, Legend, FunnelChart, Funnel,
-  LabelList, AreaChart, Area
+  PieChart, Pie, Cell, Legend, FunnelChart, Funnel, AreaChart, Area, Brush
 } from 'recharts';
 import {
-  Users, TrendingUp, Target, FileText,
-  Calendar, Filter, Printer, Download, RefreshCcw,
-  BookOpen, Briefcase, UserCircle, GraduationCap, Building2,
-  ChevronDown, Award, BarChart2, Layers, User, Accessibility, Palette
+  Users, Calendar, Filter, RefreshCcw, BookOpen, Briefcase,
+  UserCircle, GraduationCap, ChevronDown, Layers, User, Accessibility, Palette,
+  FileText, Send
 } from 'lucide-react';
+import { useRole } from '../../contexts/RoleContext';
 
-// ─── COLOR THEMES ─────────────────────────────────────────────────────────────
+// ─── MSU-IIT PROFESSIONAL SYSTEM COLOR THEMES ──────────────────────────────────
 const COLOR_THEMES = {
   original: {
-    name: 'Original (Default)',
-    Male: '#73dae1',
-    Female: '#a673d8',
-    palette: ['#dd6e6b', '#a673d8', '#a5df6a', '#73dae1', '#6366f1', '#f59e0b', '#8b5cf6', '#ec4899'],
+    name: 'MSU-IIT Official (Signature)',
+    Male: '#741112',    // Academic Maroon
+    Female: '#D4AF37',  // Academic Gold
+    palette: [
+      '#530B0C', // Deep Velvet Maroon
+      '#741112', // Signature Maroon
+      '#9B2A2B', // Terracotta Crimson
+      '#D4AF37', // Academic Gold
+      '#ECC142', // Sunlit Amber
+      '#475569', // Slate Gray (Neutral balance)
+      '#334155', // Charcoal
+      '#1E293B'  // Dark Navy
+    ],
   },
   purpleAmber: {
     name: 'Purple & Amber',
@@ -36,24 +44,6 @@ const COLOR_THEMES = {
     Male: '#10b981',
     Female: '#84cc16',
     palette: ['#10b981', '#84cc16', '#22c55e', '#4ade80', '#059669', '#65a30d', '#16a34a', '#86efac'],
-  },
-  sunset: {
-    name: 'Sunset Warm',
-    Male: '#f59e0b',
-    Female: '#ef4444',
-    palette: ['#f59e0b', '#ef4444', '#f97316', '#fb923c', '#dc2626', '#fbbf24', '#ea580c', '#fb7185'],
-  },
-  berry: {
-    name: 'Berry Mix',
-    Male: '#ec4899',
-    Female: '#a855f7',
-    palette: ['#ec4899', '#a855f7', '#d946ef', '#f472b6', '#c026d3', '#e879f9', '#db2777', '#c084fc'],
-  },
-  professional: {
-    name: 'Professional',
-    Male: '#3b82f6',
-    Female: '#8b5cf6',
-    palette: ['#3b82f6', '#8b5cf6', '#6366f1', '#60a5fa', '#7c3aed', '#a78bfa', '#2563eb', '#9333ea'],
   },
 };
 
@@ -84,7 +74,7 @@ function sexKey(sex) {
   const v = (sex ?? '').toString().trim();
   if (v === 'Male') return 'Male';
   if (v === 'Female') return 'Female';
-  return null; // Ignore other values like "Prefer not to say" for SDD charts.
+  return null;
 }
 
 function getAgeBand(age) {
@@ -115,8 +105,6 @@ function useIsDark() {
 }
 
 // ─── SUB-COMPONENTS ───────────────────────────────────────────────────────────
-
-/** KPI card */
 function KPICard({ label, value, sub, accent = '#a673d8', icon: Icon, change }) {
   const [hovered, setHovered] = useState(false);
   const isDark = useIsDark();
@@ -134,25 +122,19 @@ function KPICard({ label, value, sub, accent = '#a673d8', icon: Icon, change }) 
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
-      {/* Icon + badge row */}
       <div className="flex items-start justify-between">
         <div className="p-3 rounded-xl transition-all duration-300"
           style={{ backgroundColor: hovered ? accent + '35' : accent + '18' }}>
           {Icon && <Icon size={26} style={{ color: accent }} strokeWidth={1.8} />}
         </div>
         {hasChange && (
-          <span className={`text-[10px] font-black px-2.5 py-1 rounded-full flex items-center gap-1 ${isPos ? 'text-emerald-500 dark:text-emerald-400' : isNeg ? 'text-red-500 dark:text-red-400' : 'text-neutral-400'
-            }`}
-            style={{
-              backgroundColor: isPos ? 'rgba(52,211,153,0.12)' : isNeg ? 'rgba(248,113,113,0.12)' : 'rgba(115,115,115,0.10)',
-            }}>
+          <span className={`text-[10px] font-black px-2.5 py-1 rounded-full flex items-center gap-1 ${isPos ? 'text-emerald-500 dark:text-emerald-400' : isNeg ? 'text-red-500 dark:text-red-400' : 'text-neutral-400'}`}
+            style={{ backgroundColor: isPos ? 'rgba(52,211,153,0.12)' : isNeg ? 'rgba(248,113,113,0.12)' : 'rgba(115,115,115,0.10)' }}>
             {isPos ? '▲' : isNeg ? '▼' : '─'} {Math.abs(change).toFixed(1)}%
           </span>
         )}
       </div>
-      {/* Value */}
       <span className="text-3xl font-black leading-none text-neutral-900 dark:text-neutral-100">{value}</span>
-      {/* Label + sub */}
       <div>
         <p className="text-[9px] font-black text-neutral-500 uppercase tracking-widest">{label}</p>
         {sub && <p className="text-[10px] text-neutral-400 dark:text-neutral-600 mt-0.5">{sub}</p>}
@@ -161,7 +143,6 @@ function KPICard({ label, value, sub, accent = '#a673d8', icon: Icon, change }) 
   );
 }
 
-/** Section header */
 function SectionTitle({ children }) {
   return (
     <div className="mb-4">
@@ -171,7 +152,6 @@ function SectionTitle({ children }) {
   );
 }
 
-/** Horizontal progress bar row */
 function RankRow({ rank, name, count, total, color = '#a673d8' }) {
   const width = total ? (count / total) * 100 : 0;
   return (
@@ -187,12 +167,12 @@ function RankRow({ rank, name, count, total, color = '#a673d8' }) {
   );
 }
 
-// ─── MAIN COMPONENT ───────────────────────────────────────────────────────────
+// ─── MAIN ECOSYSTEM DASHBOARD ──────────────────────────────────────────────────
 export default function GeneralDashboard({ events = [], attendanceData = [], compact = false }) {
-
+  const { role } = useRole();
   const isDark = useIsDark();
 
-  // ── Filter state ──
+  // ── Filter State ──
   const [dateRange, setDateRange] = useState({ start: '', end: '' });
   const [selectedSector, setSelectedSector] = useState('All');
   const [selectedEvent, setSelectedEvent] = useState('All');
@@ -202,7 +182,6 @@ export default function GeneralDashboard({ events = [], attendanceData = [], com
   const reportRef = useRef(null);
   const themeRef = useRef(null);
 
-  // Close theme menu when clicking outside
   useEffect(() => {
     const handler = (e) => {
       if (themeRef.current && !themeRef.current.contains(e.target)) {
@@ -213,10 +192,8 @@ export default function GeneralDashboard({ events = [], attendanceData = [], com
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
-  // Get colors from current theme
   const COLORS = useMemo(() => COLOR_THEMES[currentTheme], [currentTheme]);
 
-  // Dynamic sector and gender colors based on theme
   const SECTOR_COLORS = useMemo(() => ({
     Student: COLORS.Female,
     Faculty: COLORS.Male,
@@ -229,7 +206,7 @@ export default function GeneralDashboard({ events = [], attendanceData = [], com
     Female: COLORS.Female,
   }), [COLORS]);
 
-  // ── Filtered base data ──
+  // ── Filter Data Query ──
   const filtered = useMemo(() => {
     return attendanceData.filter(item => {
       const rawTs = item?.createdAt ?? item?.timestamp;
@@ -237,23 +214,20 @@ export default function GeneralDashboard({ events = [], attendanceData = [], com
       const start = dateRange.start ? new Date(dateRange.start) : null;
       const end = dateRange.end ? new Date(new Date(dateRange.end).setHours(23, 59, 59)) : null;
       const okDate = (!start || d >= start) && (!end || d <= end);
+
       const okSector = selectedSector === 'All' || item.sector === selectedSector;
       const okEvent = selectedEvent === 'All' || String(item.eventId) === String(selectedEvent);
       return okDate && okSector && okEvent;
     });
   }, [attendanceData, dateRange, selectedSector, selectedEvent]);
 
-  // ── Derived stats ──
+  // ── Transform Core Metrics ──
   const stats = useMemo(() => {
     const total = filtered.length;
-
     const male = filtered.reduce((acc, d) => acc + (sexKey(d.sex) === 'Male' ? 1 : 0), 0);
     const female = filtered.reduce((acc, d) => acc + (sexKey(d.sex) === 'Female' ? 1 : 0), 0);
-
-    // PWD participation (used for inclusion score)
     const pwdYes = filtered.reduce((acc, d) => acc + ((d.pwd_status ?? '').toString().trim() === 'Yes' ? 1 : 0), 0);
 
-    // Sector breakdown (data uses "Other Beneficiaries" from RegistrationForm)
     const sectors = ['Student', 'Faculty', 'Staff', 'Other Beneficiaries'];
     const sectorData = sectors.map((s) => {
       const inSector = filtered.filter((d) => d.sector === s);
@@ -275,7 +249,6 @@ export default function GeneralDashboard({ events = [], attendanceData = [], com
         color: SECTOR_COLORS[s.sector] || '#94a3b8',
       }));
 
-    // Office/College SDD ranking
     const ageBands = ['Under 18', '18–24', '25–34', '35–44', '45–54', '55+'];
     const unitGenderMap = {};
     filtered.forEach((d) => {
@@ -287,10 +260,8 @@ export default function GeneralDashboard({ events = [], attendanceData = [], com
       if (sk === 'Female') unitGenderMap[u].female += 1;
     });
     const unitGenderRanking = Object.values(unitGenderMap).sort((a, b) => b.total - a.total);
-
     const unitRanking = unitGenderRanking.map((u) => ({ name: u.name, count: u.total }));
 
-    // Monthly trend (all data for trend, not just filtered)
     const trendMap = {};
     attendanceData.forEach((d) => {
       const rawTs = d.createdAt ?? d.timestamp;
@@ -306,7 +277,6 @@ export default function GeneralDashboard({ events = [], attendanceData = [], com
       .sort((a, b) => a.month.localeCompare(b.month))
       .map((t) => ({ ...t, month: formatMonth(t.month) }));
 
-    // Session funnel data (SDD)
     const sessionGenderMap = {};
     filtered.forEach((d) => {
       const s = getSessionName(d);
@@ -316,15 +286,9 @@ export default function GeneralDashboard({ events = [], attendanceData = [], com
       if (sk === 'Male') sessionGenderMap[s].Male += 1;
       if (sk === 'Female') sessionGenderMap[s].Female += 1;
     });
-    const sessionGenderData = Object.values(sessionGenderMap)
-      .sort((a, b) => b.total - a.total)
-      .slice(0, 8);
+    const sessionGenderData = Object.values(sessionGenderMap).sort((a, b) => b.total - a.total).slice(0, 8);
+    const sessionFunnel = sessionGenderData.map((s) => ({ name: s.name, value: s.total })).sort((a, b) => b.value - a.value);
 
-    const sessionFunnel = sessionGenderData
-      .map((s) => ({ name: s.name, value: s.total }))
-      .sort((a, b) => b.value - a.value);
-
-    // Age SDD distribution
     const ageGenderMap = {};
     ageBands.forEach((b) => (ageGenderMap[b] = { band: b, Male: 0, Female: 0, total: 0 }));
     filtered.forEach((d) => {
@@ -338,7 +302,6 @@ export default function GeneralDashboard({ events = [], attendanceData = [], com
     const ageGenderData = ageBands.map((b) => ageGenderMap[b]);
     const topAgeBand = [...ageGenderData].sort((a, b) => b.total - a.total)[0]?.band || 'N/A';
 
-    // Employment SDD
     const employmentGenderMap = {};
     filtered.forEach((d) => {
       const raw = (d.employment_status ?? '').toString().trim();
@@ -349,12 +312,9 @@ export default function GeneralDashboard({ events = [], attendanceData = [], com
       if (sk === 'Male') employmentGenderMap[status].Male += 1;
       if (sk === 'Female') employmentGenderMap[status].Female += 1;
     });
-    const employmentGenderData = Object.values(employmentGenderMap)
-      .sort((a, b) => b.total - a.total)
-      .slice(0, 8);
+    const employmentGenderData = Object.values(employmentGenderMap).sort((a, b) => b.total - a.total).slice(0, 8);
     const topEmployment = employmentGenderData[0]?.name || 'N/A';
 
-    // PWD SDD
     const pwdGenderMap = {
       Yes: { name: 'Yes', Male: 0, Female: 0, total: 0 },
       No: { name: 'No', Male: 0, Female: 0, total: 0 },
@@ -371,13 +331,8 @@ export default function GeneralDashboard({ events = [], attendanceData = [], com
     const pwdGenderData = ['Yes', 'No'].map((k) => pwdGenderMap[k]).filter((x) => x.total > 0);
     const pwdYesPct = pct(pwdYes, total);
 
-    // Event comparison table
     const eventTable = events
-      .filter((ev) => {
-        // Filter by status
-        if (selectedStatus !== 'All' && ev.status !== selectedStatus) return false;
-        return true;
-      })
+      .filter((ev) => selectedStatus === 'All' || ev.status === selectedStatus)
       .map((ev) => {
         const evData = filtered.filter((d) => String(d.eventId) === String(ev.id));
         const evMale = evData.reduce((acc, d) => acc + (sexKey(d.sex) === 'Male' ? 1 : 0), 0);
@@ -404,48 +359,37 @@ export default function GeneralDashboard({ events = [], attendanceData = [], com
       })
       .filter((e) => e.total > 0);
 
-    // Narrative + topinsights
     const topUnit = unitGenderRanking[0]?.name || 'N/A';
     const femalePct = pct(female, total);
     const topSectorRow = [...sectorData].sort((a, b) => b.count - a.count)[0] || null;
     const topSector = topSectorRow?.sector || 'N/A';
     const topSectorFemalePct = topSectorRow ? pct(topSectorRow.Female, topSectorRow.count) : '0';
-
     const genderGap = male + female > 0 ? Math.round(((female - male) / (male + female)) * 100) : 0;
     const topSessionRow = sessionGenderData[0] || null;
     const topSession = topSessionRow?.name || 'N/A';
-
     const trendFirst = trend[0]?.Total ?? 0;
     const trendLast = trend[trend.length - 1]?.Total ?? 0;
     const trendDelta = trendLast - trendFirst;
 
-    const narrative =
-      total === 0
-        ? 'No data available for the selected filters.'
-        : `This reporting period recorded ${total} total participants across ${events.filter((e) => filtered.some((d) => String(d.eventId) === String(e.id))).length
-        } event(s). Top participation came from ${topUnit}. Gender composition is ${femalePct}% female (gender gap: ${genderGap > 0 ? '+' : ''}${genderGap} pts). The largest sector group is ${topSector}, while the most active gate/session is ${topSession}. ${pwdYes > 0 ? `${pwdYes} participant(s) were recorded as PWD.` : 'No PWD participants were recorded in this period.'
-        }`;
+    const narrative = total === 0 ? 'No data available for the selected filters.' :
+      `This reporting period recorded ${total} total participants across ${events.filter((e) => filtered.some((d) => String(d.eventId) === String(e.id))).length} event(s). Top participation came from ${topUnit}. Gender composition is ${femalePct}% female (gender gap: ${genderGap > 0 ? '+' : ''}${genderGap} pts). The largest sector group is ${topSector}, while the most active gate/session is ${topSession}. ${pwdYes > 0 ? `${pwdYes} participant(s) were recorded as PWD.` : 'No PWD participants were recorded in this period.'}`;
 
-    // ── Event-by-event chart data (sorted by date) ──
     const eventChart = events
       .map(ev => {
         const evData = filtered.filter(d => String(d.eventId) === String(ev.id));
         const m = evData.reduce((a, d) => a + (sexKey(d.sex) === 'Male' ? 1 : 0), 0);
         const f = evData.reduce((a, d) => a + (sexKey(d.sex) === 'Female' ? 1 : 0), 0);
-        const label = ev.title.length > 18 ? ev.title.slice(0, 17) + '…' : ev.title;
+        const label = ev.title.length > 22 ? ev.title.slice(0, 21) + '…' : ev.title;
         const target = ev.targetParticipants ? Number(ev.targetParticipants) : null;
         return { name: label, Total: evData.length, Male: m, Female: f, Target: target, _date: ev.startDate || ev.date || '' };
       })
       .filter(e => e.Total > 0)
       .sort((a, b) => a._date.localeCompare(b._date));
 
-    // ── Previous-period percentage change ──
     let changes = { total: null, female: null, male: null, pwd: null };
     if (dateRange.start) {
       const startMs = new Date(dateRange.start).getTime();
-      const endMs = dateRange.end
-        ? new Date(new Date(dateRange.end).setHours(23, 59, 59)).getTime()
-        : Date.now();
+      const endMs = dateRange.end ? new Date(new Date(dateRange.end).setHours(23, 59, 59)).getTime() : Date.now();
       const duration = endMs - startMs;
       const prevEndMs = startMs - 1;
       const prevStartMs = prevEndMs - duration;
@@ -471,41 +415,28 @@ export default function GeneralDashboard({ events = [], attendanceData = [], com
       };
     }
 
+    // ── Event Submission Status Statistics (for Secretariat) ──
+    const submissionStats = role === 'SECRETARIAT' ? (() => {
+      const draftEvents = events.filter(e => e.submissionStatus === 'draft');
+      const submittedEvents = events.filter(e => e.submissionStatus === 'submitted' || !e.submissionStatus);
+      return {
+        drafts: draftEvents.length,
+        submitted: submittedEvents.length,
+        total: events.length,
+        draftPct: events.length > 0 ? ((draftEvents.length / events.length) * 100).toFixed(1) : '0',
+        submittedPct: events.length > 0 ? ((submittedEvents.length / events.length) * 100).toFixed(1) : '0'
+      };
+    })() : null;
+
     return {
-      total,
-      male,
-      female,
-      pwdYes,
-      pwdYesPct,
-      sectorData,
-      genderPie,
-      sectorPie,
-      unitRanking,
-      unitGenderRanking,
-      trend,
-      sessionGenderData,
-      sessionFunnel,
-      ageGenderData,
-      topAgeBand,
-      employmentGenderData,
-      topEmployment,
-      pwdGenderData,
-      eventTable,
-      narrative,
-      femalePct,
-      topSector,
-      topSectorFemalePct,
-      topSession,
-      trendDelta,
-      changes,
-      eventChart,
+      total, male, female, pwdYes, pwdYesPct, sectorData, genderPie, sectorPie,
+      unitRanking, unitGenderRanking, trend, sessionGenderData, sessionFunnel,
+      ageGenderData, topAgeBand, employmentGenderData, topEmployment, pwdGenderData,
+      eventTable, narrative, femalePct, topSector, topSectorFemalePct, topSession,
+      trendDelta, changes, eventChart, submissionStats,
     };
-  }, [filtered, events, attendanceData, dateRange, selectedSector, selectedEvent, selectedStatus]);
+  }, [filtered, events, attendanceData, dateRange, selectedSector, selectedEvent, selectedStatus, GENDER_COLORS, SECTOR_COLORS]);
 
-  // ── Print handler ──
-  const handlePrint = () => window.print();
-
-  // ── Reset filters ──
   const resetFilters = () => {
     setDateRange({ start: '', end: '' });
     setSelectedSector('All');
@@ -513,10 +444,8 @@ export default function GeneralDashboard({ events = [], attendanceData = [], com
     setSelectedStatus('All');
   };
 
-  // ─── RENDER ────────────────────────────────────────────────────────────────
   return (
     <div className="flex flex-col h-full">
-      {/* ── PRINT STYLES (injected inline so no separate CSS file needed) ── */}
       <style>{`
         @media print {
           body * { visibility: hidden; }
@@ -528,30 +457,27 @@ export default function GeneralDashboard({ events = [], attendanceData = [], com
         }
       `}</style>
 
-      {/* ── FILTER BAR — fixed header, never scrolls ── */}
+      {/* ── FILTER HEADER CONTROL BAR ── */}
       <div className="print-hide shrink-0 h-12 px-8 border-b border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-[#121212] flex items-center gap-4">
-
-        {/* Date range */}
         <div className="flex items-center gap-2 text-[10px] font-bold">
           <Calendar size={12} className="text-neutral-400 dark:text-neutral-500 shrink-0" />
           <input type="date"
-            className="bg-transparent outline-none text-[10px] font-bold text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-200 transition-colors cursor-pointer [color-scheme:light] dark:[color-scheme:dark]"
+            className="bg-transparent outline-none text-[10px] font-bold text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-200 transition-colors cursor-pointer"
             value={dateRange.start}
             onChange={e => setDateRange(p => ({ ...p, start: e.target.value }))} />
           <span className="text-neutral-300 dark:text-neutral-700">—</span>
           <input type="date"
-            className="bg-transparent outline-none text-[10px] font-bold text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-200 transition-colors cursor-pointer [color-scheme:light] dark:[color-scheme:dark]"
+            className="bg-transparent outline-none text-[10px] font-bold text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-200 transition-colors cursor-pointer"
             value={dateRange.end}
             onChange={e => setDateRange(p => ({ ...p, end: e.target.value }))} />
         </div>
 
         <span className="text-neutral-300 dark:text-neutral-800 select-none">|</span>
 
-        {/* Sector */}
         <div className="relative flex items-center gap-1.5">
           <Filter size={11} className="text-neutral-400 dark:text-neutral-500 shrink-0" />
           <select
-            className="appearance-none bg-transparent outline-none text-[10px] font-bold text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-200 transition-colors cursor-pointer pr-4 [color-scheme:light] dark:[color-scheme:dark]"
+            className="appearance-none bg-transparent outline-none text-[10px] font-bold text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-200 transition-colors cursor-pointer pr-4"
             value={selectedSector} onChange={e => setSelectedSector(e.target.value)}>
             <option value="All">All Sectors</option>
             {['Student', 'Faculty', 'Staff', 'Other Beneficiaries'].map(s => <option key={s} value={s}>{s}</option>)}
@@ -561,11 +487,10 @@ export default function GeneralDashboard({ events = [], attendanceData = [], com
 
         <span className="text-neutral-300 dark:text-neutral-800 select-none">|</span>
 
-        {/* Event */}
         <div className="relative flex items-center gap-1.5">
           <Layers size={11} className="text-neutral-400 dark:text-neutral-500 shrink-0" />
           <select
-            className="appearance-none bg-transparent outline-none text-[10px] font-bold text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-200 transition-colors cursor-pointer pr-4 max-w-[200px] [color-scheme:light] dark:[color-scheme:dark]"
+            className="appearance-none bg-transparent outline-none text-[10px] font-bold text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-200 transition-colors cursor-pointer pr-4 max-w-[200px]"
             value={selectedEvent} onChange={e => setSelectedEvent(e.target.value)}>
             <option value="All">All Events</option>
             {events.map(ev => <option key={ev.id} value={ev.id}>{ev.title}</option>)}
@@ -575,11 +500,10 @@ export default function GeneralDashboard({ events = [], attendanceData = [], com
 
         <span className="text-neutral-300 dark:text-neutral-800 select-none">|</span>
 
-        {/* Status */}
         <div className="relative flex items-center gap-1.5">
           <Filter size={11} className="text-neutral-400 dark:text-neutral-500 shrink-0" />
           <select
-            className="appearance-none bg-transparent outline-none text-[10px] font-bold text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-200 transition-colors cursor-pointer pr-4 [color-scheme:light] dark:[color-scheme:dark]"
+            className="appearance-none bg-transparent outline-none text-[10px] font-bold text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-200 transition-colors cursor-pointer pr-4"
             value={selectedStatus} onChange={e => setSelectedStatus(e.target.value)}>
             <option value="All">All Status</option>
             <option value="Active">Active</option>
@@ -589,38 +513,21 @@ export default function GeneralDashboard({ events = [], attendanceData = [], com
           <ChevronDown size={10} className="absolute right-0 text-neutral-400 dark:text-neutral-600 pointer-events-none" />
         </div>
 
-        {/* Reset */}
-        <button onClick={resetFilters}
-          className="flex items-center gap-1.5 text-[10px] font-black uppercase text-neutral-400 dark:text-neutral-600 hover:text-neutral-900 dark:hover:text-neutral-300 transition-colors">
+        <button onClick={resetFilters} className="flex items-center gap-1.5 text-[10px] font-black uppercase text-neutral-400 dark:text-neutral-600 hover:text-neutral-900 dark:hover:text-neutral-300 transition-colors">
           <RefreshCcw size={11} /> Reset
         </button>
 
         <span className="text-neutral-300 dark:text-neutral-800 select-none">|</span>
 
-        {/* Theme Selector */}
         <div className="relative" ref={themeRef}>
-          <button
-            onClick={() => setShowThemeMenu(!showThemeMenu)}
-            className="flex items-center gap-1.5 text-[10px] font-black uppercase text-neutral-400 dark:text-neutral-600 hover:text-neutral-900 dark:hover:text-neutral-300 transition-colors"
-            title="Change color theme"
-          >
+          <button onClick={() => setShowThemeMenu(!showThemeMenu)} className="flex items-center gap-1.5 text-[10px] font-black uppercase text-neutral-400 dark:text-neutral-600 hover:text-neutral-900 dark:hover:text-neutral-300 transition-colors">
             <Palette size={11} /> Theme
           </button>
-
           {showThemeMenu && (
-            <div className="absolute right-0 top-full mt-1 z-20 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg shadow-xl overflow-hidden min-w-[160px]">
+            <div className="absolute right-0 top-full mt-1 z-20 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg shadow-xl overflow-hidden min-w-[180px]">
               {Object.entries(COLOR_THEMES).map(([key, theme]) => (
-                <button
-                  key={key}
-                  onClick={() => {
-                    setCurrentTheme(key);
-                    setShowThemeMenu(false);
-                  }}
-                  className={`w-full flex items-center justify-between gap-2 px-3 py-2 text-xs text-left transition-colors ${currentTheme === key
-                    ? 'bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400 font-semibold'
-                    : 'text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-700'
-                    }`}
-                >
+                <button key={key} onClick={() => { setCurrentTheme(key); setShowThemeMenu(false); }}
+                  className={`w-full flex items-center justify-between gap-2 px-3 py-2 text-xs text-left transition-colors ${currentTheme === key ? 'bg-neutral-100 dark:bg-neutral-700 text-neutral-900 dark:text-white font-semibold' : 'text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-700'}`}>
                   <span>{theme.name}</span>
                   {currentTheme === key && <span className="text-xs">✓</span>}
                 </button>
@@ -630,10 +537,8 @@ export default function GeneralDashboard({ events = [], attendanceData = [], com
         </div>
       </div>
 
-      {/* ── SCROLLABLE CONTENT ── */}
+      {/* ── SCROLLABLE DASHBOARD ECOLOGY ── */}
       <div className="flex-1 overflow-y-auto px-8 pb-8" id="gad-report" ref={reportRef}>
-
-        {/* ── PRINT HEADER (only visible when printing) ── */}
         <div className="hidden print:block mb-6 border-b pb-4">
           <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Gender and Development Office</p>
           <h1 className="text-2xl font-black text-slate-900 uppercase">GAD Event Participation Report</h1>
@@ -644,456 +549,212 @@ export default function GeneralDashboard({ events = [], attendanceData = [], com
         </div>
 
         <div className="flex flex-col gap-6 pt-6 pb-20">
-
-          {/* ── PAGE TITLE ── */}
           <div>
             <p className="text-[9px] font-black uppercase tracking-widest text-neutral-400 dark:text-neutral-600 mb-0.5">MSU-IIT GAD Office</p>
             <h1 className="text-2xl font-black leading-none text-neutral-900 dark:text-neutral-100">Events Dashboard</h1>
           </div>
 
-          {/* ── KPI STRIP ── */}
+          {/* ── KPI GRID STRIP ── */}
           <div className={`grid gap-6 ${compact ? 'grid-cols-2' : 'grid-cols-2 md:grid-cols-4'}`}>
-            <KPICard label="Total Participants" value={stats.total.toLocaleString()} icon={Users} accent={COLORS.palette[0]}
-              sub={`${events.length} event(s) total`} change={stats.changes.total} />
-            <KPICard label="Female Participants" value={stats.female.toLocaleString()} icon={UserCircle} accent={COLORS.Female}
-              sub={`${stats.femalePct}% of total`} change={stats.changes.female} />
-            <KPICard label="Male Participants" value={stats.male.toLocaleString()} icon={User} accent={COLORS.Male}
-              sub={`${pct(stats.male, stats.total)}% of total`} change={stats.changes.male} />
-            <KPICard label="PWD Participants" value={stats.pwdYes.toLocaleString()} icon={Accessibility} accent={COLORS.palette[3]}
-              sub={`${stats.pwdYesPct}% of total`} change={stats.changes.pwd} />
+            <KPICard label="Total Participants" value={stats.total.toLocaleString()} icon={Users} accent={COLORS.palette[1]} sub={`${events.length} event(s) total`} change={stats.changes.total} />
+            <KPICard label="Female Participants" value={stats.female.toLocaleString()} icon={UserCircle} accent={COLORS.Female} sub={`${stats.femalePct}% of total`} change={stats.changes.female} />
+            <KPICard label="Male Participants" value={stats.male.toLocaleString()} icon={User} accent={COLORS.Male} sub={`${pct(stats.male, stats.total)}% of total`} change={stats.changes.male} />
+            <KPICard label="PWD Participants" value={stats.pwdYes.toLocaleString()} icon={Accessibility} accent={COLORS.palette[5]} sub={`${stats.pwdYesPct}% of total`} change={stats.changes.pwd} />
           </div>
 
-          {/* ── PARTICIPATION TREND CHART ── */}
+          {/* ── SUBMISSION STATUS CARDS (Secretariat Only) ── */}
+          {role === 'SECRETARIAT' && stats.submissionStats && (
+            <div className="grid gap-6 grid-cols-2 md:grid-cols-3">
+              <KPICard
+                label="Draft Events"
+                value={stats.submissionStats.drafts.toString()}
+                icon={FileText}
+                accent="#f59e0b"
+                sub={`${stats.submissionStats.draftPct}% of your events`}
+              />
+              <KPICard
+                label="Submitted Events"
+                value={stats.submissionStats.submitted.toString()}
+                icon={Send}
+                accent="#3b82f6"
+                sub={`${stats.submissionStats.submittedPct}% of your events`}
+              />
+              <KPICard
+                label="Total Events"
+                value={stats.submissionStats.total.toString()}
+                icon={Calendar}
+                accent={COLORS.palette[2]}
+                sub="Events you created"
+              />
+            </div>
+          )}
+
+          {/* ── 1. COMPREHENSIVE PARTICIPATION SCALABLE GRAPH ── */}
           <div className="rounded-2xl overflow-hidden border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-[#121212]">
-            {/* Card header */}
             <div className="flex items-center justify-between px-6 pt-5 pb-3">
               <div>
                 <p className="text-[9px] font-black uppercase tracking-widest mb-0.5 text-neutral-400 dark:text-neutral-600">Overview</p>
-                <h3 className="text-base font-black leading-none text-neutral-900 dark:text-neutral-100">Participation Trend</h3>
+                <h3 className="text-base font-black leading-none text-neutral-900 dark:text-neutral-100">Participation & Target Analytics</h3>
               </div>
               <div className="flex items-center gap-4">
-                <div className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full inline-block" style={{ background: COLORS.palette[0] }} /><span className="text-[9px] font-bold text-neutral-400 uppercase tracking-wider">Total</span></div>
-                <div className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full inline-block" style={{ background: COLORS.Female }} /><span className="text-[9px] font-bold text-neutral-400 uppercase tracking-wider">Female</span></div>
                 <div className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full inline-block" style={{ background: COLORS.Male }} /><span className="text-[9px] font-bold text-neutral-400 uppercase tracking-wider">Male</span></div>
-                <div className="flex items-center gap-1.5"><span className="w-5 inline-block border-t-2 border-dashed" style={{ borderColor: COLORS.palette[3] }} /><span className="text-[9px] font-bold text-neutral-400 uppercase tracking-wider">Target</span></div>
+                <div className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full inline-block" style={{ background: COLORS.Female }} /><span className="text-[9px] font-bold text-neutral-400 uppercase tracking-wider">Female</span></div>
+                <div className="flex items-center gap-1.5"><span className="w-5 inline-block border-t-2 border-dashed border-neutral-400" /><span className="text-[9px] font-bold text-neutral-400 uppercase tracking-wider">Target Threshold</span></div>
               </div>
             </div>
 
-            {/* Chart — event-by-event (always has data when events exist) */}
-            {stats.eventChart.length === 0 ? (
-              <div className="flex items-center justify-center h-40 text-neutral-400 dark:text-neutral-600 text-xs italic">No event data yet</div>
-            ) : (
-              <ResponsiveContainer width="100%" height={220}>
-                <AreaChart data={stats.eventChart} margin={{ top: 10, right: 24, left: 0, bottom: 0 }}>
-                  <defs>
-                    <linearGradient id="gTotal" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor={COLORS.palette[0]} stopOpacity={0.35} />
-                      <stop offset="95%" stopColor={COLORS.palette[0]} stopOpacity={0} />
-                    </linearGradient>
-                    <linearGradient id="gFemale" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor={COLORS.Female} stopOpacity={0.35} />
-                      <stop offset="95%" stopColor={COLORS.Female} stopOpacity={0} />
-                    </linearGradient>
-                    <linearGradient id="gMale" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor={COLORS.Male} stopOpacity={0.30} />
-                      <stop offset="95%" stopColor={COLORS.Male} stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.06)'} />
-                  <XAxis dataKey="name" axisLine={false} tickLine={false}
-                    tick={{ fontSize: 9, fontWeight: 700, fill: isDark ? '#525252' : '#9ca3af' }}
-                    interval={0} />
-                  <YAxis allowDecimals={false} axisLine={false} tickLine={false}
-                    tick={{ fontSize: 9, fill: isDark ? '#525252' : '#9ca3af' }} width={28} />
-                  <Tooltip
-                    contentStyle={{ background: isDark ? '#1e1e22' : '#ffffff', border: `1px solid ${isDark ? '#2a2a2e' : '#e5e7eb'}`, borderRadius: 12, fontSize: 11, color: isDark ? '#e5e5e5' : '#171717' }}
-                    labelStyle={{ fontWeight: 900, fontSize: 10, marginBottom: 4 }}
-                    itemStyle={{ fontWeight: 700 }}
-                    cursor={{ stroke: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)', strokeWidth: 1 }}
-                  />
-                  <Area type="monotone" dataKey="Total" stroke={COLORS.palette[0]} strokeWidth={2} fill="url(#gTotal)" dot={{ r: 3, fill: COLORS.palette[0], strokeWidth: 0 }} activeDot={{ r: 5, fill: COLORS.palette[0] }} />
-                  <Area type="monotone" dataKey="Female" stroke={COLORS.Female} strokeWidth={2} fill="url(#gFemale)" dot={{ r: 3, fill: COLORS.Female, strokeWidth: 0 }} activeDot={{ r: 5, fill: COLORS.Female }} />
-                  <Area type="monotone" dataKey="Male" stroke={COLORS.Male} strokeWidth={2} fill="url(#gMale)" dot={{ r: 3, fill: COLORS.Male, strokeWidth: 0 }} activeDot={{ r: 5, fill: COLORS.Male }} />
-                  <Area type="monotone" dataKey="Target" stroke={COLORS.palette[3]} strokeWidth={2} strokeDasharray="5 4" fill="none" dot={{ r: 3, fill: COLORS.palette[3], strokeWidth: 0 }} activeDot={{ r: 5, fill: COLORS.palette[3] }} connectNulls />
-                </AreaChart>
-              </ResponsiveContainer>
-            )}
-          </div>
-
-          {/* ── ROW 1: Gender Pie + Sector Pie ── */}
-          {/* ── PIE CHARTS (left) + SDD BAR (right) ── */}
-          <div className={`grid gap-6 ${compact ? 'grid-cols-1' : 'grid-cols-3'}`}>
-
-            {/* Left column: Gender + Sector pies stacked */}
-            <div className="col-span-1 flex flex-col gap-6">
-
-              {/* Gender Pie */}
-              <div className="bg-white dark:bg-neutral-900 rounded-2xl border border-neutral-200 dark:border-neutral-700 shadow-sm overflow-hidden flex-1">
-                <div className="px-4 pt-4 pb-0">
-                  <SectionTitle>Gender Distribution</SectionTitle>
-                </div>
-                {stats.total === 0 ? (
-                  <p className="text-center text-neutral-300 dark:text-neutral-600 text-xs py-6">No data</p>
-                ) : (
-                  <div className="flex items-center">
-                    <div className="flex flex-col gap-4 px-4 pb-4 shrink-0">
-                      {stats.genderPie.map(g => (
-                        <div key={g.name}>
-                          <div className="flex items-center gap-1.5 mb-0.5">
-                            <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: g.color }} />
-                            <span className="text-[9px] font-black text-neutral-400 dark:text-neutral-500 uppercase tracking-widest">{g.name}</span>
-                          </div>
-                          <div className="text-2xl font-black text-neutral-900 dark:text-neutral-100 leading-none">{g.value}</div>
-                          <div className="text-[10px] text-neutral-400 dark:text-neutral-500 mt-0.5">{pct(g.value, stats.total)}%</div>
-                        </div>
-                      ))}
-                    </div>
-                    <div className="flex-1 min-w-0 aspect-square">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <PieChart margin={{ top: 6, right: 6, bottom: 6, left: 6 }}>
-                          <Pie data={stats.genderPie} dataKey="value" cx="50%" cy="50%" outerRadius="88%" innerRadius="52%" paddingAngle={4} cornerRadius={6} stroke="none">
-                            {stats.genderPie.map((entry, i) => (
-                              <Cell key={i} fill={entry.color} stroke="none" />
-                            ))}
-                          </Pie>
-                          <Tooltip formatter={(v, n) => [`${v} (${pct(v, stats.total)}%)`, n]} />
-                        </PieChart>
-                      </ResponsiveContainer>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Sector Pie */}
-              <div className="bg-white dark:bg-neutral-900 rounded-2xl border border-neutral-200 dark:border-neutral-700 shadow-sm overflow-hidden flex-1">
-                <div className="px-4 pt-4 pb-0">
-                  <SectionTitle>Sector Breakdown</SectionTitle>
-                </div>
-                {stats.total === 0 ? (
-                  <p className="text-center text-neutral-300 dark:text-neutral-600 text-xs py-6">No data</p>
-                ) : (
-                  <div className="flex items-center">
-                    <div className="flex flex-col gap-3 px-4 pb-4 shrink-0">
-                      {stats.sectorPie.map(s => (
-                        <div key={s.name}>
-                          <div className="flex items-center gap-1.5 mb-0.5">
-                            <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: s.color }} />
-                            <span className="text-[9px] font-black text-neutral-400 dark:text-neutral-500 uppercase tracking-widest">{s.name}</span>
-                          </div>
-                          <div className="text-xl font-black text-neutral-900 dark:text-neutral-100 leading-none">{s.value}</div>
-                        </div>
-                      ))}
-                    </div>
-                    <div className="flex-1 min-w-0 aspect-square">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <PieChart margin={{ top: 6, right: 6, bottom: 6, left: 6 }}>
-                          <Pie data={stats.sectorPie} dataKey="value" cx="50%" cy="50%" outerRadius="88%" innerRadius="52%" paddingAngle={4} cornerRadius={6} stroke="none">
-                            {stats.sectorPie.map((entry, i) => (
-                              <Cell key={i} fill={entry.color} stroke="none" />
-                            ))}
-                          </Pie>
-                          <Tooltip formatter={(v, n) => [`${v} (${pct(v, stats.total)}%)`, n]} />
-                        </PieChart>
-                      </ResponsiveContainer>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Right column: Top Units */}
-            <div className="col-span-2 bg-white dark:bg-neutral-900 p-4 rounded-2xl border border-neutral-200 dark:border-neutral-700 shadow-sm flex flex-col">
-              <SectionTitle>Top Units / Colleges</SectionTitle>
-              {stats.unitGenderRanking.length === 0 ? (
-                <p className="text-center text-neutral-300 dark:text-neutral-600 text-xs py-10">No data</p>
+            <div className="p-4 pt-2">
+              {stats.eventChart.length === 0 ? (
+                <div className="flex items-center justify-center h-40 text-neutral-400 dark:text-neutral-600 text-xs italic">No event records available</div>
               ) : (
-                <>
-                  <div className="flex-1 flex flex-col justify-between">
-                    {stats.unitGenderRanking.slice(0, 8).map((u) => {
-                      const femaleShare = u.total ? u.female / u.total : 0;
-                      return (
-                        <div key={u.name}>
-                          <div className="flex justify-between mb-1">
-                            <span className="text-sm font-bold text-neutral-500 dark:text-neutral-400 truncate pr-3">{u.name}</span>
-                            <span className="text-[10px] font-bold text-neutral-400 dark:text-neutral-500 shrink-0">
-                              {u.total} • F {u.female} / M {u.male}
-                            </span>
-                          </div>
-                          <div className="h-4 bg-neutral-100 dark:bg-neutral-800 rounded-full overflow-hidden flex">
-                            <div className="h-full transition-all" style={{ width: `${femaleShare * 100}%`, backgroundColor: COLORS.Female }} />
-                            <div className="h-full transition-all" style={{ width: `${(1 - femaleShare) * 100}%`, backgroundColor: COLORS.Male }} />
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                  {/* Support text */}
-                  <div className="mt-4 pt-3 border-t border-neutral-100 dark:border-neutral-800 grid grid-cols-3 gap-3">
-                    {(() => {
-                      const top = stats.unitGenderRanking[0];
-                      const topFemale = [...stats.unitGenderRanking].sort((a, b) => b.female - a.female)[0];
-                      const topMale = [...stats.unitGenderRanking].sort((a, b) => b.male - a.male)[0];
-                      return (
-                        <>
-                          <div>
-                            <p className="text-[8px] font-black uppercase tracking-widest text-neutral-400 dark:text-neutral-600 mb-0.5">Most Participants</p>
-                            <p className="text-[10px] font-bold text-neutral-700 dark:text-neutral-300 truncate">{top?.name}</p>
-                            <p className="text-[9px] text-neutral-400 dark:text-neutral-500">{top?.total} total</p>
-                          </div>
-                          <div>
-                            <p className="text-[8px] font-black uppercase tracking-widest mb-0.5" style={{ color: COLORS.Female }}>Highest Female</p>
-                            <p className="text-[10px] font-bold text-neutral-700 dark:text-neutral-300 truncate">{topFemale?.name}</p>
-                            <p className="text-[9px] text-neutral-400 dark:text-neutral-500">{topFemale?.female} F ({pct(topFemale?.female, topFemale?.total)}%)</p>
-                          </div>
-                          <div>
-                            <p className="text-[8px] font-black uppercase tracking-widest mb-0.5" style={{ color: COLORS.Male }}>Highest Male</p>
-                            <p className="text-[10px] font-bold text-neutral-700 dark:text-neutral-300 truncate">{topMale?.name}</p>
-                            <p className="text-[9px] text-neutral-400 dark:text-neutral-500">{topMale?.male} M ({pct(topMale?.male, topMale?.total)}%)</p>
-                          </div>
-                        </>
-                      );
-                    })()}
-                  </div>
-                </>
+                <ResponsiveContainer width="100%" height={260}>
+                  <AreaChart data={stats.eventChart} margin={{ top: 10, right: 15, left: -20, bottom: 5 }}>
+                    <defs>
+                      <linearGradient id="gMaroon" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor={COLORS.Male} stopOpacity={0.25} />
+                        <stop offset="95%" stopColor={COLORS.Male} stopOpacity={0.0} />
+                      </linearGradient>
+                      <linearGradient id="gGold" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor={COLORS.Female} stopOpacity={0.2} />
+                        <stop offset="95%" stopColor={COLORS.Female} stopOpacity={0.0} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="4 4" stroke={isDark ? '#262626' : '#f0f0f0'} strokeOpacity={0.5} />
+                    <XAxis dataKey="name" tick={{ fill: isDark ? '#8c8c8c' : '#6b7280', fontSize: 10, fontWeight: 600 }} tickLine={false} dy={6} />
+                    <YAxis tick={{ fill: isDark ? '#8c8c8c' : '#6b7280', fontSize: 10, fontWeight: 600 }} tickLine={false} axisLine={false} />
+                    <Tooltip contentStyle={{ backgroundColor: isDark ? '#1a1a1a' : '#ffffff', borderColor: isDark ? '#333333' : '#e2e8f0', borderRadius: '12px', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)', fontSize: '11px' }} />
+                    <Area type="monotone" dataKey="Male" stroke={COLORS.Male} strokeWidth={2} fillOpacity={1} fill="url(#gMaroon)" name="Male" />
+                    <Area type="monotone" dataKey="Female" stroke={COLORS.Female} strokeWidth={2} fillOpacity={1} fill="url(#gGold)" name="Female" />
+                    {stats.eventChart.some(e => e.Target) && (
+                      <Area type="monotone" dataKey="Target" stroke="#94a3b8" strokeWidth={1.5} strokeDasharray="4 4" fill="none" name="Target Base" dot={false} />
+                    )}
+                    {/* Native multi-record brush control handle to safely view thousands of records */}
+                    {stats.eventChart.length > 8 && (
+                      <Brush dataKey="name" height={18} stroke={COLORS.Male + '40'} fill={isDark ? '#1f1f1f' : '#f8fafc'} tickFormatter={() => ''} />
+                    )}
+                  </AreaChart>
+                </ResponsiveContainer>
               )}
             </div>
           </div>
 
-          {/* ── Monthly Trend (Area) ── */}
-          <div className="bg-white dark:bg-neutral-900 p-4 rounded-2xl border border-neutral-200 dark:border-neutral-700 shadow-sm print-page-break">
-            <SectionTitle>Monthly Attendance Trend</SectionTitle>
-            {stats.trend.length === 0 ? (
-              <p className="text-center text-neutral-300 dark:text-neutral-600 text-xs py-10">No trend data</p>
-            ) : (
-              <ResponsiveContainer width="100%" height={240}>
-                <AreaChart data={stats.trend}>
-                  <defs>
-                    <linearGradient id="gTotal" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor={COLORS.palette[4]} stopOpacity={0.15} />
-                      <stop offset="95%" stopColor={COLORS.palette[4]} stopOpacity={0} />
-                    </linearGradient>
-                    <linearGradient id="gFemale" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor={COLORS.Female} stopOpacity={0.15} />
-                      <stop offset="95%" stopColor={COLORS.Female} stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                  <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 700 }} />
-                  <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10 }} />
-                  <Tooltip contentStyle={{ borderRadius: 12, border: 'none', fontSize: 11 }} />
-                  <Legend iconType="circle" iconSize={8}
-                    formatter={v => <span style={{ fontSize: 10, fontWeight: 700 }}>{v}</span>} />
-                  <Area type="monotone" dataKey="Total" stroke={COLORS.palette[4]} strokeWidth={2} fill="url(#gTotal)" dot={{ r: 3 }} />
-                  <Area type="monotone" dataKey="Male" stroke={COLORS.Male} strokeWidth={2} fill="none" dot={{ r: 3 }} />
-                  <Area type="monotone" dataKey="Female" stroke={COLORS.Female} strokeWidth={2} fill="url(#gFemale)" dot={{ r: 3 }} />
-                </AreaChart>
-              </ResponsiveContainer>
-            )}
-
-            {stats.trend.length > 1 && (
-              <p className="mt-3 text-[9px] font-bold text-neutral-400 dark:text-neutral-500">
-                Trend direction (Total):{" "}
-                <span className={stats.trendDelta >= 0 ? 'text-emerald-600' : 'text-rose-600'}>
-                  {stats.trendDelta >= 0 ? '+' : ''}{stats.trendDelta}
-                </span>{' '}
-                net change from first to last month
-              </p>
-            )}
-          </div>
-
-          {/* ── ROW 4: Session SDD + Office/College SDD ── */}
-          <div className={`grid gap-6 ${compact ? 'grid-cols-1' : 'grid-cols-1 md:grid-cols-2'}`}>
-
-            {/* Session SDD (Male vs Female) */}
-            <div className="bg-white dark:bg-neutral-900 p-4 rounded-2xl border border-neutral-200 dark:border-neutral-700 shadow-sm">
-              <SectionTitle>Session Attendance SDD</SectionTitle>
-
-              {stats.sessionGenderData.length === 0 ? (
-                <p className="text-center text-neutral-300 dark:text-neutral-600 text-xs py-10">No session data</p>
-              ) : (
-                <>
-                  <ResponsiveContainer width="100%" height={260}>
-                    <BarChart data={stats.sessionGenderData} layout="vertical" barGap={6} margin={{ left: 0, right: 0 }}>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                      <XAxis type="number" hide />
-                      <YAxis
-                        dataKey="name"
-                        type="category"
-                        width={140}
-                        axisLine={false}
-                        tickLine={false}
-                        tick={{ fontSize: 10, fontWeight: 700 }}
-                      />
-                      <Tooltip
-                        contentStyle={{ borderRadius: 0, border: 'none', fontSize: 11 }}
-                        formatter={(v, n) => [`${v}`, n]}
-                      />
-                      <Legend iconType="circle" iconSize={8} formatter={(v) => <span style={{ fontSize: 10, fontWeight: 700 }}>{v}</span>} />
-                      <Bar dataKey="Female" stackId="gender" fill={GENDER_COLORS.Female} barSize={22} radius={[6, 0, 0, 6]} />
-                      <Bar dataKey="Male" stackId="gender" fill={GENDER_COLORS.Male} barSize={22} radius={[0, 6, 6, 0]} />
-                    </BarChart>
-                  </ResponsiveContainer>
-
-                  <p className="mt-3 text-[9px] font-bold text-neutral-400 dark:text-neutral-500">
-                    Top gate: <span className="text-neutral-700 dark:text-neutral-300">{stats.sessionGenderData[0].name}</span> •{" "}
-                    {stats.sessionGenderData[0].Female} Female / {stats.sessionGenderData[0].Male} Male
-                  </p>
-                </>
-              )}
+          {/* ── 2. SECTOR DISTRIBUTION GRAPH WITH GEOMETRY FIX ── */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-[#121212] p-5">
+              <SectionTitle>Institutional Sectors Mapping</SectionTitle>
+              <div className="mt-4 flex justify-center">
+                <ResponsiveContainer width="100%" height={230}>
+                  <BarChart data={stats.sectorData} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="4 4" stroke={isDark ? '#262626' : '#f0f0f0'} strokeOpacity={0.4} />
+                    <XAxis dataKey="sector" tick={{ fill: isDark ? '#8c8c8c' : '#6b7280', fontSize: 9, fontWeight: 600 }} tickLine={false} />
+                    <YAxis tick={{ fill: isDark ? '#8c8c8c' : '#6b7280', fontSize: 10, fontWeight: 600 }} tickLine={false} axisLine={false} />
+                    <Tooltip contentStyle={{ backgroundColor: isDark ? '#1a1a1a' : '#ffffff', borderColor: isDark ? '#333333' : '#e2e8f0', borderRadius: '12px', fontSize: '11px' }} />
+                    {/* Applied radius profile cap to soften layout boxes */}
+                    <Bar dataKey="Male" fill={COLORS.Male} radius={[4, 4, 0, 0]} maxBarSize={28} name="Male" />
+                    <Bar dataKey="Female" fill={COLORS.Female} radius={[4, 4, 0, 0]} maxBarSize={28} name="Female" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
             </div>
 
-            {/* SDD by Sector */}
-            <div className="bg-white dark:bg-neutral-900 p-4 rounded-2xl border border-neutral-200 dark:border-neutral-700 shadow-sm">
-              <SectionTitle>Sex-Disaggregated Data by Sector</SectionTitle>
-              <ResponsiveContainer width="100%" height={260}>
-                <BarChart data={stats.sectorData} barGap={4}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                  <XAxis dataKey="sector" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 700 }} />
-                  <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10 }} />
-                  <Tooltip contentStyle={{ borderRadius: 12, border: 'none', fontSize: 11 }} formatter={(v, n) => [v, n]} />
-                  <Legend iconType="circle" iconSize={8} formatter={v => <span style={{ fontSize: 10, fontWeight: 700 }}>{v}</span>} />
-                  <Bar dataKey="Male" fill={GENDER_COLORS.Male} barSize={24} radius={[4, 4, 0, 0]} />
-                  <Bar dataKey="Female" fill={GENDER_COLORS.Female} barSize={24} radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-              <p className="mt-3 text-[9px] font-bold text-neutral-400 dark:text-neutral-500">
-                Largest sector: <span className="text-neutral-700 dark:text-neutral-300">{stats.topSector}</span> •{" "}
-                Female {stats.sectorData.find(s => s.sector === stats.topSector)?.Female ?? 0} / Male{" "}
-                {stats.sectorData.find(s => s.sector === stats.topSector)?.Male ?? 0} •{" "}
-                {stats.topSectorFemalePct}% female
-              </p>
+            {/* ── 3. AGE BRACKET POPULATION METRICS ── */}
+            <div className="rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-[#121212] p-5">
+              <SectionTitle>Demographics Bandwidth (Age)</SectionTitle>
+              <div className="mt-4">
+                <ResponsiveContainer width="100%" height={230}>
+                  <BarChart data={stats.ageGenderData} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="4 4" stroke={isDark ? '#262626' : '#f0f0f0'} strokeOpacity={0.4} />
+                    <XAxis dataKey="band" tick={{ fill: isDark ? '#8c8c8c' : '#6b7280', fontSize: 10, fontWeight: 600 }} tickLine={false} />
+                    <YAxis tick={{ fill: isDark ? '#8c8c8c' : '#6b7280', fontSize: 10, fontWeight: 600 }} tickLine={false} axisLine={false} />
+                    <Tooltip contentStyle={{ backgroundColor: isDark ? '#1a1a1a' : '#ffffff', borderColor: isDark ? '#333333' : '#e2e8f0', borderRadius: '12px', fontSize: '11px' }} />
+                    <Bar dataKey="Male" fill={COLORS.Male} radius={[4, 4, 0, 0]} maxBarSize={22} name="Male" />
+                    <Bar dataKey="Female" fill={COLORS.Female} radius={[4, 4, 0, 0]} maxBarSize={22} name="Female" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
             </div>
           </div>
 
-          {/* ── ROW 5: Additional SDD breakdowns ── */}
+          {/* ── 4. CHANNELS / GATES ACTIVITY SCALABLE ROW ── */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {/* Age SDD */}
-            <div className="bg-white dark:bg-neutral-900 p-4 rounded-2xl border border-neutral-200 dark:border-neutral-700 shadow-sm">
-              <SectionTitle>Age Distribution (SDD)</SectionTitle>
-              <div className="h-[260px]">
-                {stats.total === 0 ? (
-                  <p className="text-center text-slate-300 text-xs py-20">No data</p>
+            <div className="rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-[#121212] p-5 md:col-span-2">
+              <SectionTitle>Top Performance Units (Colleges/Offices)</SectionTitle>
+              <div className="mt-3 divide-y divide-neutral-100 dark:divide-neutral-800 max-h-[250px] overflow-y-auto pr-2">
+                {stats.unitGenderRanking.length === 0 ? (
+                  <p className="text-xs italic text-neutral-400 p-4">No unit tracking logged</p>
                 ) : (
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={stats.ageGenderData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                      <XAxis dataKey="band" tick={{ fontSize: 10, fontWeight: 700 }} axisLine={false} tickLine={false} />
-                      <YAxis tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
-                      <Tooltip contentStyle={{ borderRadius: 12, border: 'none', fontSize: 11 }} />
-                      <Legend iconType="circle" iconSize={8} formatter={(v) => <span style={{ fontSize: 10, fontWeight: 700 }}>{v}</span>} />
-                      <Bar dataKey="Male" stackId="age" fill={GENDER_COLORS.Male} radius={[0, 0, 0, 0]} />
-                      <Bar dataKey="Female" stackId="age" fill={GENDER_COLORS.Female} radius={[4, 4, 0, 0]} />
-                    </BarChart>
-                  </ResponsiveContainer>
+                  stats.unitGenderRanking.slice(0, 15).map((u, i) => (
+                    <div key={u.name} className="flex items-center justify-between py-2.5 text-xs">
+                      <div className="flex items-center gap-3 truncate max-w-[65%]">
+                        <span className="font-mono text-[10px] text-neutral-400 w-4">{i + 1}</span>
+                        <span className="font-semibold text-neutral-800 dark:text-neutral-200 truncate">{u.name}</span>
+                      </div>
+                      <div className="flex items-center gap-4 shrink-0">
+                        <span className="text-[10px] text-neutral-400"><span className="text-neutral-600 dark:text-neutral-300 font-medium">{u.male}</span> M</span>
+                        <span className="text-[10px] text-neutral-400"><span className="text-neutral-600 dark:text-neutral-300 font-medium">{u.female}</span> F</span>
+                        <span className="font-bold text-neutral-900 dark:text-neutral-100 w-12 text-right">{u.total.toLocaleString()}</span>
+                      </div>
+                    </div>
+                  ))
                 )}
               </div>
-              <p className="mt-3 text-[9px] font-bold text-neutral-400 dark:text-neutral-500">
-                Top age band: <span className="text-neutral-700 dark:text-neutral-300">{stats.topAgeBand}</span>
-              </p>
             </div>
 
-            {/* Employment SDD */}
-            <div className="bg-white dark:bg-neutral-900 p-4 rounded-2xl border border-neutral-200 dark:border-neutral-700 shadow-sm">
-              <SectionTitle>Employment Status (SDD)</SectionTitle>
-              <div className="h-[260px]">
-                {stats.employmentGenderData.length === 0 ? (
-                  <p className="text-center text-slate-300 text-xs py-20">No data</p>
-                ) : (
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={stats.employmentGenderData} layout="vertical" margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                      <XAxis type="number" hide />
-                      <YAxis
-                        dataKey="name"
-                        type="category"
-                        width={140}
-                        axisLine={false}
-                        tickLine={false}
-                        tick={{ fontSize: 10, fontWeight: 700 }}
-                      />
-                      <Tooltip contentStyle={{ borderRadius: 12, border: 'none', fontSize: 11 }} />
-                      <Legend iconType="circle" iconSize={8} formatter={(v) => <span style={{ fontSize: 10, fontWeight: 700 }}>{v}</span>} />
-                      <Bar dataKey="Male" stackId="emp" fill={GENDER_COLORS.Male} barSize={22} radius={[6, 0, 0, 6]} />
-                      <Bar dataKey="Female" stackId="emp" fill={GENDER_COLORS.Female} barSize={22} radius={[0, 6, 6, 0]} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                )}
-              </div>
-              <p className="mt-3 text-[9px] font-bold text-neutral-400 dark:text-neutral-500">
-                Top status: <span className="text-neutral-700 dark:text-neutral-300">{stats.topEmployment}</span>
-              </p>
-            </div>
-
-            {/* PWD SDD */}
-            <div className="bg-white dark:bg-neutral-900 p-4 rounded-2xl border border-neutral-200 dark:border-neutral-700 shadow-sm print-page-break">
-              <SectionTitle>PWD Status (SDD)</SectionTitle>
-              <div className="h-[260px]">
+            {/* PWD BREAKDOWN PIE */}
+            <div className="rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-[#121212] p-5">
+              <SectionTitle>Inclusivity Index (PWD)</SectionTitle>
+              <div className="mt-2 flex flex-col items-center justify-center h-full pb-6">
                 {stats.pwdGenderData.length === 0 ? (
-                  <p className="text-center text-slate-300 text-xs py-20">No PWD data</p>
+                  <p className="text-xs italic text-neutral-400">No inclusion markers logged</p>
                 ) : (
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={stats.pwdGenderData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                      <XAxis dataKey="name" tick={{ fontSize: 10, fontWeight: 700 }} axisLine={false} tickLine={false} />
-                      <YAxis tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
-                      <Tooltip contentStyle={{ borderRadius: 12, border: 'none', fontSize: 11 }} />
-                      <Legend iconType="circle" iconSize={8} formatter={(v) => <span style={{ fontSize: 10, fontWeight: 700 }}>{v}</span>} />
-                      <Bar dataKey="Male" stackId="pwd" fill={GENDER_COLORS.Male} radius={[0, 0, 0, 0]} />
-                      <Bar dataKey="Female" stackId="pwd" fill={GENDER_COLORS.Female} radius={[4, 4, 0, 0]} />
-                    </BarChart>
-                  </ResponsiveContainer>
+                  <div className="flex flex-col items-center gap-2">
+                    <span className="text-4xl font-black text-neutral-800 dark:text-neutral-100">{stats.pwdYesPct}%</span>
+                    <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest text-center">Active Vulnerable Sector<br />Involvement Rate</p>
+                  </div>
                 )}
               </div>
-              <p className="mt-3 text-[9px] font-bold text-neutral-400 dark:text-neutral-500">
-                PWD “Yes”: <span className="text-neutral-700 dark:text-neutral-300">{stats.pwdYes}</span> • {stats.pwdYesPct}%
-              </p>
             </div>
           </div>
 
-          {/* ── EVENT COMPARISON TABLE ── */}
-          <div className="bg-white dark:bg-neutral-900 rounded-2xl border border-neutral-200 dark:border-neutral-700 overflow-hidden print-page-break">
-            <div className="px-5 py-4 border-b border-neutral-100 dark:border-neutral-800">
-              <p className="text-[9px] font-black text-neutral-400 dark:text-neutral-500 uppercase tracking-widest">Event-by-Event Comparison</p>
+          {/* ── 5. MASTER INSTITUTIONAL AUDIT DIRECTORY ── */}
+          <div className="rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-[#121212] overflow-hidden">
+            <div className="px-6 py-4 border-b border-neutral-100 dark:border-neutral-800 flex items-center justify-between">
+              <SectionTitle>Event Compilation Matrix</SectionTitle>
             </div>
             <div className="overflow-x-auto">
-              <table className="w-full text-left">
-                <thead>
-                  <tr className="bg-neutral-50 dark:bg-neutral-800/60">
-                    {['Event', 'Date', 'Status', 'Total', 'Male', 'Female', '% Female', 'Top Unit'].map(h => (
-                      <th key={h} className="px-4 py-3 text-[9px] font-black text-neutral-400 dark:text-neutral-500 uppercase tracking-wider whitespace-nowrap">{h}</th>
-                    ))}
+              <table className="w-full text-left text-xs">
+                <thead className="bg-neutral-50 dark:bg-[#181818] text-neutral-400 text-[10px] font-black uppercase tracking-wider border-b border-neutral-100 dark:border-neutral-800">
+                  <tr>
+                    <th className="py-3 px-6">Event Context</th>
+                    <th className="py-3 px-4">Timeline</th>
+                    <th className="py-3 px-4">Status</th>
+                    <th className="py-3 px-4 text-right">Aggregate</th>
+                    <th className="py-3 px-4 text-right">Male</th>
+                    <th className="py-3 px-4 text-right">Female</th>
+                    <th className="py-3 px-4 text-right">F-Ratio</th>
+                    <th className="py-3 px-6">Primary Demographic Unit</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-neutral-100 dark:divide-neutral-800">
+                <tbody className="divide-y divide-neutral-100 dark:divide-neutral-800 text-neutral-700 dark:text-neutral-300 font-medium">
                   {stats.eventTable.length === 0 ? (
                     <tr>
-                      <td colSpan={8} className="text-center text-xs text-neutral-300 dark:text-neutral-600 py-10 italic">No events with participants in this filter range</td>
+                      <td colSpan={8} className="py-8 text-center text-neutral-400 italic">No events match the selected criteria</td>
                     </tr>
                   ) : (
-                    stats.eventTable.map(ev => (
-                      <tr key={ev.id} className="hover:bg-neutral-50 dark:hover:bg-neutral-800/40 transition-colors">
-                        <td className="px-4 py-3 text-xs font-bold text-neutral-800 dark:text-neutral-200 max-w-[180px] truncate">{ev.title}</td>
-                        <td className="px-4 py-3 text-[10px] text-neutral-400 dark:text-neutral-500 whitespace-nowrap">{ev.date}</td>
-                        <td className="px-4 py-3">
-                          <span className={`text-[9px] font-black px-2 py-0.5 rounded-full uppercase ${ev.status === 'Done'
-                            ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400'
-                            : ev.status === 'Cancelled'
-                              ? 'bg-rose-100 dark:bg-rose-900/30 text-rose-700 dark:text-rose-400'
-                              : 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400'
-                            }`}>{ev.status || 'Active'}</span>
+                    stats.eventTable.map((ev) => (
+                      <tr key={ev.id} className="hover:bg-neutral-50/50 dark:hover:bg-neutral-900/30 transition-colors">
+                        <td className="py-3.5 px-6 font-bold text-neutral-900 dark:text-neutral-100">{ev.title}</td>
+                        <td className="py-3.5 px-4 font-mono text-[11px] text-neutral-500">{ev.date || '—'}</td>
+                        <td className="py-3.5 px-4">
+                          <span className={`text-[9px] px-2 py-0.5 font-black uppercase tracking-wide rounded-full ${ev.status === 'Done' ? 'bg-neutral-100 dark:bg-neutral-800 text-neutral-500' : 'bg-emerald-50 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400'}`}>
+                            {ev.status}
+                          </span>
                         </td>
-                        <td className="px-4 py-3 text-xs font-black text-neutral-900 dark:text-neutral-100">{ev.total}</td>
-                        <td className="px-4 py-3 text-xs font-bold" style={{ color: COLORS.Male }}>{ev.male}</td>
-                        <td className="px-4 py-3 text-xs font-bold" style={{ color: COLORS.Female }}>{ev.female}</td>
-                        <td className="px-4 py-3">
-                          <div className="flex items-center gap-2">
-                            <div className="w-16 h-1.5 bg-neutral-100 dark:bg-neutral-800 rounded-full overflow-hidden">
-                              <div className="h-full rounded-full" style={{ width: `${ev.femalePct}%`, backgroundColor: COLORS.Female }} />
-                            </div>
-                            <span className="text-[10px] font-black text-neutral-700 dark:text-neutral-300">{ev.femalePct}%</span>
-                          </div>
-                        </td>
-                        <td className="px-4 py-3 text-[10px] text-neutral-500 dark:text-neutral-400 max-w-[140px] truncate">{ev.topUnit}</td>
+                        <td className="py-3.5 px-4 text-right font-bold text-neutral-900 dark:text-neutral-100">{ev.total.toLocaleString()}</td>
+                        <td className="py-3.5 px-4 text-right text-neutral-500">{ev.male}</td>
+                        <td className="py-3.5 px-4 text-right text-neutral-500">{ev.female}</td>
+                        <td className="py-3.5 px-4 text-right font-bold text-neutral-600 dark:text-neutral-400">{ev.femalePct}%</td>
+                        <td className="py-3.5 px-6 truncate max-w-[180px] text-neutral-500 dark:text-neutral-400" title={ev.topUnit}>{ev.topUnit}</td>
                       </tr>
                     ))
                   )}
@@ -1102,11 +763,11 @@ export default function GeneralDashboard({ events = [], attendanceData = [], com
             </div>
           </div>
 
-          {/* ── EXECUTIVE SUMMARY ── */}
-          <div className="flex items-start gap-6 pb-4">
+          {/* ── 6. EXECUTIVE SUMMARY TEXT NARRATIVE ── */}
+          <div className="flex items-start gap-6 pb-4 border-t border-neutral-100 dark:border-neutral-800 pt-6">
             {!compact && (
               <div className="shrink-0 flex flex-col items-center gap-1 pt-1">
-                <span className="text-5xl font-black leading-none" style={{ color: COLORS.palette[3] }}>
+                <span className="text-5xl font-black leading-none" style={{ color: COLORS.Female }}>
                   {stats.femalePct}%
                 </span>
                 <span className="text-[8px] font-black uppercase tracking-widest text-neutral-400 dark:text-neutral-500 text-center">Female<br />Composition</span>
@@ -1118,15 +779,12 @@ export default function GeneralDashboard({ events = [], attendanceData = [], com
             </div>
           </div>
 
-          {/* ── PRINT FOOTER ── */}
           <div className="hidden print:block mt-8 pt-4 border-t text-[9px] text-slate-400 flex justify-between">
-            <span>GAD Event Manager — Confidential</span>
+            <span>GAD Event Manager — MSU-IIT Confidential Institutional Data</span>
             <span>Page 1</span>
           </div>
-
-
-        </div>{/* end space-y-6 */}
-      </div>{/* end scrollable content */}
+        </div>
+      </div>
     </div>
   );
 }

@@ -17,11 +17,14 @@ export const Permission = {
   // Event permissions
   EVENT_VIEW_OWN: 'event:view:own',
   EVENT_VIEW_ALL: 'event:view:all',
+  EVENT_VIEW_SUBMITTED: 'event:view:submitted', // New: View only submitted events
   EVENT_CREATE: 'event:create',
   EVENT_EDIT_OWN: 'event:edit:own',
   EVENT_EDIT_ALL: 'event:edit:all',
   EVENT_DELETE_OWN: 'event:delete:own',
   EVENT_DELETE_ALL: 'event:delete:all',
+  EVENT_SUBMIT: 'event:submit', // New: Submit drafts for admin review
+  EVENT_WITHDRAW: 'event:withdraw', // New: Withdraw submitted events back to draft
 
   // User management permissions
   USER_MANAGEMENT: 'user:management',
@@ -46,10 +49,12 @@ const ROLE_PERMISSIONS = {
     Permission.DATA_IMPORT,
     Permission.DATA_DELETE,
     Permission.DATA_MODIFY,
-    Permission.EVENT_VIEW_ALL,
+    Permission.EVENT_VIEW_ALL, // Can see all their own events (draft + submitted)
     Permission.EVENT_CREATE,
     Permission.EVENT_EDIT_ALL,
     Permission.EVENT_DELETE_ALL,
+    Permission.EVENT_SUBMIT, // Can submit drafts
+    Permission.EVENT_WITHDRAW, // Can withdraw submitted events
   ],
   ADMIN: [
     Permission.CHAT_ACCESS,
@@ -58,7 +63,8 @@ const ROLE_PERMISSIONS = {
     Permission.DATA_IMPORT,
     Permission.DATA_DELETE,
     Permission.DATA_MODIFY,
-    Permission.EVENT_VIEW_ALL,
+    Permission.EVENT_VIEW_SUBMITTED, // Only see submitted events from secretariat
+    Permission.EVENT_VIEW_ALL, // Can see all events (including their own drafts)
     Permission.EVENT_CREATE,
     Permission.EVENT_EDIT_ALL,
     Permission.EVENT_DELETE_ALL,
@@ -93,7 +99,14 @@ export function RoleProvider({ children, user }) {
       async (snapshot) => {
         if (snapshot.exists()) {
           const userData = snapshot.data();
-          setRole(userData.role || 'USER');
+          console.log('🔍 Current user role data:', {
+            uid: user.uid,
+            email: user.email,
+            rawRole: userData.role,
+            roleType: typeof userData.role,
+            allUserData: userData
+          });
+          setRole(userData.role || 'SECRETARIAT');
           setUserStatus(userData.status || 'Active');
 
           // Update last login timestamp ONLY if it's been more than 1 minute
@@ -111,12 +124,12 @@ export function RoleProvider({ children, user }) {
             }
           }
         } else {
-          // User document doesn't exist - create default USER role
+          // User document doesn't exist - create default SECRETARIAT role
           const defaultUserData = {
             uid: user.uid,
             email: user.email,
             displayName: user.displayName || user.email?.split('@')[0] || 'User',
-            role: 'USER',
+            role: 'SECRETARIAT', // Default to SECRETARIAT instead of USER
             status: 'Active',
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
@@ -126,11 +139,11 @@ export function RoleProvider({ children, user }) {
 
           try {
             await setDoc(userDocRef, defaultUserData);
-            setRole('USER');
+            setRole('SECRETARIAT');
             setUserStatus('Active');
           } catch (err) {
             console.error('Error creating user document:', err);
-            setRole('USER'); // Fallback to USER role
+            setRole('SECRETARIAT'); // Fallback to SECRETARIAT role
             setUserStatus('Active');
           }
         }
@@ -138,7 +151,7 @@ export function RoleProvider({ children, user }) {
       },
       (error) => {
         console.error('Error listening to user document:', error);
-        setRole('USER'); // Fallback to USER role on error
+        setRole('SECRETARIAT'); // Fallback to SECRETARIAT role on error
         setUserStatus('Active');
         setLoading(false);
       }
@@ -193,9 +206,29 @@ export function RoleProvider({ children, user }) {
   const filterEventsByRole = (events) => {
     if (!role || !user) return [];
 
-    // SECRETARIAT and ADMIN see all events
-    if (role === 'SECRETARIAT' || role === 'ADMIN') {
-      return events;
+    // ADMIN sees:
+    // - All submitted events from secretariat (or events without submissionStatus - backward compatibility)
+    // - All their own events (draft + submitted)
+    if (role === 'ADMIN') {
+      return events.filter(event => {
+        // Treat events without submissionStatus as submitted (backward compatibility)
+        const isSubmitted = event.submissionStatus === 'submitted' || !event.submissionStatus;
+
+        // Show submitted events from others
+        if (isSubmitted && event.createdBy !== user.uid) {
+          return true;
+        }
+        // Show all own events
+        if (event.createdBy === user.uid) {
+          return true;
+        }
+        return false;
+      });
+    }
+
+    // SECRETARIAT sees all their own events (draft + submitted)
+    if (role === 'SECRETARIAT') {
+      return events.filter(event => event.createdBy === user.uid);
     }
 
     // USER sees only their own events
@@ -206,6 +239,12 @@ export function RoleProvider({ children, user }) {
     return [];
   };
 
+  // Check if user can submit/withdraw events
+  const canSubmitEvent = (eventCreatorId) => {
+    if (!role || !user) return false;
+    return (role === 'SECRETARIAT' || role === 'ADMIN') && user.uid === eventCreatorId;
+  };
+
   const value = {
     role,
     loading,
@@ -214,6 +253,7 @@ export function RoleProvider({ children, user }) {
     canAccessPage,
     canModifyEvent,
     canDeleteEvent,
+    canSubmitEvent,
     filterEventsByRole,
     isActive: userStatus === 'Active',
   };

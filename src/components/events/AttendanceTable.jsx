@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { ArrowUpDown, ChevronLeft, ChevronRight, SlidersHorizontal, Users, AlertTriangle, Printer } from 'lucide-react';
 import PrintAttendanceModal from './PrintAttendanceModal';
 
@@ -97,7 +97,7 @@ export const AttendanceTable = ({ data = [], title = 'Records', event, sessions 
 
   const Th = ({ label, sortK }) => (
     <th
-      className="px-6 py-4 text-[10px] font-black text-neutral-500 dark:text-neutral-400 uppercase tracking-[0.2em] select-none cursor-pointer whitespace-nowrap"
+      className="px-6 py-4 text-[9px] font-black text-neutral-500 dark:text-neutral-400 uppercase tracking-widest select-none cursor-pointer whitespace-nowrap"
       onClick={() => toggleSort(sortK)}
     >
       <span className="inline-flex items-center gap-2">
@@ -111,14 +111,14 @@ export const AttendanceTable = ({ data = [], title = 'Records', event, sessions 
     <div className="bg-white dark:bg-neutral-900 rounded-2xl border border-neutral-200 dark:border-neutral-700 shadow-sm overflow-hidden">
 
       {/* ── Header ── */}
-      <div className="p-5 border-b border-neutral-100 dark:border-neutral-800 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+      <div className="px-5 pt-5 pb-4 border-b border-neutral-100 dark:border-neutral-800 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div>
-          <h3 className="text-lg font-black text-neutral-900 dark:text-neutral-100 uppercase tracking-tight flex items-center gap-2">
-            <Users size={18} className="text-gia-600 dark:text-gia-400" />
+          <h3 className="text-base font-black text-neutral-900 dark:text-neutral-100 uppercase tracking-tight flex items-center gap-2">
+            <Users size={16} className="text-gia-600 dark:text-gia-400" />
             {title}
           </h3>
-          <p className="text-[10px] font-bold text-neutral-400 dark:text-neutral-500 uppercase tracking-widest mt-0.5">
-            Total Entries: {data.length} · Showing: {sorted.length}
+          <p className="text-[9px] font-black text-neutral-400 dark:text-neutral-500 uppercase tracking-widest mt-1">
+            Total: {data.length} · Showing: {sorted.length}
           </p>
         </div>
 
@@ -143,7 +143,7 @@ export const AttendanceTable = ({ data = [], title = 'Records', event, sessions 
           </div>
 
           <div className="flex items-center gap-2">
-            <label className="flex items-center gap-2 text-[10px] font-bold text-neutral-600 dark:text-neutral-400 uppercase tracking-widest cursor-pointer">
+            <label className="flex items-center gap-2 text-[9px] font-black text-neutral-600 dark:text-neutral-400 uppercase tracking-widest cursor-pointer">
               <input type="checkbox" checked={showDate} onChange={e => setShowDate(e.target.checked)} />
               Show Date
             </label>
@@ -161,7 +161,7 @@ export const AttendanceTable = ({ data = [], title = 'Records', event, sessions 
                   { key: 'gate', label: 'Gate' },
                   { key: 'time', label: 'Time' },
                 ].map(c => (
-                  <label key={c.key} className="flex items-center justify-between gap-3 py-1.5 text-[10px] font-black text-neutral-600 dark:text-neutral-400 uppercase tracking-widest cursor-pointer">
+                  <label key={c.key} className="flex items-center justify-between gap-3 py-1.5 text-[9px] font-black text-neutral-600 dark:text-neutral-400 uppercase tracking-widest cursor-pointer">
                     {c.label}
                     <input type="checkbox" checked={visible[c.key]} onChange={e => setVisible(p => ({ ...p, [c.key]: e.target.checked }))} />
                   </label>
@@ -263,7 +263,7 @@ export const AttendanceTable = ({ data = [], title = 'Records', event, sessions 
 
       {/* ── Pagination ── */}
       <div className="px-5 py-3.5 border-t border-neutral-100 dark:border-neutral-800 flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
-        <p className="text-[10px] font-bold text-neutral-400 dark:text-neutral-500 uppercase tracking-widest">
+        <p className="text-[9px] font-black text-neutral-400 dark:text-neutral-500 uppercase tracking-widest">
           Page {safePage} of {pageCount} · {sorted.length === 0 ? 0 : (safePage - 1) * pageSize + 1}–{Math.min(sorted.length, safePage * pageSize)} of {sorted.length}
         </p>
         <div className="flex items-center gap-2">

@@ -7,13 +7,22 @@ import { ChevronDown, Palette, Copy, Check, Download, FileText, MoreVertical } f
 import html2canvas from 'html2canvas';
 import ReportGeneratorModal from './ReportGeneratorModal';
 
-// Color theme definitions
+// ─── MSU-IIT PROFESSIONAL SYSTEM COLOR THEMES ──────────────────────────────────
 const COLOR_THEMES = {
-  default: {
-    name: 'GIA Purple & Amber',
-    Male: '#f59e0b',
-    Female: '#c084fc',
-    palette: ['#c084fc', '#d8b4fe', '#f59e0b', '#10b981', '#f43f5e', '#3b82f6', '#8b5cf6', '#ec4899'],
+  original: {
+    name: 'MSU-IIT Official (Maroon & Gold)',
+    Male: '#741112',    // Academic Maroon
+    Female: '#D4AF37',  // Academic Gold
+    palette: [
+      '#530B0C', // Deep Velvet Maroon
+      '#741112', // Signature Maroon
+      '#9B2A2B', // Terracotta Crimson
+      '#D4AF37', // Academic Gold
+      '#ECC142', // Sunlit Amber
+      '#475569', // Slate Gray (Neutral balance)
+      '#334155', // Charcoal
+      '#1E293B'  // Dark Navy
+    ],
   },
   ocean: {
     name: 'Ocean Blue',
@@ -27,23 +36,11 @@ const COLOR_THEMES = {
     Female: '#84cc16',
     palette: ['#10b981', '#84cc16', '#22c55e', '#4ade80', '#059669', '#65a30d', '#16a34a', '#86efac'],
   },
-  sunset: {
-    name: 'Sunset Warm',
+  purpleAmber: {
+    name: 'Purple & Amber',
     Male: '#f59e0b',
-    Female: '#ef4444',
-    palette: ['#f59e0b', '#ef4444', '#f97316', '#fb923c', '#dc2626', '#fbbf24', '#ea580c', '#fb7185'],
-  },
-  berry: {
-    name: 'Berry Mix',
-    Male: '#ec4899',
-    Female: '#a855f7',
-    palette: ['#ec4899', '#a855f7', '#d946ef', '#f472b6', '#c026d3', '#e879f9', '#db2777', '#c084fc'],
-  },
-  professional: {
-    name: 'Professional',
-    Male: '#3b82f6',
-    Female: '#8b5cf6',
-    palette: ['#3b82f6', '#8b5cf6', '#6366f1', '#60a5fa', '#7c3aed', '#a78bfa', '#2563eb', '#9333ea'],
+    Female: '#c084fc',
+    palette: ['#c084fc', '#d8b4fe', '#f59e0b', '#10b981', '#f43f5e', '#3b82f6', '#8b5cf6', '#ec4899'],
   },
 };
 
@@ -101,10 +98,10 @@ const normalizeEnrollmentRecord = (r) => ({
   '_working_student?': nb(r['_working_student?'] ?? r.is_working_student),
 });
 
-export default function StudentEnrollmentVisuals({ data, recordsCount = 0, academicPeriod = 'Academic Year' }) {
+export default function StudentEnrollmentVisuals({ data, recordsCount = 0, academicPeriod = 'Academic Year', isPublic = false }) {
   const [activeChart, setActiveChart] = useState(0);
   const [dropdownOpen, setDropdownOpen] = useState(false);
-  const [currentTheme, setCurrentTheme] = useState('default');
+  const [currentTheme, setCurrentTheme] = useState('original');
   const [showThemeMenu, setShowThemeMenu] = useState(false);
   const [copied, setCopied] = useState(false);
   const [downloaded, setDownloaded] = useState(false);
@@ -576,102 +573,106 @@ export default function StudentEnrollmentVisuals({ data, recordsCount = 0, acade
 
         {/* Right side: Actions dropdown + Theme selector + Records count */}
         <div className="flex items-center gap-2">
-          {/* Actions Dropdown (Report, Copy, Download) */}
-          <div className="relative" ref={actionsRef}>
-            <button
-              onClick={() => setShowActionsMenu(!showActionsMenu)}
-              className="flex items-center gap-1.5 px-2 py-1 text-xs text-neutral-600 dark:text-neutral-400 hover:text-gia-600 dark:hover:text-gia-400 hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-lg transition-all duration-200"
-              title="Chart actions"
-            >
-              <MoreVertical size={16} />
-            </button>
+          {/* Actions Dropdown (Report, Copy, Download) - Hidden in public mode */}
+          {!isPublic && (
+            <div className="relative" ref={actionsRef}>
+              <button
+                onClick={() => setShowActionsMenu(!showActionsMenu)}
+                className="flex items-center gap-1.5 px-2 py-1 text-xs text-neutral-600 dark:text-neutral-400 hover:text-gia-600 dark:hover:text-gia-400 hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-lg transition-all duration-200"
+                title="Chart actions"
+              >
+                <MoreVertical size={16} />
+              </button>
 
-            {showActionsMenu && (
-              <div className="absolute right-0 top-full mt-1 z-20 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg shadow-xl overflow-hidden min-w-[160px]">
-                <button
-                  onClick={() => {
-                    setShowReportModal(true);
-                    setShowActionsMenu(false);
-                  }}
-                  className="w-full flex items-center gap-2 px-3 py-2 text-xs text-left transition-colors text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-700"
-                >
-                  <FileText size={14} />
-                  <span>Generate Report</span>
-                </button>
-                <button
-                  onClick={() => {
-                    copyChartAsImage();
-                    setShowActionsMenu(false);
-                  }}
-                  className="w-full flex items-center gap-2 px-3 py-2 text-xs text-left transition-colors text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-700"
-                >
-                  {copied ? (
-                    <>
-                      <Check size={14} className="text-green-500" />
-                      <span className="text-green-500">Copied!</span>
-                    </>
-                  ) : (
-                    <>
-                      <Copy size={14} />
-                      <span>Copy Chart</span>
-                    </>
-                  )}
-                </button>
-                <button
-                  onClick={() => {
-                    downloadChartAsImage();
-                    setShowActionsMenu(false);
-                  }}
-                  className="w-full flex items-center gap-2 px-3 py-2 text-xs text-left transition-colors text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-700"
-                >
-                  {downloaded ? (
-                    <>
-                      <Check size={14} className="text-green-500" />
-                      <span className="text-green-500">Downloaded!</span>
-                    </>
-                  ) : (
-                    <>
-                      <Download size={14} />
-                      <span>Download Chart</span>
-                    </>
-                  )}
-                </button>
-              </div>
-            )}
-          </div>
-
-          {/* Theme Selector */}
-          <div className="relative" ref={themeRef}>
-            <button
-              onClick={() => setShowThemeMenu(!showThemeMenu)}
-              className="flex items-center gap-1.5 px-2 py-1 text-xs text-neutral-600 dark:text-neutral-400 hover:text-gia-600 dark:hover:text-gia-400 hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-lg transition-all duration-200"
-              title="Change color theme"
-            >
-              <Palette size={13} />
-              <span className="hidden sm:inline">Theme</span>
-            </button>
-
-            {showThemeMenu && (
-              <div className="absolute right-0 top-full mt-1 z-20 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg shadow-xl overflow-hidden min-w-[160px]">
-                {Object.entries(COLOR_THEMES).map(([key, theme]) => (
+              {showActionsMenu && (
+                <div className="absolute right-0 top-full mt-1 z-20 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg shadow-xl overflow-hidden min-w-[160px]">
                   <button
-                    key={key}
                     onClick={() => {
-                      setCurrentTheme(key);
-                      setShowThemeMenu(false);
+                      setShowReportModal(true);
+                      setShowActionsMenu(false);
                     }}
-                    className={`w-full flex items-center justify-between gap-2 px-3 py-2 text-xs text-left transition-colors ${currentTheme === key
-                      ? 'bg-gia-50 dark:bg-gia-900/20 text-gia-600 dark:text-gia-400 font-semibold'
-                      : 'text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-700'
-                      }`}
+                    className="w-full flex items-center gap-2 px-3 py-2 text-xs text-left transition-colors text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-700"
                   >
-                    <span>{theme.name}</span>
-                    {currentTheme === key && <span className="text-xs">✓</span>}
+                    <FileText size={14} />
+                    <span>Generate Report</span>
                   </button>
-                ))}
-              </div>
-            )}
-          </div>
+                  <button
+                    onClick={() => {
+                      copyChartAsImage();
+                      setShowActionsMenu(false);
+                    }}
+                    className="w-full flex items-center gap-2 px-3 py-2 text-xs text-left transition-colors text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-700"
+                  >
+                    {copied ? (
+                      <>
+                        <Check size={14} className="text-green-500" />
+                        <span className="text-green-500">Copied!</span>
+                      </>
+                    ) : (
+                      <>
+                        <Copy size={14} />
+                        <span>Copy Chart</span>
+                      </>
+                    )}
+                  </button>
+                  <button
+                    onClick={() => {
+                      downloadChartAsImage();
+                      setShowActionsMenu(false);
+                    }}
+                    className="w-full flex items-center gap-2 px-3 py-2 text-xs text-left transition-colors text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-700"
+                  >
+                    {downloaded ? (
+                      <>
+                        <Check size={14} className="text-green-500" />
+                        <span className="text-green-500">Downloaded!</span>
+                      </>
+                    ) : (
+                      <>
+                        <Download size={14} />
+                        <span>Download Chart</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Theme Selector - Hidden in public mode */}
+          {!isPublic && (
+            <div className="relative" ref={themeRef}>
+              <button
+                onClick={() => setShowThemeMenu(!showThemeMenu)}
+                className="flex items-center gap-1.5 px-2 py-1 text-xs text-neutral-600 dark:text-neutral-400 hover:text-gia-600 dark:hover:text-gia-400 hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-lg transition-all duration-200"
+                title="Change color theme"
+              >
+                <Palette size={13} />
+                <span className="hidden sm:inline">Theme</span>
+              </button>
+
+              {showThemeMenu && (
+                <div className="absolute right-0 top-full mt-1 z-20 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg shadow-xl overflow-hidden min-w-[160px]">
+                  {Object.entries(COLOR_THEMES).map(([key, theme]) => (
+                    <button
+                      key={key}
+                      onClick={() => {
+                        setCurrentTheme(key);
+                        setShowThemeMenu(false);
+                      }}
+                      className={`w-full flex items-center justify-between gap-2 px-3 py-2 text-xs text-left transition-colors ${currentTheme === key
+                        ? 'bg-gia-50 dark:bg-gia-900/20 text-gia-600 dark:text-gia-400 font-semibold'
+                        : 'text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-700'
+                        }`}
+                    >
+                      <span>{theme.name}</span>
+                      {currentTheme === key && <span className="text-xs">✓</span>}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Records count */}
           <span className="text-xs font-medium text-neutral-400 dark:text-neutral-500 tabular-nums">
@@ -683,8 +684,7 @@ export default function StudentEnrollmentVisuals({ data, recordsCount = 0, acade
       {/* ── Chart content area (for capture) ── */}
       <div className="flex-1 flex flex-col min-h-0" ref={chartRef}>
         {/* ── Title ── */}
-        <div className="px-6 pt-4 pb-2">
-          <h3 className="text-base font-bold text-neutral-800 dark:text-neutral-200">{current.title}</h3>
+        <div className="px-6 pt-2 pb-1">
         </div>
 
         {/* ── Description ── */}
@@ -710,15 +710,17 @@ export default function StudentEnrollmentVisuals({ data, recordsCount = 0, acade
         </div>
       </div>
 
-      {/* Report Generator Modal */}
-      <ReportGeneratorModal
-        isOpen={showReportModal}
-        onClose={() => setShowReportModal(false)}
-        charts={charts}
-        academicPeriod={academicPeriod}
-        datasetName="Student Enrollment"
-        captureChartFn={captureChartByIndex}
-      />
+      {/* Report Generator Modal - Hidden in public mode */}
+      {!isPublic && (
+        <ReportGeneratorModal
+          isOpen={showReportModal}
+          onClose={() => setShowReportModal(false)}
+          charts={charts}
+          academicPeriod={academicPeriod}
+          datasetName="Student Enrollment"
+          captureChartFn={captureChartByIndex}
+        />
+      )}
 
     </div>
   );

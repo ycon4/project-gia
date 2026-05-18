@@ -8,11 +8,11 @@ import {
 } from 'lucide-react';
 import { seedDemoData } from '../utils/seedDemoData';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
-import { addEventSession, getAllDocuments } from '../../firebase/services';
+import { addEventSession, getAllDocuments, submitEvent, withdrawEvent, createEventWithSubmissionStatus } from '../../firebase/services';
 import { db, auth } from '../../firebase/config';
 import AttendanceTable from '../components/events/AttendanceTable';
 import { SessionQRManager } from '../components/events/SessionQRManager';
-import { EventAnalyticsDashboard } from '../components/events/EventsAnalytics';
+import EventAnalyticsDashboard from '../components/events/EventsAnalytics';
 import GeneralDashboard from '../components/events/GeneralPage';
 import EventFormModal from '../components/events/EventFormModal';
 import EventPosterGenerator from '../components/events/EventPosterGenerator';
@@ -67,7 +67,8 @@ export default function EventsPage({
   onDeleteEvent = () => { },
   onUpdateEvent = () => { },
 }) {
-  const { role, hasPermission, filterEventsByRole, canModifyEvent, canDeleteEvent } = useRole();
+  const { role, hasPermission, filterEventsByRole, canModifyEvent, canDeleteEvent, canSubmitEvent } = useRole();
+  const user = auth.currentUser;
 
   // Local state for events and attendance - loaded from Firestore
   const [events, setEvents] = useState([]);
@@ -180,12 +181,67 @@ export default function EventsPage({
         setActiveEvent({ ...formData, id: editingEvent.id });
       }
     } else {
-      // Create new event
-      const newEvent = await onCreateEvent(formData);
-      // Add to local state
-      if (newEvent) {
+      // Create new event with proper submission status
+      try {
+        const eventId = await createEventWithSubmissionStatus(formData, user.uid, role);
+        const newEvent = { ...formData, id: eventId, createdBy: user.uid };
         setEvents(prev => [newEvent, ...prev]);
+      } catch (error) {
+        console.error('Error creating event:', error);
+        alert('Error creating event. Please try again.');
       }
+    }
+  };
+
+  // Handle event submission (draft -> submitted)
+  const handleSubmitEvent = async (event) => {
+    if (!canSubmitEvent(event.createdBy)) return;
+
+    try {
+      await submitEvent(event.id, user.uid);
+      // Update local state
+      setEvents(prev => prev.map(ev =>
+        ev.id === event.id
+          ? { ...ev, submissionStatus: 'submitted', submittedAt: new Date().toISOString(), submittedBy: user.uid }
+          : ev
+      ));
+      if (activeEvent?.id === event.id) {
+        setActiveEvent(prev => ({
+          ...prev,
+          submissionStatus: 'submitted',
+          submittedAt: new Date().toISOString(),
+          submittedBy: user.uid
+        }));
+      }
+    } catch (error) {
+      console.error('Error submitting event:', error);
+      alert('Error submitting event. Please try again.');
+    }
+  };
+
+  // Handle event withdrawal (submitted -> draft)
+  const handleWithdrawEvent = async (event) => {
+    if (!canSubmitEvent(event.createdBy)) return;
+
+    try {
+      await withdrawEvent(event.id);
+      // Update local state
+      setEvents(prev => prev.map(ev =>
+        ev.id === event.id
+          ? { ...ev, submissionStatus: 'draft', submittedAt: null, submittedBy: null }
+          : ev
+      ));
+      if (activeEvent?.id === event.id) {
+        setActiveEvent(prev => ({
+          ...prev,
+          submissionStatus: 'draft',
+          submittedAt: null,
+          submittedBy: null
+        }));
+      }
+    } catch (error) {
+      console.error('Error withdrawing event:', error);
+      alert('Error withdrawing event. Please try again.');
     }
   };
 
@@ -263,7 +319,7 @@ export default function EventsPage({
             ) : (
               <>
                 {/* Main grid: Left column (QR + Stats stacked), Right column (Event Details) */}
-                <div className="grid grid-cols-3 gap-4 items-start">
+                <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 items-stretch">
 
                   {/* Left Column: QR Manager + Stats Cards Stacked */}
                   <div className="col-span-1 space-y-4">
@@ -274,35 +330,62 @@ export default function EventsPage({
                       onSessionChange={setSelectedSession}
                       registrationUrl={`${window.location.origin}/register/${activeEvent.id}?session=${encodeURIComponent(selectedSession)}`}
                     />
-
-                    {/* Stats Cards - Stacked vertically (1 per line) */}
-                    <EventAnalyticsDashboard
-                      attendanceData={attendanceData}
-                      filteredAttendance={filteredAttendance}
-                      activeEvent={activeEvent}
-                      selectedSession={selectedSession}
-                      statsOnly={true}
-                    />
                   </div>
 
                   {/* Right Column: Event Details Panel */}
-                  <div className="col-span-2">
-                    {/* Event info panel — scrollable */}
-                    <div className="flex-1 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700/70 rounded-2xl overflow-hidden flex flex-col min-h-0">
+                  <div className="col-span-2 flex flex-col">
+                    {/* 🌟 FIXED HEIGHT COMPONENT FRAME — Matched to SessionQR height */}
+                    <div className="h-[550px] bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700/70 rounded-2xl overflow-hidden flex flex-col shadow-sm">
 
-                      {/* Panel header */}
+                      {/* Panel header — Stays sticky/immobile at the top */}
                       <div className="flex items-start justify-between gap-3 px-5 pt-5 pb-4 border-b border-neutral-100 dark:border-neutral-800 shrink-0">
                         <div className="min-w-0">
                           <p className="text-[9px] font-black uppercase tracking-widest text-neutral-400 dark:text-neutral-500 mb-1">Event Details</p>
-                          <h3 className="text-sm font-black text-neutral-900 dark:text-neutral-100 leading-snug">{activeEvent.title}</h3>
+                          <h3 className="text-sm font-black text-neutral-900 dark:text-neutral-100 leading-snug truncate">{activeEvent.title}</h3>
                         </div>
                         <div className="flex items-center gap-2 shrink-0">
+                          {/* Event Status Badge */}
                           <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded-full ${activeEvent.status === 'Active'
                             ? 'bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 dark:text-emerald-400'
                             : activeEvent.status === 'Cancelled'
                               ? 'bg-rose-50 dark:bg-rose-950/20 text-rose-500 dark:text-rose-400'
                               : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400'
                             }`}>{activeEvent.status || 'Active'}</span>
+
+                          {/* Submission Status Badge */}
+                          {role === 'SECRETARIAT' && (
+                            <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded-full ${(activeEvent.submissionStatus === 'submitted' || !activeEvent.submissionStatus)
+                              ? 'bg-blue-50 dark:bg-blue-950/20 text-blue-600 dark:text-blue-400'
+                              : 'bg-amber-50 dark:bg-amber-950/20 text-amber-600 dark:text-amber-400'
+                              }`}>
+                              {(activeEvent.submissionStatus === 'submitted' || !activeEvent.submissionStatus) ? 'Submitted' : 'Draft'}
+                            </span>
+                          )}
+
+                          {/* Submit/Withdraw Buttons for Secretariat */}
+                          {canSubmitEvent(activeEvent.createdBy) && (
+                            <>
+                              {activeEvent.submissionStatus === 'draft' ? (
+                                <button
+                                  onClick={() => handleSubmitEvent(activeEvent)}
+                                  className="px-3 py-1.5 bg-blue-50 dark:bg-blue-950/20 text-blue-700 dark:text-blue-300 rounded-lg text-[9px] font-black uppercase tracking-widest hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors"
+                                  title="Submit for admin review"
+                                >
+                                  Submit
+                                </button>
+                              ) : (
+                                <button
+                                  onClick={() => handleWithdrawEvent(activeEvent)}
+                                  className="px-3 py-1.5 bg-amber-50 dark:bg-amber-950/20 text-amber-700 dark:text-amber-300 rounded-lg text-[9px] font-black uppercase tracking-widest hover:bg-amber-100 dark:hover:bg-amber-900/30 transition-colors"
+                                  title="Withdraw to draft"
+                                >
+                                  Withdraw
+                                </button>
+                              )}
+                            </>
+                          )}
+
+                          {/* Action Buttons */}
                           <button onClick={() => {
                             console.log('Export report button clicked');
                             setShowReportExporter(true);
@@ -320,8 +403,8 @@ export default function EventsPage({
                         </div>
                       </div>
 
-                      {/* Scrollable body */}
-                      <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4 min-h-0">
+                      {/* Scrollable body — Content shifts fluidly within this window only */}
+                      <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4 min-h-0 custom-scrollbar">
 
                         {/* Core metadata */}
                         <div className="grid grid-cols-2 gap-x-4 gap-y-3">
@@ -474,7 +557,7 @@ export default function EventsPage({
                 </div>
 
                 {/* Search + table */}
-                <div className="space-y-3">
+                <div className="space-y-6">
                   <div className="relative group max-w-md">
                     <Search size={15} className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-400 group-focus-within:text-gia-500 transition-colors" />
                     <input type="text" placeholder={`Search in ${selectedSession}...`}
@@ -588,6 +671,20 @@ export default function EventsPage({
                         <p className="text-sm font-normal truncate leading-snug">{event.title}</p>
                         <div className="flex items-center gap-1.5 mt-0.5">
                           <p className="text-xs opacity-40">{event.startDate || event.status}</p>
+
+                          {/* Submission Status for Secretariat */}
+                          {role === 'SECRETARIAT' && (
+                            <>
+                              <span className="text-xs opacity-20">•</span>
+                              <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-bold uppercase ${(event.submissionStatus === 'submitted' || !event.submissionStatus)
+                                ? 'bg-blue-100 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300'
+                                : 'bg-amber-100 dark:bg-amber-950/30 text-amber-700 dark:text-amber-300'
+                                }`}>
+                                {(event.submissionStatus === 'submitted' || !event.submissionStatus) ? 'Submitted' : 'Draft'}
+                              </span>
+                            </>
+                          )}
+
                           {event.createdByName && role !== 'USER' && (
                             <>
                               <span className="text-xs opacity-20">•</span>
