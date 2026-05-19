@@ -102,7 +102,7 @@ const CHART_LABEL = {
 export default function ChatChart({ chartData }) {
   const [copied, setCopied] = useState(false);
   const [downloaded, setDownloaded] = useState(false);
-  const [currentTheme, setCurrentTheme] = useState('default');
+  const [currentTheme, setCurrentTheme] = useState('msuiit');
   const [showThemeMenu, setShowThemeMenu] = useState(false);
   const chartRef = useRef(null);
 
