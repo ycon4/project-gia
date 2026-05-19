@@ -384,7 +384,7 @@ function Sidebar({
               className="shrink-0 flex items-center justify-center p-1 rounded-md hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-all"
               title="GIA About"
             >
-              <div style={{ width: 24, height: 24, background: '#a673d8', WebkitMaskImage: `url(${giaLogo})`, maskImage: `url(${giaLogo})`, WebkitMaskSize: 'contain', maskSize: 'contain', WebkitMaskRepeat: 'no-repeat', maskRepeat: 'no-repeat', WebkitMaskPosition: 'center', maskPosition: 'center' }} />
+              <div style={{ width: 24, height: 24, background: '#741112', WebkitMaskImage: `url(${giaLogo})`, maskImage: `url(${giaLogo})`, WebkitMaskSize: 'contain', maskSize: 'contain', WebkitMaskRepeat: 'no-repeat', maskRepeat: 'no-repeat', WebkitMaskPosition: 'center', maskPosition: 'center' }} />
             </button>
             <div className="flex-1 min-w-0">
               <div className="font-montserrat text-neutral-900 dark:text-neutral-100 font-semibold text-sm leading-none truncate">MSU-IIT GADC</div>
@@ -509,7 +509,7 @@ function SideNavItem({ open, active, onClick, icon, label, danger, newChat }) {
         ${danger
           ? 'text-neutral-400 dark:text-neutral-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30'
           : newChat
-            ? 'text-[#a673d8] hover:bg-[#a673d8]/10'
+            ? 'text-[#741112] hover:bg-[#741112]/10'
             : active
               ? 'bg-neutral-100 dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100'
               : 'text-neutral-500 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 hover:text-neutral-900 dark:hover:text-neutral-100'
@@ -554,7 +554,7 @@ function ProfileButton({ open, user, displayName, onEditProfile, onLogout }) {
               <p className="text-xs font-semibold text-neutral-800 dark:text-neutral-200 truncate">{name}</p>
               <p className="text-[10px] text-neutral-400 dark:text-neutral-500 truncate">{user?.email}</p>
               {role && (
-                <div className={`text-[9px] font-bold mt-1.5 px-1.5 py-0.5 rounded inline-block ${role === 'ADMIN' ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400' :
+                <div className={`text-[9px] font-bold mt-1.5 px-1.5 py-0.5 rounded inline-block ${role === 'ADMIN' ? 'bg-[#741112]/10 text-[#741112] dark:bg-[#741112]/20 dark:text-rose-300' :
                   role === 'SECRETARIAT' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' :
                     'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400'
                   }`}>
@@ -585,7 +585,7 @@ function ProfileButton({ open, user, displayName, onEditProfile, onLogout }) {
         title={!open ? name : undefined}
         className={`w-full flex items-center py-2 px-2 rounded-md transition-colors hover:bg-neutral-100 dark:hover:bg-neutral-800 relative ${open ? 'gap-2.5' : ''}`}
       >
-        <span className={`shrink-0 rounded-full bg-[#a673d8] text-white flex items-center justify-center font-bold leading-none ${open ? 'w-6 h-6 text-xs' : 'w-4 h-4 text-[9px]'}`}>
+        <span className={`shrink-0 rounded-full bg-[#741112] text-white flex items-center justify-center font-bold leading-none ${open ? 'w-6 h-6 text-xs' : 'w-4 h-4 text-[9px]'}`}>
           {initial}
         </span>
         {open && (
@@ -593,7 +593,7 @@ function ProfileButton({ open, user, displayName, onEditProfile, onLogout }) {
             <span className="flex-1 min-w-0 text-left">
               <span className="text-sm font-normal text-neutral-700 dark:text-neutral-300 leading-none truncate block">{name}</span>
               {role && (
-                <span className={`text-[9px] font-bold mt-1 px-1.5 py-0.5 rounded inline-block ${role === 'ADMIN' ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400' :
+                <span className={`text-[9px] font-bold mt-1 px-1.5 py-0.5 rounded inline-block ${role === 'ADMIN' ? 'bg-[#741112]/10 text-[#741112] dark:bg-[#741112]/20 dark:text-rose-300' :
                   role === 'SECRETARIAT' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' :
                     'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400'
                   }`}>
@@ -605,7 +605,7 @@ function ProfileButton({ open, user, displayName, onEditProfile, onLogout }) {
           </>
         )}
         {!open && role && (
-          <span className={`absolute -top-1 -right-1 w-2 h-2 rounded-full ${role === 'ADMIN' ? 'bg-purple-500' :
+          <span className={`absolute -top-1 -right-1 w-2 h-2 rounded-full ${role === 'ADMIN' ? 'bg-[#741112]' :
             role === 'SECRETARIAT' ? 'bg-blue-500' :
               'bg-gray-500'
             }`} title={role === 'ADMIN' ? 'Admin' : role === 'SECRETARIAT' ? 'Secretariat' : 'Public View'} />

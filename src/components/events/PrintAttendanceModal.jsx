@@ -1,4 +1,4 @@
-﻿import { useState } from 'react';
+import { useState } from 'react';
 import { X, Printer, Check } from 'lucide-react';
 import {
   Document, Packer, Paragraph, Table, TableCell, TableRow,
@@ -10,13 +10,13 @@ const HEADER_COLORS = {
   black: { name: 'Black', value: '#000000', rgb: '000000' },
   maroon: { name: 'Maroon', value: '#991b1b', rgb: '991b1b' },
   darkMaroon: { name: 'Dark Maroon', value: '#7f1d1d', rgb: '7f1d1d' },
-  purple: { name: 'Purple', value: '#7c3aed', rgb: '7c3aed' },
+  maroon: { name: 'Maroon', value: '#741112', rgb: '741112' },
   lilac: { name: 'Lilac', value: '#a855f7', rgb: 'a855f7' },
 };
 
 export default function PrintAttendanceModal({ event, attendanceData, sessions, onClose }) {
   const [selectedColumns, setSelectedColumns] = useState(['number', 'name', 'sex', 'office_college', 'sector']);
-  const [selectedColor, setSelectedColor] = useState('purple');
+  const [selectedColor, setSelectedColor] = useState('maroon');
   const [selectedSessions, setSelectedSessions] = useState(['all']);
   const [isGenerating, setIsGenerating] = useState(false);
 
@@ -59,7 +59,7 @@ export default function PrintAttendanceModal({ event, attendanceData, sessions, 
   })();
 
   // Debug: Log the data
-  console.log('📊 Print Modal Data:', {
+  console.log('?? Print Modal Data:', {
     event,
     attendanceData,
     attendanceCount: attendanceData?.length,
@@ -145,18 +145,18 @@ export default function PrintAttendanceModal({ event, attendanceData, sessions, 
     setIsGenerating(true);
     try {
       // Debug color selection
-      console.log('🎨 BEFORE: selectedColor state =', selectedColor);
-      console.log('🎨 BEFORE: HEADER_COLORS =', HEADER_COLORS);
+      console.log('?? BEFORE: selectedColor state =', selectedColor);
+      console.log('?? BEFORE: HEADER_COLORS =', HEADER_COLORS);
 
       const color = HEADER_COLORS[selectedColor];
 
-      console.log('🎨 AFTER: color object =', color);
-      console.log('🎨 AFTER: color.rgb =', color?.rgb);
+      console.log('?? AFTER: color object =', color);
+      console.log('?? AFTER: color.rgb =', color?.rgb);
 
       if (!color) {
-        console.error('❌ Color not found! Using purple as fallback');
-        const fallbackColor = HEADER_COLORS.purple;
-        console.log('🎨 Fallback color:', fallbackColor);
+        console.error('? Color not found! Using maroon as fallback');
+        const fallbackColor = HEADER_COLORS.maroon;
+        console.log('?? Fallback color:', fallbackColor);
       }
 
       const selectedCols = AVAILABLE_COLUMNS.filter(col => selectedColumns.includes(col.id));
@@ -188,11 +188,11 @@ export default function PrintAttendanceModal({ event, attendanceData, sessions, 
 
         // If no data matched, use all attendance data as fallback
         if (sessionAttendance.length === 0) {
-          console.warn(`⚠️ No data matched session "${session}", using all data`);
+          console.warn(`?? No data matched session "${session}", using all data`);
           sessionAttendance = attendanceData;
         }
 
-        console.log(`📋 Session "${session}":`, {
+        console.log(`?? Session "${session}":`, {
           totalAttendance: attendanceData.length,
           filteredCount: sessionAttendance.length,
           sampleRecord: sessionAttendance[0],

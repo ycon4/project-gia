@@ -58,7 +58,7 @@ export default function LoginPage() {
         {/* Brand mark */}
         <div className="flex flex-col items-center mb-6">
           <div className="relative mb-3">
-            <img src={giaLogo} alt="GIA" className="w-14 h-14 object-contain" style={{ filter: 'brightness(0) saturate(100%) invert(22%) sepia(90%) saturate(2500%) hue-rotate(272deg) brightness(0.9)' }} />
+            <img src={giaLogo} alt="GIA" className="w-14 h-14 object-contain" style={{ filter: 'brightness(0) saturate(100%) invert(12%) sepia(80%) saturate(3000%) hue-rotate(340deg) brightness(0.85)' }} />
           </div>
           <h1 className="text-p4-base font-black text-neutral-900 dark:text-neutral-100 uppercase tracking-tight leading-none">
             MSU-IIT GADC

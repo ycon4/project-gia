@@ -91,7 +91,7 @@ export default function PublicEventsList() {
   if (loading) {
     return (
       <div className="h-32 flex flex-col items-center justify-center gap-1.5 text-neutral-400">
-        <Loader2 size={16} className="animate-spin text-purple-500" />
+        <Loader2 size={16} className="animate-spin text-[#741112]" />
         <span className="text-[10px] font-bold uppercase tracking-wider">Syncing Roadmap...</span>
       </div>
     );
@@ -112,7 +112,7 @@ export default function PublicEventsList() {
       {/* Metric Header Totalizer */}
       <div className="mb-3 shrink-0 flex items-center justify-between px-0.5">
         <div>
-          <h3 className="text-[9px] font-black uppercase tracking-widest text-purple-600 dark:text-purple-400">Institutional Calendar</h3>
+          <h3 className="text-[9px] font-black uppercase tracking-widest text-[#741112] dark:text-rose-300">Institutional Calendar</h3>
           <h2 className="text-sm font-black text-neutral-900 dark:text-neutral-50 tracking-tight mt-0.5">GADC Action Roadmap</h2>
         </div>
         <span className="text-[9px] font-black tracking-tight text-neutral-500 dark:text-neutral-400 bg-neutral-100 dark:bg-neutral-800/60 px-2 py-0.5 rounded border border-neutral-200/20 dark:border-neutral-700/20">
@@ -133,19 +133,19 @@ export default function PublicEventsList() {
               key={event.id}
               onClick={() => setSelectedEvent(event)}
               className={`p-3 rounded-xl border transition-all duration-200 relative overflow-hidden flex flex-col justify-between cursor-pointer group ${event.isUpcoming
-                ? 'bg-gradient-to-br from-purple-500/[0.04] via-purple-600/[0.01] to-transparent border-purple-500/30 dark:border-purple-500/40 shadow-xs ring-1 ring-purple-500/5 hover:border-purple-500/60'
+                ? 'bg-gradient-to-br from-[#741112]/[0.04] via-[#741112]/[0.01] to-transparent border-[#741112]/30 dark:border-[#741112]/40 shadow-xs ring-1 ring-[#741112]/5 hover:border-[#741112]/60'
                 : 'bg-[#fafafa] dark:bg-[#151518]/40 border-neutral-200/60 dark:border-neutral-800/50 hover:bg-neutral-50 dark:hover:bg-neutral-800/20'
                 }`}
             >
               {event.isUpcoming && (
-                <div className="absolute top-0 right-0 bg-gradient-to-l from-purple-600 to-purple-500 text-white text-[7px] font-black uppercase tracking-widest px-2 py-0.5 rounded-bl-lg shadow-xs flex items-center gap-0.5 z-10">
+                <div className="absolute top-0 right-0 bg-gradient-to-l from-[#741112] to-[#530B0C] text-white text-[7px] font-black uppercase tracking-widest px-2 py-0.5 rounded-bl-lg shadow-xs flex items-center gap-0.5 z-10">
                   <span className="w-1 h-1 rounded-full bg-white animate-ping" />
                   Upcoming Open
                 </div>
               )}
 
               <div className="space-y-1">
-                <h4 className="text-xs font-black text-neutral-900 dark:text-neutral-100 tracking-tight leading-snug max-w-[83%] group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors">
+                <h4 className="text-xs font-black text-neutral-900 dark:text-neutral-100 tracking-tight leading-snug max-w-[83%] group-hover:text-[#741112] dark:group-hover:text-rose-300 transition-colors">
                   {event.title || event.eventName || 'Untitled GADC Event Activity'}
                 </h4>
 
@@ -165,14 +165,14 @@ export default function PublicEventsList() {
                   </span>
 
                   {event.sdd && (
-                    <span className="truncate bg-purple-50 dark:bg-purple-950/40 text-purple-600 dark:text-purple-400 px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wider border border-purple-100/50 dark:border-purple-900/20">
+                    <span className="truncate bg-[#741112]/5 dark:bg-[#741112]/20 text-[#741112] dark:text-rose-300 px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wider border border-[#741112]/15 dark:border-[#741112]/20">
                       SDG: {event.sdd}
                     </span>
                   )}
                 </div>
 
                 {event.isUpcoming ? (
-                  <span className="text-[8px] font-black uppercase tracking-wider text-purple-600 dark:text-purple-400 bg-purple-500/10 px-1.5 py-0.5 rounded">
+                  <span className="text-[8px] font-black uppercase tracking-wider text-[#741112] dark:text-rose-300 bg-[#741112]/50/10 px-1.5 py-0.5 rounded">
                     Inspect ➔
                   </span>
                 ) : (
@@ -190,7 +190,7 @@ export default function PublicEventsList() {
                     target="_blank"
                     rel="noopener noreferrer"
                     onClick={(e) => e.stopPropagation()}
-                    className="w-full flex items-center justify-center gap-1.5 px-3 py-2 bg-gradient-to-r from-purple-600 to-purple-500 hover:from-purple-700 hover:to-purple-600 text-white rounded-lg text-[10px] font-black tracking-wide shadow-sm hover:shadow transition-all group uppercase"
+                    className="w-full flex items-center justify-center gap-1.5 px-3 py-2 bg-gradient-to-r from-[#741112] to-[#530B0C] hover:from-[#530B0C] hover:to-[#3a0708] text-white rounded-lg text-[10px] font-black tracking-wide shadow-sm hover:shadow transition-all group uppercase"
                   >
                     <ExternalLink size={10} className="group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
                     Pre-Register Now
@@ -220,7 +220,7 @@ export default function PublicEventsList() {
               <div className="space-y-1">
                 <div className="flex items-center gap-2">
                   <span className={`px-2 py-0.5 rounded text-[8px] font-black tracking-widest uppercase ${selectedEvent.isUpcoming
-                    ? 'bg-purple-100 text-purple-700 dark:bg-purple-950/60 dark:text-purple-400 border border-purple-200/30'
+                    ? 'bg-[#741112]/10 text-[#741112] dark:bg-[#741112]/20 dark:text-rose-300 border border-[#741112]/20'
                     : 'bg-neutral-100 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400'
                     }`}>
                     {selectedEvent.isUpcoming ? 'Active Scope' : 'Archive Data'}
@@ -315,12 +315,12 @@ export default function PublicEventsList() {
 
               {/* Strategy Parameters Index Banner */}
               {selectedEvent.sdd && (
-                <div className="p-3 bg-purple-500/[0.03] rounded-xl border border-purple-500/10 flex items-center gap-2.5">
-                  <div className="w-7 h-7 rounded-lg bg-purple-500/10 flex items-center justify-center text-purple-600 dark:text-purple-400 shrink-0">
+                <div className="p-3 bg-[#741112]/[0.03] rounded-xl border border-[#741112]/10 flex items-center gap-2.5">
+                  <div className="w-7 h-7 rounded-lg bg-[#741112]/10 flex items-center justify-center text-[#741112] dark:text-rose-300 shrink-0">
                     <Target size={12} />
                   </div>
                   <div>
-                    <span className="text-[8px] font-black text-purple-600 dark:text-purple-400 uppercase tracking-widest block">Institutional Target Metric</span>
+                    <span className="text-[8px] font-black text-[#741112] dark:text-rose-300 uppercase tracking-widest block">Institutional Target Metric</span>
                     <p className="text-xs font-black text-neutral-800 dark:text-neutral-200 mt-0.5">Strategic Directive Group: {selectedEvent.sdd}</p>
                   </div>
                 </div>
@@ -415,7 +415,7 @@ export default function PublicEventsList() {
                   href={selectedEvent.preRegLink || selectedEvent.registrationUrl || `${window.location.origin}/register/${selectedEvent.id}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="w-full sm:w-auto flex items-center justify-center gap-1.5 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-black tracking-wide shadow-sm hover:shadow transition-all group uppercase cursor-pointer"
+                  className="w-full sm:w-auto flex items-center justify-center gap-1.5 px-4 py-2 bg-[#741112] hover:bg-[#530B0C] text-white rounded-xl text-xs font-black tracking-wide shadow-sm hover:shadow transition-all group uppercase cursor-pointer"
                 >
                   Proceed with Pre-Registration
                   <ExternalLink size={11} className="group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />

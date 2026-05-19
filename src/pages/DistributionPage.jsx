@@ -15,7 +15,7 @@ import StudentEnrollmentVisuals from '../components/visuals/StudentEnrollmentVis
 import EmployeeVisuals from '../components/visuals/EmployeeVisuals.jsx';
 import { useRole, Permission } from '../contexts/RoleContext.jsx';
 
-const LILAC = '#a673d8';
+const LILAC = '#741112';
 
 // Human-readable column labels (keyed by field name)
 const HEADER_LABELS = {

@@ -60,7 +60,7 @@ const COLOR_THEMES = {
     name: 'Berry Mix',
     sex: {
       Male: '#ec4899', M: '#ec4899',      // Pink
-      Female: '#a855f7', F: '#a855f7',    // Purple
+      Female: '#a855f7', F: '#a855f7',    // Violet
       Unknown: '#9ca3af',
     },
     palette: ['#ec4899', '#a855f7', '#d946ef', '#f472b6', '#c026d3', '#e879f9'],
@@ -283,7 +283,7 @@ export default function ChatChart({ chartData }) {
     });
 
     return (
-      <div className="mt-4 pt-4 border-t border-purple-100 relative">
+      <div className="mt-4 pt-4 border-t border-[#741112]/10 relative">
         {chartActionsJSX}
         <div ref={chartRef} className="bg-white dark:bg-neutral-900 rounded-lg p-4">
           <p className="text-xs text-gray-500 dark:text-gray-400 font-semibold uppercase tracking-wider mb-4">Breakdown by College</p>
@@ -343,7 +343,7 @@ export default function ChatChart({ chartData }) {
     });
 
     return (
-      <div className="mt-4 pt-4 border-t border-purple-100 relative">
+      <div className="mt-4 pt-4 border-t border-[#741112]/10 relative">
         {chartActionsJSX}
         <div ref={chartRef} className="bg-white dark:bg-neutral-900 rounded-lg p-4">
           <p className="text-xs text-gray-500 dark:text-gray-400 font-semibold uppercase tracking-wider mb-4">Year-over-Year Trend</p>
@@ -402,7 +402,7 @@ export default function ChatChart({ chartData }) {
       .sort((a, b) => b.Total - a.Total);
 
     return (
-      <div className="mt-4 pt-4 border-t border-purple-100 relative">
+      <div className="mt-4 pt-4 border-t border-[#741112]/10 relative">
         {chartActionsJSX}
         <div ref={chartRef} className="bg-white dark:bg-neutral-900 rounded-lg p-4">
           <p className="text-xs text-gray-500 dark:text-gray-400 font-semibold uppercase tracking-wider mb-4">College Comparison</p>
@@ -482,7 +482,7 @@ export default function ChatChart({ chartData }) {
       };
 
       return (
-        <div className="mt-4 pt-4 border-t border-purple-100 relative">
+        <div className="mt-4 pt-4 border-t border-[#741112]/10 relative">
           {chartActionsJSX}
           <div ref={chartRef} className="bg-white dark:bg-neutral-900 rounded-lg p-4">
             <p className="text-xs text-gray-500 dark:text-gray-400 font-semibold uppercase tracking-wider mb-4">
@@ -532,7 +532,7 @@ export default function ChatChart({ chartData }) {
         .sort((a, b) => b.Total - a.Total);
 
       return (
-        <div className="mt-4 pt-4 border-t border-purple-100 relative">
+        <div className="mt-4 pt-4 border-t border-[#741112]/10 relative">
           {chartActionsJSX}
           <div ref={chartRef} className="bg-white dark:bg-neutral-900 rounded-lg p-4">
             <p className="text-xs text-gray-500 dark:text-gray-400 font-semibold uppercase tracking-wider mb-4">

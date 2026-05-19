@@ -7,7 +7,7 @@ export default function FloatingChatButton({ onClick, isOnChatPage }) {
     <button
       onClick={onClick}
       className="fixed bottom-8 right-8 rounded-full p-4 shadow-2xl transition-all duration-300 hover:scale-110 z-50"
-      style={{ background: '#a673d8', boxShadow: '0 25px 50px -12px #a673d84d' }}
+      style={{ background: '#741112', boxShadow: '0 25px 50px -12px #7411124d' }}
       title="Chat with GIA"
     >
       <img

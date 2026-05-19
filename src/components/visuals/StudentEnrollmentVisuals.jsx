@@ -37,7 +37,7 @@ const COLOR_THEMES = {
     palette: ['#10b981', '#84cc16', '#22c55e', '#4ade80', '#059669', '#65a30d', '#16a34a', '#86efac'],
   },
   purpleAmber: {
-    name: 'Purple & Amber',
+    name: 'Gia Purple',
     Male: '#f59e0b',
     Female: '#c084fc',
     palette: ['#c084fc', '#d8b4fe', '#f59e0b', '#10b981', '#f43f5e', '#3b82f6', '#8b5cf6', '#ec4899'],

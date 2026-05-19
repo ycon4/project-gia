@@ -615,7 +615,7 @@ export default function EventsPage({
           {/* Nav items */}
           <nav className="px-1 py-3 space-y-1 shrink-0">
 
-            {/* New Event — mirrors "New Chat" (gia purple) */}
+            {/* New Event — mirrors "New Chat" (gia maroon) */}
             {hasPermission(Permission.EVENT_CREATE) && (
               <button onClick={openCreate} title={!rightOpen ? 'New Event' : undefined}
                 className={`w-full flex items-center py-2 px-2 rounded-md transition-colors duration-150 text-gia-600 hover:bg-gia-50 dark:hover:bg-gia-950/20 ${rightOpen ? 'gap-2.5' : ''}`}>

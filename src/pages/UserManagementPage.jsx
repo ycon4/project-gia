@@ -354,7 +354,7 @@ export default function UserManagementPage() {
               <div className="flex flex-col items-center text-center">
                 {modalConfig.type === 'success' && <div className="p-3 bg-emerald-50 dark:bg-emerald-950/30 rounded-full mb-3"><CheckCircle className="text-emerald-500 w-6 h-6" /></div>}
                 {modalConfig.type === 'error' && <div className="p-3 bg-rose-50 dark:bg-rose-950/30 rounded-full mb-3"><AlertTriangle className="text-rose-500 w-6 h-6" /></div>}
-                {modalConfig.type === 'confirm' && <div className="p-3 bg-purple-50 dark:bg-purple-950/30 rounded-full mb-3"><UserPlus className="text-purple-500 w-6 h-6" /></div>}
+                {modalConfig.type === 'confirm' && <div className="p-3 bg-[#741112]/10 dark:bg-[#741112]/20 rounded-full mb-3"><UserPlus className="text-[#741112] dark:text-rose-300 w-6 h-6" /></div>}
 
                 <h3 className="font-black text-base text-neutral-900 dark:text-neutral-100">{modalConfig.title}</h3>
                 <p className="text-xs text-neutral-500 dark:text-neutral-400 font-medium mt-1.5 leading-relaxed px-2">{modalConfig.message}</p>
@@ -364,12 +364,12 @@ export default function UserManagementPage() {
                 {(modalConfig.type === 'confirm' || modalConfig.type === 'error') && modalConfig.onConfirm ? (
                   <>
                     <button onClick={() => setModalConfig(null)} className="flex-1 py-2 bg-neutral-100 hover:bg-neutral-200 dark:bg-neutral-800 dark:hover:bg-neutral-700 text-neutral-700 dark:text-neutral-300 font-bold text-xs rounded-xl transition-all">Cancel</button>
-                    <button onClick={() => { const cb = modalConfig.onConfirm; setModalConfig(null); if (cb) cb(); }} className={`flex-1 py-2 font-bold text-xs text-white rounded-xl transition-all shadow-md ${modalConfig.type === 'error' ? 'bg-rose-600 hover:bg-rose-700' : 'bg-purple-600 hover:bg-purple-700'}`}>Confirm</button>
+                    <button onClick={() => { const cb = modalConfig.onConfirm; setModalConfig(null); if (cb) cb(); }} className={`flex-1 py-2 font-bold text-xs text-white rounded-xl transition-all shadow-md ${modalConfig.type === 'error' ? 'bg-rose-600 hover:bg-rose-700' : 'bg-[#741112] hover:bg-[#530B0C]'}`}>Confirm</button>
                   </>
                 ) : modalConfig.onConfirm ? (
                   <>
                     <button onClick={() => setModalConfig(null)} className="flex-1 py-2 bg-neutral-100 hover:bg-neutral-200 dark:bg-neutral-800 dark:hover:bg-neutral-700 text-neutral-700 dark:text-neutral-300 font-bold text-xs rounded-xl transition-all">Cancel</button>
-                    <button onClick={() => { const cb = modalConfig.onConfirm; setModalConfig(null); cb(); }} className="flex-1 py-2 bg-purple-600 hover:bg-purple-700 font-bold text-xs text-white rounded-xl transition-all shadow-md">Continue</button>
+                    <button onClick={() => { const cb = modalConfig.onConfirm; setModalConfig(null); cb(); }} className="flex-1 py-2 bg-[#741112] hover:bg-[#530B0C] font-bold text-xs text-white rounded-xl transition-all shadow-md">Continue</button>
                   </>
                 ) : (
                   <button onClick={() => setModalConfig(null)} className="w-full py-2 bg-neutral-900 hover:bg-neutral-800 dark:bg-white dark:hover:bg-neutral-100 text-white dark:text-neutral-900 font-bold text-xs rounded-xl transition-all shadow-md">Dismiss</button>
@@ -388,12 +388,12 @@ export default function UserManagementPage() {
           <div className="flex items-center gap-3">
             {/* Stats Drawer Dropdown */}
             <div className="relative" ref={statsRef}>
-              <button onClick={() => setStatsOpen(!statsOpen)} className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-neutral-900 border-2 border-neutral-200 dark:border-neutral-800 hover:border-purple-300 dark:hover:border-purple-700 text-neutral-700 dark:text-neutral-300 rounded-xl text-sm font-bold transition-all shadow-sm">
+              <button onClick={() => setStatsOpen(!statsOpen)} className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-neutral-900 border-2 border-neutral-200 dark:border-neutral-800 hover:border-[#741112]/40 dark:hover:border-[#741112]/50 text-neutral-700 dark:text-neutral-300 rounded-xl text-sm font-bold transition-all shadow-sm">
                 <BarChart2 size={16} />Stats
               </button>
               {statsOpen && (
                 <div className="absolute right-0 top-full mt-2 w-64 bg-white dark:bg-neutral-900 border-2 border-neutral-200 dark:border-neutral-800 rounded-xl shadow-2xl overflow-hidden z-30">
-                  <div className="p-3 bg-purple-50/50 dark:from-purple-900/20 border-b-2 border-neutral-200 dark:border-neutral-800">
+                  <div className="p-3 bg-[#741112]/5 dark:bg-[#741112]/10 border-b-2 border-neutral-200 dark:border-neutral-800">
                     <h3 className="text-xs font-black text-neutral-900 dark:text-neutral-100 uppercase tracking-wider">User Statistics</h3>
                   </div>
                   <div className="p-2 space-y-0.5">
@@ -401,9 +401,8 @@ export default function UserManagementPage() {
                       <div className="flex items-center gap-2"><User size={14} className="text-neutral-500" /><span className="text-xs font-semibold text-neutral-700 dark:text-neutral-300">Active Access</span></div>
                       <span className="text-sm font-black text-neutral-900 dark:text-neutral-100">{users.filter(u => u.status === 'Active').length}</span>
                     </div>
-                    <div className="flex items-center justify-between px-3 py-2 hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded-lg">
-                      <div className="flex items-center gap-2"><ShieldCheck size={14} className="text-purple-500" /><span className="text-xs font-semibold text-purple-700 dark:text-purple-400">Admin Staff</span></div>
-                      <span className="text-sm font-black text-purple-900 dark:text-purple-100">{users.filter(u => u.role === 'ADMIN' && u.status === 'Active').length}</span>
+                    <div className="flex items-center justify-between px-3 py-2 hover:bg-[#741112]/5 dark:hover:bg-[#741112]/10 rounded-lg"><div className="flex items-center gap-2"><ShieldCheck size={14} className="text-[#741112] dark:text-rose-300" /><span className="text-xs font-semibold text-[#741112] dark:text-rose-300">Admin Staff</span></div>
+                      <span className="text-sm font-black text-[#741112] dark:text-rose-200">{users.filter(u => u.role === 'ADMIN' && u.status === 'Active').length}</span>
                     </div>
                     <div className="flex items-center justify-between px-3 py-2 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg">
                       <div className="flex items-center gap-2"><Shield size={14} className="text-blue-500" /><span className="text-xs font-semibold text-blue-700 dark:text-blue-400">Secretariat</span></div>
@@ -417,7 +416,7 @@ export default function UserManagementPage() {
                 </div>
               )}
             </div>
-            <button onClick={handleRefresh} disabled={loading} className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 disabled:opacity-50 text-white rounded-xl text-sm font-bold transition-all shadow-lg shadow-purple-500/20">
+            <button onClick={handleRefresh} disabled={loading} className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-[#741112] to-[#530B0C] hover:from-[#530B0C] hover:to-[#3a0708] disabled:opacity-50 text-white rounded-xl text-sm font-bold transition-all shadow-lg shadow-[#741112]/20">
               <Loader2 size={16} className={loading ? 'animate-spin' : 'hidden'} />Refresh
             </button>
           </div>
@@ -427,9 +426,9 @@ export default function UserManagementPage() {
         <div className="grid md:grid-cols-[400px_1fr] gap-6">
 
           {/* LEFT PANEL: Directory Lookup & Profiling */}
-          <div className="bg-gradient-to-br from-white to-purple-50/30 dark:from-neutral-900 dark:to-purple-900/10 border-2 border-purple-200 dark:border-purple-800/50 rounded-xl p-4 shadow-lg flex flex-col">
+          <div className="bg-gradient-to-br from-white to-[#741112]/5 dark:from-neutral-900 dark:to-[#741112]/10 border-2 border-[#741112]/20 dark:border-[#741112]/30 rounded-xl p-4 shadow-lg flex flex-col">
             <div className="flex items-center gap-2 mb-3">
-              <div className="p-2 rounded-lg bg-gradient-to-br from-purple-500 to-purple-600 shadow-lg shadow-purple-500/30"><UserPlus size={16} className="text-white" /></div>
+              <div className="p-2 rounded-lg bg-gradient-to-br from-[#741112] to-[#530B0C] shadow-lg shadow-[#741112]/30"><UserPlus size={16} className="text-white" /></div>
               <div className="flex-1">
                 <h2 className="text-sm font-black text-neutral-900 dark:text-neutral-100">Provision Workspace</h2>
                 <p className="text-[10px] text-neutral-500 dark:text-neutral-400">Select unassigned or revoked profiles</p>
@@ -450,15 +449,15 @@ export default function UserManagementPage() {
 
             <div className="mb-3 relative">
               <Search size={12} className="absolute left-2.5 top-2.5 text-neutral-400 z-10" />
-              <input type="text" placeholder="Search directory pool..." value={employeeSearch} onChange={(e) => setEmployeeSearch(e.target.value)} className="w-full pl-8 pr-2.5 py-1.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg text-xs font-medium focus:ring-2 focus:ring-purple-500/30 outline-none transition-all placeholder:text-neutral-400" />
+              <input type="text" placeholder="Search directory pool..." value={employeeSearch} onChange={(e) => setEmployeeSearch(e.target.value)} className="w-full pl-8 pr-2.5 py-1.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg text-xs font-medium focus:ring-2 focus:ring-[#741112]/30 outline-none transition-all placeholder:text-neutral-400" />
 
               {employeeSearch && availableEmployees.length > 0 && (
-                <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-neutral-900 border-2 border-purple-200 dark:border-purple-800/50 rounded-xl shadow-2xl max-h-80 overflow-y-auto z-20 p-1">
+                <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-neutral-900 border-2 border-[#741112]/20 dark:border-[#741112]/30 rounded-xl shadow-2xl max-h-80 overflow-y-auto z-20 p-1">
                   {availableEmployees.slice(0, 15).map(emp => (
-                    <button key={emp.id} onClick={() => { handleSelectEmployee(emp); setEmployeeSearch(''); }} className="w-full px-3 py-2 text-left hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-all rounded-lg group flex items-center gap-2">
-                      <div className="w-8 h-8 rounded-lg bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center text-purple-600 dark:text-purple-400 font-black text-xs">{(emp.name || '?')[0].toUpperCase()}</div>
+                    <button key={emp.id} onClick={() => { handleSelectEmployee(emp); setEmployeeSearch(''); }} className="w-full px-3 py-2 text-left hover:bg-[#741112]/5 dark:hover:bg-[#741112]/10 transition-all rounded-lg group flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-lg bg-[#741112]/10 dark:bg-[#741112]/20 flex items-center justify-center text-[#741112] dark:text-rose-300 font-black text-xs">{(emp.name || '?')[0].toUpperCase()}</div>
                       <div className="min-w-0 flex-1">
-                        <p className="text-xs font-bold text-neutral-900 dark:text-neutral-100 truncate group-hover:text-purple-600">{emp.name || 'Unnamed Record'}</p>
+                        <p className="text-xs font-bold text-neutral-900 dark:text-neutral-100 truncate group-hover:text-[#741112]">{emp.name || 'Unnamed Record'}</p>
                         <p className="text-[10px] text-neutral-400 truncate">{emp.email}</p>
                       </div>
                     </button>
@@ -471,7 +470,7 @@ export default function UserManagementPage() {
             <div className="flex-1 flex flex-col min-h-0 mb-4">
               <div className="flex items-center justify-between mb-1.5">
                 <p className="text-xs font-bold text-neutral-700 dark:text-neutral-300">Selected Queue</p>
-                <span className="text-[10px] font-bold text-purple-600 bg-purple-100 dark:bg-purple-900/30 px-2 py-0.5 rounded-full">{selectedEmployees.length}</span>
+                <span className="text-[10px] font-bold text-[#741112] bg-[#741112]/10 dark:bg-[#741112]/20 px-2 py-0.5 rounded-full">{selectedEmployees.length}</span>
               </div>
               <div className="flex-1 border-2 border-neutral-200 dark:border-neutral-800 rounded-xl overflow-y-auto bg-neutral-50 dark:bg-neutral-800/30 p-2 space-y-1.5">
                 {selectedEmployees.length === 0 ? (
@@ -483,7 +482,7 @@ export default function UserManagementPage() {
                   selectedEmployees.map(emp => (
                     <div key={emp.id} className="p-2 bg-white dark:bg-neutral-900 rounded-lg border border-neutral-200 dark:border-neutral-700 flex flex-col gap-1.5">
                       <div className="flex items-center gap-2">
-                        <div className="w-7 h-7 rounded-md bg-purple-50 dark:bg-purple-950/40 text-purple-600 font-bold text-xs flex items-center justify-center">{(emp.name || '?')[0].toUpperCase()}</div>
+                        <div className="w-7 h-7 rounded-md bg-[#741112]/10 dark:bg-[#741112]/20 text-[#741112] font-bold text-xs flex items-center justify-center">{(emp.name || '?')[0].toUpperCase()}</div>
                         <div className="flex-1 min-w-0">
                           <p className="text-xs font-bold text-neutral-900 dark:text-neutral-100 truncate">{emp.name}</p>
                           <p className="text-[10px] text-neutral-400 truncate">{emp.email}</p>
@@ -504,7 +503,7 @@ export default function UserManagementPage() {
               </div>
             </div>
 
-            <button onClick={handleCreateAccounts} disabled={selectedEmployees.length === 0 || creating} className="w-full py-2.5 bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white rounded-xl text-xs font-black transition-all flex items-center justify-center gap-2 shadow-md">
+            <button onClick={handleCreateAccounts} disabled={selectedEmployees.length === 0 || creating} className="w-full py-2.5 bg-[#741112] hover:bg-[#530B0C] disabled:opacity-50 text-white rounded-xl text-xs font-black transition-all flex items-center justify-center gap-2 shadow-md">
               {creating ? <Loader2 size={14} className="animate-spin" /> : <UserPlus size={14} />}
               Grant / Restore Access Authorization
             </button>
@@ -522,7 +521,7 @@ export default function UserManagementPage() {
               </div>
               <div className="relative">
                 <Search size={12} className="absolute left-3 top-2.5 text-neutral-400" />
-                <input type="text" placeholder="Search active accounts..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-8 pr-3 py-1.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg text-xs font-medium focus:ring-2 focus:ring-purple-500/30 outline-none w-56" />
+                <input type="text" placeholder="Search active accounts..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-8 pr-3 py-1.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg text-xs font-medium focus:ring-2 focus:ring-[#741112]/30 outline-none w-56" />
               </div>
             </div>
 

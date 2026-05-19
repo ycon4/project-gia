@@ -171,7 +171,7 @@ export const AttendanceTable = ({ data = [], title = 'Records', event, sessions 
 
             <button
               onClick={() => setShowPrintModal(true)}
-              className="flex items-center gap-2 px-4 py-2 bg-purple-50 dark:bg-purple-950/20 text-purple-700 dark:text-purple-300 rounded-xl font-bold text-xs uppercase tracking-widest hover:bg-purple-100 dark:hover:bg-purple-900/30 transition-colors"
+              className="flex items-center gap-2 px-4 py-2 bg-[#741112]/10 dark:bg-[#741112]/20 text-[#741112] dark:text-rose-300 rounded-xl font-bold text-xs uppercase tracking-widest hover:bg-[#741112]/15 dark:hover:bg-[#741112]/25 transition-colors"
             >
               <Printer size={14} /> Export
             </button>

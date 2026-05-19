@@ -28,7 +28,7 @@ const COLOR_THEMES = {
     ],
   },
   purpleAmber: {
-    name: 'Purple & Amber',
+    name: 'GIA Purple',
     Male: '#f59e0b',
     Female: '#c084fc',
     palette: ['#c084fc', '#d8b4fe', '#f59e0b', '#10b981', '#f43f5e', '#3b82f6', '#8b5cf6', '#ec4899'],
@@ -105,7 +105,7 @@ function useIsDark() {
 }
 
 // ─── SUB-COMPONENTS ───────────────────────────────────────────────────────────
-function KPICard({ label, value, sub, accent = '#a673d8', icon: Icon, change }) {
+function KPICard({ label, value, sub, accent = '#741112', icon: Icon, change }) {
   const [hovered, setHovered] = useState(false);
   const isDark = useIsDark();
   const hasChange = change !== null && change !== undefined;
@@ -152,7 +152,7 @@ function SectionTitle({ children }) {
   );
 }
 
-function RankRow({ rank, name, count, total, color = '#a673d8' }) {
+function RankRow({ rank, name, count, total, color = '#741112' }) {
   const width = total ? (count / total) * 100 : 0;
   return (
     <div className="flex items-center gap-3 py-1.5">
@@ -169,7 +169,6 @@ function RankRow({ rank, name, count, total, color = '#a673d8' }) {
 
 // ─── MAIN ECOSYSTEM DASHBOARD ──────────────────────────────────────────────────
 export default function GeneralDashboard({ events = [], attendanceData = [], compact = false }) {
-  const { role } = useRole();
   const isDark = useIsDark();
 
   // ── Filter State ──
@@ -415,25 +414,12 @@ export default function GeneralDashboard({ events = [], attendanceData = [], com
       };
     }
 
-    // ── Event Submission Status Statistics (for Secretariat) ──
-    const submissionStats = role === 'SECRETARIAT' ? (() => {
-      const draftEvents = events.filter(e => e.submissionStatus === 'draft');
-      const submittedEvents = events.filter(e => e.submissionStatus === 'submitted' || !e.submissionStatus);
-      return {
-        drafts: draftEvents.length,
-        submitted: submittedEvents.length,
-        total: events.length,
-        draftPct: events.length > 0 ? ((draftEvents.length / events.length) * 100).toFixed(1) : '0',
-        submittedPct: events.length > 0 ? ((submittedEvents.length / events.length) * 100).toFixed(1) : '0'
-      };
-    })() : null;
-
     return {
       total, male, female, pwdYes, pwdYesPct, sectorData, genderPie, sectorPie,
       unitRanking, unitGenderRanking, trend, sessionGenderData, sessionFunnel,
       ageGenderData, topAgeBand, employmentGenderData, topEmployment, pwdGenderData,
       eventTable, narrative, femalePct, topSector, topSectorFemalePct, topSession,
-      trendDelta, changes, eventChart, submissionStats,
+      trendDelta, changes, eventChart,
     };
   }, [filtered, events, attendanceData, dateRange, selectedSector, selectedEvent, selectedStatus, GENDER_COLORS, SECTOR_COLORS]);
 
@@ -561,33 +547,6 @@ export default function GeneralDashboard({ events = [], attendanceData = [], com
             <KPICard label="Male Participants" value={stats.male.toLocaleString()} icon={User} accent={COLORS.Male} sub={`${pct(stats.male, stats.total)}% of total`} change={stats.changes.male} />
             <KPICard label="PWD Participants" value={stats.pwdYes.toLocaleString()} icon={Accessibility} accent={COLORS.palette[5]} sub={`${stats.pwdYesPct}% of total`} change={stats.changes.pwd} />
           </div>
-
-          {/* ── SUBMISSION STATUS CARDS (Secretariat Only) ── */}
-          {role === 'SECRETARIAT' && stats.submissionStats && (
-            <div className="grid gap-6 grid-cols-2 md:grid-cols-3">
-              <KPICard
-                label="Draft Events"
-                value={stats.submissionStats.drafts.toString()}
-                icon={FileText}
-                accent="#f59e0b"
-                sub={`${stats.submissionStats.draftPct}% of your events`}
-              />
-              <KPICard
-                label="Submitted Events"
-                value={stats.submissionStats.submitted.toString()}
-                icon={Send}
-                accent="#3b82f6"
-                sub={`${stats.submissionStats.submittedPct}% of your events`}
-              />
-              <KPICard
-                label="Total Events"
-                value={stats.submissionStats.total.toString()}
-                icon={Calendar}
-                accent={COLORS.palette[2]}
-                sub="Events you created"
-              />
-            </div>
-          )}
 
           {/* ── 1. COMPREHENSIVE PARTICIPATION SCALABLE GRAPH ── */}
           <div className="rounded-2xl overflow-hidden border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-[#121212]">
