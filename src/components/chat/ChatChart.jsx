@@ -74,6 +74,15 @@ const COLOR_THEMES = {
     },
     palette: ['#3b82f6', '#8b5cf6', '#6366f1', '#60a5fa', '#7c3aed', '#a78bfa'],
   },
+  msuiit: {
+    name: 'MSU-IIT',
+    sex: {
+      Male: '#7c2529', M: '#7c2529',      // MSU Maroon
+      Female: '#d4af37', F: '#d4af37',    // MSU Gold
+      Unknown: '#9ca3af',
+    },
+    palette: ['#7c2529', '#d4af37', '#9b2c2c', '#ecc94b', '#5a1a1d', '#b8941f'],
+  },
 };
 
 // Returns non-Total, non-percentage keys (i.e. sex/category keys)

@@ -95,7 +95,6 @@ const normalizeEnrollmentRecord = (r) => ({
   '_pwd?': nb(r['_pwd?'] ?? r.is_pwd),
   '_solo_parent?': nb(r['_solo_parent?'] ?? r.is_solo_parent),
   '_ip_member?': nb(r['_ip_member?'] ?? r.is_ip_member),
-  '_working_student?': nb(r['_working_student?'] ?? r.is_working_student),
 });
 
 export default function StudentEnrollmentVisuals({ data, recordsCount = 0, academicPeriod = 'Academic Year', isPublic = false }) {
@@ -219,9 +218,6 @@ export default function StudentEnrollmentVisuals({ data, recordsCount = 0, acade
     const yearLevel = processSDD('stud_yrlevel').sort((a, b) => a.name.localeCompare(b.name));
     const vulnerabilities = [
       { id: '_pwd?', label: 'PWD' },
-      { id: '_solo_parent?', label: 'Solo Parent' },
-      { id: '_ip_member?', label: 'IP Member' },
-      { id: '_working_student?', label: 'Working' },
       { id: 'is_child_lgbtq', label: 'Child of LGBTQ+' },
       { id: 'is_child_pdl', label: 'Child of PDL' },
       { id: 'is_child_solo_parent', label: 'Child of Solo Parent' },
@@ -325,14 +321,14 @@ export default function StudentEnrollmentVisuals({ data, recordsCount = 0, acade
       ],
       render: () => (
         <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={stats.college} layout="vertical">
+          <BarChart data={stats.college} layout="vertical" barCategoryGap={isPublic ? '5%' : '10%'}>
             <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#e5e7eb" />
             <XAxis type="number" hide />
-            <YAxis dataKey="name" type="category" width={150} fontSize={10} fontWeight={600} axisLine={false} tickLine={false} />
+            <YAxis dataKey="name" type="category" width={isPublic ? 100 : 150} fontSize={isPublic ? 8 : 10} fontWeight={600} axisLine={false} tickLine={false} />
             <Tooltip cursor={{ fill: `${LILAC}10` }} content={<CustomTooltip />} />
-            <Legend verticalAlign="top" align="right" />
-            <Bar dataKey="Male" stackId="a" fill={COLORS.Male} barSize={18} />
-            <Bar dataKey="Female" stackId="a" fill={COLORS.Female} radius={[0, 4, 4, 0]} barSize={18} />
+            <Legend verticalAlign="top" align="right" wrapperStyle={{ fontSize: isPublic ? 10 : 12 }} />
+            <Bar dataKey="Male" stackId="a" fill={COLORS.Male} barSize={isPublic ? 20 : 18} />
+            <Bar dataKey="Female" stackId="a" fill={COLORS.Female} radius={[0, 4, 4, 0]} barSize={isPublic ? 20 : 18} />
           </BarChart>
         </ResponsiveContainer>
       ),
@@ -346,14 +342,14 @@ export default function StudentEnrollmentVisuals({ data, recordsCount = 0, acade
       ],
       render: () => (
         <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={stats.yearLevel}>
+          <BarChart data={stats.yearLevel} barCategoryGap={isPublic ? '8%' : '15%'}>
             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
-            <XAxis dataKey="name" fontSize={11} fontWeight="bold" />
-            <YAxis fontSize={10} />
+            <XAxis dataKey="name" fontSize={isPublic ? 9 : 11} fontWeight="bold" />
+            <YAxis fontSize={isPublic ? 8 : 10} />
             <Tooltip content={<CustomTooltip />} />
-            <Legend />
-            <Bar dataKey="Male" fill={COLORS.Male} radius={[4, 4, 0, 0]} />
-            <Bar dataKey="Female" fill={COLORS.Female} radius={[4, 4, 0, 0]} />
+            <Legend wrapperStyle={{ fontSize: isPublic ? 10 : 12 }} />
+            <Bar dataKey="Male" fill={COLORS.Male} radius={[4, 4, 0, 0]} barSize={isPublic ? 35 : undefined} />
+            <Bar dataKey="Female" fill={COLORS.Female} radius={[4, 4, 0, 0]} barSize={isPublic ? 35 : undefined} />
           </BarChart>
         </ResponsiveContainer>
       ),
@@ -363,20 +359,20 @@ export default function StudentEnrollmentVisuals({ data, recordsCount = 0, acade
       desc: "Sex representation across specific support groups (PWD, 4Ps, Solo Parent, etc.).",
       summary: [
         { label: 'PWD', value: normalizedData.filter(d => d['_pwd?'] === 'Yes').length },
-        { label: 'Solo Parent', value: normalizedData.filter(d => d['_solo_parent?'] === 'Yes').length },
-        { label: 'IP Member', value: normalizedData.filter(d => d['_ip_member?'] === 'Yes').length },
-        { label: 'Working Student', value: normalizedData.filter(d => d['_working_student?'] === 'Yes').length },
+        { label: 'Child of LGBTQ+', value: normalizedData.filter(d => d['is_child_lgbtq'] === 'Yes').length },
+        { label: 'Child of PDL', value: normalizedData.filter(d => d['is_child_pdl'] === 'Yes').length },
+        { label: 'Child of Solo Parent', value: normalizedData.filter(d => d['is_child_solo_parent'] === 'Yes').length },
       ],
       render: () => (
         <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={stats.vulnerabilities}>
+          <BarChart data={stats.vulnerabilities} barCategoryGap={isPublic ? '8%' : '15%'}>
             <CartesianGrid strokeDasharray="3 3" vertical={false} />
-            <XAxis dataKey="name" fontSize={11} fontWeight="black" />
-            <YAxis />
+            <XAxis dataKey="name" fontSize={isPublic ? 9 : 11} fontWeight="black" />
+            <YAxis fontSize={isPublic ? 8 : 10} />
             <Tooltip content={<CustomTooltip />} />
-            <Legend />
-            <Bar dataKey="Male" fill={COLORS.Male} radius={[4, 4, 0, 0]} />
-            <Bar dataKey="Female" fill={COLORS.Female} radius={[4, 4, 0, 0]} />
+            <Legend wrapperStyle={{ fontSize: isPublic ? 10 : 12 }} />
+            <Bar dataKey="Male" fill={COLORS.Male} radius={[4, 4, 0, 0]} barSize={isPublic ? 30 : undefined} />
+            <Bar dataKey="Female" fill={COLORS.Female} radius={[4, 4, 0, 0]} barSize={isPublic ? 30 : undefined} />
           </BarChart>
         </ResponsiveContainer>
       ),
@@ -386,13 +382,13 @@ export default function StudentEnrollmentVisuals({ data, recordsCount = 0, acade
       desc: "Most populated academic programs disaggregated by gender.",
       render: () => (
         <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={stats.programs} layout="vertical">
-            <YAxis dataKey="name" type="category" width={160} fontSize={8} />
+          <BarChart data={stats.programs} layout="vertical" barCategoryGap={isPublic ? '3%' : '10%'}>
+            <YAxis dataKey="name" type="category" width={isPublic ? 120 : 160} fontSize={isPublic ? 7 : 8} />
             <XAxis type="number" hide />
             <Tooltip content={<CustomTooltip />} />
-            <Legend />
-            <Bar dataKey="Male" stackId="a" fill={COLORS.Male} barSize={12} />
-            <Bar dataKey="Female" stackId="a" fill={COLORS.Female} barSize={12} />
+            <Legend wrapperStyle={{ fontSize: isPublic ? 10 : 12 }} />
+            <Bar dataKey="Male" stackId="a" fill={COLORS.Male} barSize={isPublic ? 16 : 12} />
+            <Bar dataKey="Female" stackId="a" fill={COLORS.Female} barSize={isPublic ? 16 : 12} />
           </BarChart>
         </ResponsiveContainer>
       ),
@@ -403,11 +399,11 @@ export default function StudentEnrollmentVisuals({ data, recordsCount = 0, acade
       render: () => (
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
-            <Pie data={stats.ethnicity} dataKey="total" nameKey="name" innerRadius={70} outerRadius={110}>
+            <Pie data={stats.ethnicity} dataKey="total" nameKey="name" innerRadius={isPublic ? 50 : 70} outerRadius={isPublic ? 80 : 110}>
               {stats.ethnicity.map((_, i) => <Cell key={i} fill={COLORS.palette[i % COLORS.palette.length]} />)}
             </Pie>
             <Tooltip content={<CustomTooltip />} />
-            <Legend />
+            <Legend wrapperStyle={{ fontSize: isPublic ? 9 : 12 }} />
           </PieChart>
         </ResponsiveContainer>
       ),
@@ -417,14 +413,14 @@ export default function StudentEnrollmentVisuals({ data, recordsCount = 0, acade
       desc: "Top 5 religious groups recorded in the data.",
       render: () => (
         <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={stats.religion}>
+          <BarChart data={stats.religion} barCategoryGap={isPublic ? '10%' : '15%'}>
             <CartesianGrid strokeDasharray="3 3" vertical={false} />
-            <XAxis dataKey="name" fontSize={9} />
-            <YAxis />
+            <XAxis dataKey="name" fontSize={isPublic ? 8 : 9} />
+            <YAxis fontSize={isPublic ? 8 : 10} />
             <Tooltip content={<CustomTooltip />} />
-            <Legend />
-            <Bar dataKey="Female" fill={COLORS.Female} stackId="a" radius={[4, 4, 0, 0]} />
-            <Bar dataKey="Male" fill={COLORS.Male} stackId="a" radius={[4, 4, 0, 0]} />
+            <Legend wrapperStyle={{ fontSize: isPublic ? 10 : 12 }} />
+            <Bar dataKey="Female" fill={COLORS.Female} stackId="a" radius={[4, 4, 0, 0]} barSize={isPublic ? 40 : undefined} />
+            <Bar dataKey="Male" fill={COLORS.Male} stackId="a" radius={[4, 4, 0, 0]} barSize={isPublic ? 40 : undefined} />
           </BarChart>
         </ResponsiveContainer>
       ),
@@ -434,14 +430,14 @@ export default function StudentEnrollmentVisuals({ data, recordsCount = 0, acade
       desc: "Students who are the first in their families to attend college.",
       render: () => (
         <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={stats.firstGen}>
+          <BarChart data={stats.firstGen} barCategoryGap={isPublic ? '15%' : '20%'}>
             <CartesianGrid strokeDasharray="3 3" vertical={false} />
-            <XAxis dataKey="name" fontSize={11} />
-            <YAxis />
+            <XAxis dataKey="name" fontSize={isPublic ? 9 : 11} />
+            <YAxis fontSize={isPublic ? 8 : 10} />
             <Tooltip content={<CustomTooltip />} />
-            <Legend />
-            <Bar dataKey="Male" fill={COLORS.Male} stackId="a" radius={[4, 4, 0, 0]} />
-            <Bar dataKey="Female" fill={COLORS.Female} stackId="a" radius={[4, 4, 0, 0]} />
+            <Legend wrapperStyle={{ fontSize: isPublic ? 10 : 12 }} />
+            <Bar dataKey="Male" fill={COLORS.Male} stackId="a" radius={[4, 4, 0, 0]} barSize={isPublic ? 50 : undefined} />
+            <Bar dataKey="Female" fill={COLORS.Female} stackId="a" radius={[4, 4, 0, 0]} barSize={isPublic ? 50 : undefined} />
           </BarChart>
         </ResponsiveContainer>
       ),
@@ -451,11 +447,11 @@ export default function StudentEnrollmentVisuals({ data, recordsCount = 0, acade
       desc: "Top provinces where students are currently residing.",
       render: () => (
         <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={stats.origin} layout="vertical">
-            <YAxis dataKey="name" type="category" fontSize={9} width={90} />
+          <BarChart data={stats.origin} layout="vertical" barCategoryGap={isPublic ? '8%' : '15%'}>
+            <YAxis dataKey="name" type="category" fontSize={isPublic ? 8 : 9} width={isPublic ? 70 : 90} />
             <XAxis type="number" hide />
             <Tooltip content={<CustomTooltip />} />
-            <Bar dataKey="total" fill={LILAC} radius={[0, 4, 4, 0]} barSize={22} />
+            <Bar dataKey="total" fill={LILAC} radius={[0, 4, 4, 0]} barSize={isPublic ? 24 : 22} />
           </BarChart>
         </ResponsiveContainer>
       ),
@@ -465,14 +461,14 @@ export default function StudentEnrollmentVisuals({ data, recordsCount = 0, acade
       desc: "Combined parental annual income brackets showing household economic status by sex.",
       render: () => (
         <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={stats.socioeconomic}>
+          <BarChart data={stats.socioeconomic} barCategoryGap={isPublic ? '5%' : '10%'}>
             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
-            <XAxis dataKey="name" fontSize={10} fontWeight="bold" angle={-15} textAnchor="end" height={60} />
-            <YAxis fontSize={10} />
+            <XAxis dataKey="name" fontSize={isPublic ? 8 : 10} fontWeight="bold" angle={-15} textAnchor="end" height={isPublic ? 50 : 60} />
+            <YAxis fontSize={isPublic ? 8 : 10} />
             <Tooltip content={<CustomTooltip />} />
-            <Legend />
-            <Bar dataKey="Male" fill={COLORS.Male} stackId="a" radius={[0, 0, 0, 0]} />
-            <Bar dataKey="Female" fill={COLORS.Female} stackId="a" radius={[4, 4, 0, 0]} />
+            <Legend wrapperStyle={{ fontSize: isPublic ? 10 : 12 }} />
+            <Bar dataKey="Male" fill={COLORS.Male} stackId="a" radius={[0, 0, 0, 0]} barSize={isPublic ? 28 : undefined} />
+            <Bar dataKey="Female" fill={COLORS.Female} stackId="a" radius={[4, 4, 0, 0]} barSize={isPublic ? 28 : undefined} />
           </BarChart>
         </ResponsiveContainer>
       ),
@@ -483,18 +479,18 @@ export default function StudentEnrollmentVisuals({ data, recordsCount = 0, acade
       render: () => (
         <ResponsiveContainer width="100%" height="100%">
           {stats.disabilityTypes.length > 0 ? (
-            <BarChart data={stats.disabilityTypes} layout="vertical">
+            <BarChart data={stats.disabilityTypes} layout="vertical" barCategoryGap={isPublic ? '5%' : '10%'}>
               <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#e5e7eb" />
               <XAxis type="number" hide />
-              <YAxis dataKey="name" type="category" width={140} fontSize={10} fontWeight={600} axisLine={false} tickLine={false} />
+              <YAxis dataKey="name" type="category" width={isPublic ? 100 : 140} fontSize={isPublic ? 8 : 10} fontWeight={600} axisLine={false} tickLine={false} />
               <Tooltip cursor={{ fill: `${LILAC}10` }} content={<CustomTooltip />} />
-              <Legend verticalAlign="top" align="right" />
-              <Bar dataKey="Male" stackId="a" fill={COLORS.Male} barSize={16} />
-              <Bar dataKey="Female" stackId="a" fill={COLORS.Female} radius={[0, 4, 4, 0]} barSize={16} />
+              <Legend verticalAlign="top" align="right" wrapperStyle={{ fontSize: isPublic ? 10 : 12 }} />
+              <Bar dataKey="Male" stackId="a" fill={COLORS.Male} barSize={isPublic ? 18 : 16} />
+              <Bar dataKey="Female" stackId="a" fill={COLORS.Female} radius={[0, 4, 4, 0]} barSize={isPublic ? 18 : 16} />
             </BarChart>
           ) : (
             <div className="flex items-center justify-center h-full">
-              <p className="text-sm text-neutral-400 dark:text-neutral-500 italic">No PWD data with specified disability types</p>
+              <p className={`text-neutral-400 dark:text-neutral-500 italic ${isPublic ? 'text-xs' : 'text-sm'}`}>No PWD data with specified disability types</p>
             </div>
           )}
         </ResponsiveContainer>
@@ -506,18 +502,18 @@ export default function StudentEnrollmentVisuals({ data, recordsCount = 0, acade
       render: () => (
         <ResponsiveContainer width="100%" height="100%">
           {stats.indigenousCommunities.length > 0 ? (
-            <BarChart data={stats.indigenousCommunities} layout="vertical">
+            <BarChart data={stats.indigenousCommunities} layout="vertical" barCategoryGap={isPublic ? '5%' : '10%'}>
               <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#e5e7eb" />
               <XAxis type="number" hide />
-              <YAxis dataKey="name" type="category" width={120} fontSize={10} fontWeight={600} axisLine={false} tickLine={false} />
+              <YAxis dataKey="name" type="category" width={isPublic ? 90 : 120} fontSize={isPublic ? 8 : 10} fontWeight={600} axisLine={false} tickLine={false} />
               <Tooltip cursor={{ fill: `${LILAC}10` }} content={<CustomTooltip />} />
-              <Legend verticalAlign="top" align="right" />
-              <Bar dataKey="Male" stackId="a" fill={COLORS.Male} barSize={16} />
-              <Bar dataKey="Female" stackId="a" fill={COLORS.Female} radius={[0, 4, 4, 0]} barSize={16} />
+              <Legend verticalAlign="top" align="right" wrapperStyle={{ fontSize: isPublic ? 10 : 12 }} />
+              <Bar dataKey="Male" stackId="a" fill={COLORS.Male} barSize={isPublic ? 18 : 16} />
+              <Bar dataKey="Female" stackId="a" fill={COLORS.Female} radius={[0, 4, 4, 0]} barSize={isPublic ? 18 : 16} />
             </BarChart>
           ) : (
             <div className="flex items-center justify-center h-full">
-              <p className="text-sm text-neutral-400 dark:text-neutral-500 italic">No indigenous community data specified</p>
+              <p className={`text-neutral-400 dark:text-neutral-500 italic ${isPublic ? 'text-xs' : 'text-sm'}`}>No indigenous community data specified</p>
             </div>
           )}
         </ResponsiveContainer>
@@ -674,10 +670,13 @@ export default function StudentEnrollmentVisuals({ data, recordsCount = 0, acade
             </div>
           )}
 
-          {/* Records count */}
-          <span className="text-xs font-medium text-neutral-400 dark:text-neutral-500 tabular-nums">
-            {recordsCount.toLocaleString()} records
-          </span>
+          {/* Records count - Hidden in public mode */}
+          {!isPublic && (
+            <span className="text-xs font-medium text-neutral-400 dark:text-neutral-500 tabular-nums">
+              {recordsCount.toLocaleString()} records
+            </span>
+          )}
+
         </div>
       </div>
 
@@ -705,8 +704,10 @@ export default function StudentEnrollmentVisuals({ data, recordsCount = 0, acade
         )}
 
         {/* ── Chart fills remaining space ── */}
-        <div className="flex-1 px-4 pb-4 pt-2 min-h-0">
-          {current.render()}
+        <div className={`flex-1 px-4 pb-4 pt-2 min-h-0 ${isPublic ? 'flex items-center justify-center' : ''}`}>
+          <div style={{ height: isPublic ? '70%' : '100%', width: '100%', marginTop: isPublic ? '-2rem' : '0' }}>
+            {current.render()}
+          </div>
         </div>
       </div>
 
@@ -725,3 +726,5 @@ export default function StudentEnrollmentVisuals({ data, recordsCount = 0, acade
     </div>
   );
 }
+
+

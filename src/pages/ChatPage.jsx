@@ -8,15 +8,39 @@ import { getAllDocuments } from '../../firebase/services';
 import { analyzeWithAI } from '../services/aiService';
 import ChatChart from '../components/chat/ChatChart';
 
-const makeWelcome = (name) => ({
+const makeWelcome = (name, isPublic = false) => ({
   role: 'assistant',
-  content: `Hello${name ? `, ${name}` : ''}! I'm **GIA**, the Gender and Development Center Information Assistant. I can help you analyze enrollment, engagement, employee, attendance, and events data. What would you like to know?`,
+  content: isPublic
+    ? `Hello${name ? `, ${name}` : ''}! Welcome to the **MSU-IIT GADC Public Portal Assistant**. I can help you explore student enrollment statistics and upcoming events. What would you like to know?`
+    : `Hello${name ? `, ${name}` : ''}! I'm **GIA**, the Gender and Development Center Information Assistant. I can help you analyze enrollment, engagement, employee, attendance, and events data. What would you like to know?`,
   timestamp: null,
 });
 
+/**
+ * ChatPage Component
+ * 
+ * AI-powered chat assistant for MSU-IIT GADC data analysis
+ * 
+ * @param {Object} user - Firebase user object (null for public view)
+ * @param {string} displayName - User's display name
+ * @param {Array} conversations - List of saved conversations (admin only)
+ * @param {Function} setConversations - Update conversations state (admin only)
+ * @param {string|null} activeConvId - Active conversation ID (admin only)
+ * @param {Function} setActiveConvId - Set active conversation (admin only)
+ * @param {boolean} isPublicView - If true, restricts to public-safe data and hides admin controls
+ * 
+ * @example
+ * // Admin usage (full access)
+ * <ChatPage user={user} displayName="John" conversations={convs} setConversations={setConvs} activeConvId={id} setActiveConvId={setId} />
+ * 
+ * @example
+ * // Public portal usage (restricted access)
+ * <ChatPage user={null} displayName="Guest" conversations={[]} setConversations={() => {}} activeConvId={null} setActiveConvId={() => {}} isPublicView={true} />
+ */
 export default function ChatPage({
   user, displayName,
   conversations, setConversations, activeConvId, setActiveConvId,
+  isPublicView = false,
 }) {
   // Data loading state - managed locally in ChatPage
   const [dbData, setDbData] = useState({});
@@ -24,7 +48,7 @@ export default function ChatPage({
   const [dataLoaded, setDataLoaded] = useState(false);
   const dataLoadInitiated = useRef(false);
 
-  const [messages, setMessages] = useState(() => [makeWelcome(displayName)]);
+  const [messages, setMessages] = useState(() => [makeWelcome(displayName, isPublicView)]);
   const [chatHistory, setChatHistory] = useState([]);
   const [inputMessage, setInputMessage] = useState('');
   const [isThinking, setIsThinking] = useState(false);
@@ -66,8 +90,10 @@ export default function ChatPage({
 
     setIsLoadingData(true);
     try {
-      // Load all collections needed for chat analysis
-      const collections = ['attendance', 'employee_information', 'events', 'student_enrollment'];
+      // PUBLIC VIEW RESTRICTION: Only load public-safe collections
+      const collections = isPublicView
+        ? ['student_enrollment', 'events'] // Public portal: only enrollment and events
+        : ['attendance', 'employee_information', 'events', 'student_enrollment']; // Full access
 
       const results = await Promise.allSettled(collections.map(col => getAllDocuments(col)));
 
@@ -120,20 +146,20 @@ export default function ChatPage({
   // Load messages when active conversation changes
   useEffect(() => {
     if (activeConvId === null) {
-      setMessages([makeWelcome(displayName)]);
+      setMessages([makeWelcome(displayName, isPublicView)]);
       setChatHistory([]);
       setInputMessage('');
       if (textareaRef.current) textareaRef.current.style.height = 'auto';
     } else {
       const conv = conversations.find(c => c.id === activeConvId);
       if (conv) {
-        setMessages(conv.messages?.length ? conv.messages : [makeWelcome(displayName)]);
+        setMessages(conv.messages?.length ? conv.messages : [makeWelcome(displayName, isPublicView)]);
         setChatHistory((conv.messages || []).map(m => ({ role: m.role, content: m.content })));
       }
       setInputMessage('');
       if (textareaRef.current) textareaRef.current.style.height = 'auto';
     }
-  }, [activeConvId]);
+  }, [activeConvId, isPublicView]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -188,7 +214,29 @@ export default function ChatPage({
     setMessages([...withUser, thinkingMsg]);
 
     try {
-      const result = await analyzeWithAI(trimmed, dataLoaded ? dbData : {}, chatHistory);
+      // PUBLIC VIEW SECURITY: Inject system prompt restriction to prevent data leakage
+      const systemPromptPrefix = isPublicView
+        ? `[SYSTEM RESTRICTION - PUBLIC PORTAL MODE]
+You are a public-facing assistant for the MSU-IIT GADC Public Portal. STRICT RULES:
+
+1. DATA SCOPE: Only discuss student enrollment statistics and public events
+2. SECURITY: NEVER reveal:
+   - Database collection names or internal schemas
+   - Admin protocols, authentication methods, or system architecture
+   - Private participant rosters, attendance records, or employee information
+   - Internal API endpoints or backend implementation details
+3. RESPONSE STYLE: Provide aggregate statistics and public-safe insights only
+4. RESTRICTED QUERIES: If asked about admin features, private data, or system internals, respond:
+   "That information is only available to authorized administrators. For public inquiries, I can help with enrollment statistics and upcoming events."
+
+User question: `
+        : '';
+
+      const result = await analyzeWithAI(
+        systemPromptPrefix + trimmed,
+        dataLoaded ? dbData : {},
+        chatHistory
+      );
 
       const assistantMsg = {
         role: 'assistant',
@@ -205,7 +253,10 @@ export default function ChatPage({
         { role: 'assistant', content: result.reply },
       ]);
 
-      await persistConversation(finalMessages, trimmed);
+      // PUBLIC VIEW: Skip conversation persistence (no user account)
+      if (!isPublicView) {
+        await persistConversation(finalMessages, trimmed);
+      }
     } catch {
       setMessages([...withUser, {
         role: 'assistant',
@@ -240,14 +291,23 @@ export default function ChatPage({
 
   const isWelcomeScreen = messages.length === 1 && messages[0].timestamp === null;
 
-  const exampleQuestions = [
-    "Male and female students enrolled in 2024-2025",
-    "PWD students by college and gender",
-    "Male and female students in CCS",
-    "Students by province disaggregated by sex",
-    "Compare male and female enrollment across colleges",
-    "Events by type and participant gender"
-  ];
+  const exampleQuestions = isPublicView
+    ? [
+      "How many students are enrolled this year?",
+      "Show male and female student distribution",
+      "What events are scheduled?",
+      "Student enrollment by college",
+      "Gender breakdown of enrollment",
+      "Upcoming GADC events"
+    ]
+    : [
+      "Male and female students enrolled in 2024-2025",
+      "PWD students by college and gender",
+      "Male and female students in CCS",
+      "Students by province disaggregated by sex",
+      "Compare male and female enrollment across colleges",
+      "Events by type and participant gender"
+    ];
 
   const handleExampleClick = (question) => {
     setInputMessage(question);
@@ -280,56 +340,70 @@ export default function ChatPage({
 
       {/* ── Welcome screen ── */}
       {isWelcomeScreen ? (
-        <div className="flex-1 flex items-center justify-center px-8 pb-1 select-none">
+        <div className={`flex-1 flex items-center justify-center select-none ${isPublicView ? 'px-4 pb-2' : 'px-8 pb-1'}`}>
           <div className="flex flex-col items-start w-full max-w-2xl">
             <div className="w-full">
-              <h1 className="text-p4-3xl font-bold text-neutral-800 dark:text-neutral-100 leading-tight mb-1">
-                What would you<br />like to know{displayName ? `, ${displayName}` : ''}?
+              <h1 className={`font-bold text-neutral-800 dark:text-neutral-100 leading-tight ${isPublicView ? 'text-p4-2xl ml-1 mb-1' : 'text-p4-3xl mb-1'}`}>
+                What would you{isPublicView ? '' : <br />} like to know{displayName ? `, ${displayName}` : ''}?
               </h1>
-              <p className="text-p4-base text-neutral-400 dark:text-neutral-500 leading-relaxed mb-3">
-                Ask about enrollment, engagement, employees, attendance, or events data.
+              <p className={`text-neutral-400 dark:text-neutral-500 leading-relaxed ${isPublicView ? 'text-[10px] mb-2' : 'text-p4-base mb-3'}`}>
+                {isPublicView
+                  ? 'Ask about student enrollment and upcoming events.'
+                  : 'Ask about enrollment, engagement, employees, attendance, or events data.'}
               </p>
               {isLoadingData ? (
-                <div className="flex items-center gap-2 text-neutral-400 dark:text-neutral-500 text-p4-sm mb-6">
-                  <RefreshCw size={13} className="animate-spin" /> Loading database...
+                <div className={`flex items-center gap-2 text-neutral-400 dark:text-neutral-500 ${isPublicView ? 'text-[10px] mb-2' : 'text-p4-sm mb-6'}`}>
+                  <RefreshCw size={isPublicView ? 11 : 13} className="animate-spin" /> Loading database...
                 </div>
               ) : dataLoaded ? (
-                <div className="mb-6">
-                  <div className="flex items-center gap-2 text-neutral-400 dark:text-neutral-500 text-p4-sm">
-                    <Database size={13} className="text-green-400" />
-                    {totalRecords.toLocaleString()} records ready
-                    <button
-                      onClick={() => {
-                        dataLoadInitiated.current = false;
-                        setDataLoaded(false);
-                        loadDatabaseData();
-                      }}
-                      className="text-neutral-400 dark:text-neutral-600 hover:text-neutral-500 dark:hover:text-neutral-400 transition ml-1"
-                      title="Refresh data"
-                    >
-                      <RefreshCw size={12} />
-                    </button>
-                  </div>
-                  {lastDataUpdate && (
-                    <p className="text-xs text-neutral-400 dark:text-neutral-600 mt-1">
-                      Last updated: {getRelativeTime(lastDataUpdate)}
-                    </p>
+                <div className={isPublicView ? 'mb-2' : 'mb-6'}>
+                  {/* ADMIN ONLY: Database stats and refresh button */}
+                  {!isPublicView && (
+                    <>
+                      <div className="flex items-center gap-2 text-neutral-400 dark:text-neutral-500 text-p4-sm">
+                        <Database size={13} className="text-green-400" />
+                        {totalRecords.toLocaleString()} records ready
+                        <button
+                          onClick={() => {
+                            dataLoadInitiated.current = false;
+                            setDataLoaded(false);
+                            loadDatabaseData();
+                          }}
+                          className="text-neutral-400 dark:text-neutral-600 hover:text-neutral-500 dark:hover:text-neutral-400 transition ml-1"
+                          title="Refresh data"
+                        >
+                          <RefreshCw size={12} />
+                        </button>
+                      </div>
+                      {lastDataUpdate && (
+                        <p className="text-xs text-neutral-400 dark:text-neutral-600 mt-1">
+                          Last updated: {getRelativeTime(lastDataUpdate)}
+                        </p>
+                      )}
+                    </>
+                  )}
+                  {/* PUBLIC VIEW: Simple ready indicator */}
+                  {isPublicView && (
+                    <div className="flex items-center gap-1.5 text-emerald-500 dark:text-emerald-400 text-[10px]">
+                      <Database size={11} />
+                      <span className="font-medium">Ready to assist</span>
+                    </div>
                   )}
                 </div>
               ) : null}
 
               {/* Example Questions */}
-              <div className="mt-6">
-                <p className="text-xs text-neutral-500 dark:text-neutral-400 mb-2 font-medium">Try asking:</p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <div className={isPublicView ? 'mt-2' : 'mt-6'}>
+                <p className={`text-neutral-500 dark:text-neutral-400 font-medium ${isPublicView ? 'text-[9px] mb-1' : 'text-xs mb-2'}`}>Try asking:</p>
+                <div className={`grid grid-cols-1 sm:grid-cols-2 ${isPublicView ? 'gap-1.5' : 'gap-2'}`}>
                   {exampleQuestions.map((question, idx) => (
                     <button
                       key={idx}
                       onClick={() => handleExampleClick(question)}
-                      className="group text-left px-3 py-2 text-xs text-neutral-600 dark:text-neutral-300 bg-white dark:bg-neutral-900 hover:bg-gia-50 dark:hover:bg-gia-950/30 border border-neutral-200 dark:border-neutral-700 hover:border-gia-300 dark:hover:border-gia-700 rounded-lg transition-all duration-200 shadow-sm hover:shadow"
+                      className={`group text-left text-neutral-600 dark:text-neutral-300 bg-white dark:bg-neutral-900 hover:bg-gia-50 dark:hover:bg-gia-950/30 border border-neutral-200 dark:border-neutral-700 hover:border-gia-300 dark:hover:border-gia-700 rounded-lg transition-all duration-200 shadow-sm hover:shadow ${isPublicView ? 'px-2 py-1.5 text-[10px]' : 'px-3 py-2 text-xs'}`}
                     >
                       <span className="flex items-start gap-2">
-                        <span className="text-gia-400 dark:text-gia-500 mt-0.5 group-hover:text-gia-600 dark:group-hover:text-gia-400 transition-colors text-[10px]">•</span>
+                        <span className={`text-gia-400 dark:text-gia-500 mt-0.5 group-hover:text-gia-600 dark:group-hover:text-gia-400 transition-colors ${isPublicView ? 'text-[8px]' : 'text-[10px]'}`}>•</span>
                         <span className="flex-1">{question}</span>
                       </span>
                     </button>
@@ -344,26 +418,26 @@ export default function ChatPage({
         <div
           ref={messagesContainerRef}
           onScroll={handleScroll}
-          className="flex-1 overflow-y-auto py-6"
+          className={`flex-1 overflow-y-auto min-h-0 ${isPublicView ? 'py-3' : 'py-6'}`}
           style={{ scrollbarWidth: 'thin', scrollbarColor: '#e5e7eb transparent' }}
         >
-          <div className="max-w-3xl mx-auto px-6 space-y-6">
+          <div className={`max-w-3xl mx-auto space-y-3 ${isPublicView ? 'px-3' : 'px-6'}`}>
             {messages.map((msg, idx) => (
               <div key={idx} className={`flex ${msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
 
                 <div className={`max-w-[85%] ${msg.role === 'user' ? 'items-end' : 'items-start'} flex flex-col`}>
                   {msg.role === 'user' ? (
-                    <div className="bg-neutral-200 dark:bg-neutral-800 text-slate-900 dark:text-neutral-100 px-4 py-2.5 rounded-2xl rounded-tr-sm text-sm leading-relaxed">
+                    <div className={`bg-neutral-200 dark:bg-neutral-800 text-slate-900 dark:text-neutral-100 rounded-2xl rounded-tr-sm leading-relaxed ${isPublicView ? 'px-3 py-2 text-xs' : 'px-4 py-2.5 text-sm'}`}>
                       {msg.content}
                     </div>
                   ) : (
-                    <div className="text-gray-800 dark:text-slate-200 text-sm leading-relaxed w-full">
+                    <div className={`text-gray-800 dark:text-slate-200 leading-relaxed w-full ${isPublicView ? 'text-xs' : 'text-sm'}`}>
                       {msg.content === '🤔 Thinking...' ? (
-                        <div className="flex items-center gap-2 text-gray-400 dark:text-slate-500 italic text-sm font-sans">
+                        <div className={`flex items-center gap-2 text-gray-400 dark:text-slate-500 italic font-sans ${isPublicView ? 'text-xs' : 'text-sm'}`}>
                           <span className="flex gap-1">
-                            <span className="w-1.5 h-1.5 bg-gia-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                            <span className="w-1.5 h-1.5 bg-gia-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                            <span className="w-1.5 h-1.5 bg-gia-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                            <span className={`bg-gia-400 rounded-full animate-bounce ${isPublicView ? 'w-1 h-1' : 'w-1.5 h-1.5'}`} style={{ animationDelay: '0ms' }} />
+                            <span className={`bg-gia-400 rounded-full animate-bounce ${isPublicView ? 'w-1 h-1' : 'w-1.5 h-1.5'}`} style={{ animationDelay: '150ms' }} />
+                            <span className={`bg-gia-400 rounded-full animate-bounce ${isPublicView ? 'w-1 h-1' : 'w-1.5 h-1.5'}`} style={{ animationDelay: '300ms' }} />
                           </span>
                           Thinking...
                         </div>
@@ -374,24 +448,24 @@ export default function ChatPage({
                             <div className="flex justify-end mb-2">
                               <button
                                 onClick={() => copyTableToClipboard(msg.content, idx)}
-                                className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-neutral-600 dark:text-neutral-400 hover:text-gia-600 dark:hover:text-gia-400 hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-lg transition-all duration-200"
+                                className={`flex items-center gap-1.5 text-neutral-600 dark:text-neutral-400 hover:text-gia-600 dark:hover:text-gia-400 hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-lg transition-all duration-200 ${isPublicView ? 'px-2 py-1 text-[10px]' : 'px-3 py-1.5 text-xs'}`}
                                 title="Copy table to clipboard"
                               >
                                 {copiedMessageId === idx ? (
                                   <>
-                                    <Check size={14} className="text-green-500" />
+                                    <Check size={isPublicView ? 12 : 14} className="text-green-500" />
                                     <span className="text-green-500">Copied!</span>
                                   </>
                                 ) : (
                                   <>
-                                    <Copy size={14} />
+                                    <Copy size={isPublicView ? 12 : 14} />
                                     <span>Copy table</span>
                                   </>
                                 )}
                               </button>
                             </div>
                           )}
-                          <div className="prose prose-sm max-w-none markdown-content">
+                          <div className={`prose max-w-none markdown-content ${isPublicView ? 'prose-xs' : 'prose-sm'}`}>
                             <style>{`
                               .markdown-content table thead th { color: white !important; }
                               .markdown-content tbody tr:nth-child(even) { background-color: rgba(249, 250, 251, 0.5); }
@@ -406,32 +480,32 @@ export default function ChatPage({
                             <ReactMarkdown
                               remarkPlugins={[remarkGfm]}
                               components={{
-                                h1: ({ node, ...props }) => <h1 className="text-xl font-bold text-gray-900 dark:text-slate-100 mt-4 mb-3 font-sans" {...props} />,
-                                h2: ({ node, ...props }) => <h2 className="text-lg font-bold text-gray-900 dark:text-slate-100 mt-3 mb-2 font-sans" {...props} />,
-                                h3: ({ node, ...props }) => <h3 className="text-base font-semibold text-gray-800 dark:text-slate-200 mt-3 mb-2 font-sans" {...props} />,
-                                p: ({ node, ...props }) => <p className="text-gray-700 dark:text-slate-300 mb-3 leading-relaxed" {...props} />,
+                                h1: ({ node, ...props }) => <h1 className={`font-bold text-gray-900 dark:text-slate-100 font-sans ${isPublicView ? 'text-base mt-2 mb-1.5' : 'text-xl mt-4 mb-3'}`} {...props} />,
+                                h2: ({ node, ...props }) => <h2 className={`font-bold text-gray-900 dark:text-slate-100 font-sans ${isPublicView ? 'text-sm mt-2 mb-1' : 'text-lg mt-3 mb-2'}`} {...props} />,
+                                h3: ({ node, ...props }) => <h3 className={`font-semibold text-gray-800 dark:text-slate-200 font-sans ${isPublicView ? 'text-xs mt-2 mb-1' : 'text-base mt-3 mb-2'}`} {...props} />,
+                                p: ({ node, ...props }) => <p className={`text-gray-700 dark:text-slate-300 leading-relaxed ${isPublicView ? 'mb-2' : 'mb-3'}`} {...props} />,
                                 strong: ({ node, ...props }) => <strong className="font-bold text-gray-900 dark:text-slate-100" {...props} />,
-                                ul: ({ node, ...props }) => <ul className="list-disc pl-5 my-3 space-y-1" {...props} />,
-                                ol: ({ node, ...props }) => <ol className="list-decimal pl-5 my-3 space-y-1" {...props} />,
+                                ul: ({ node, ...props }) => <ul className={`list-disc pl-5 space-y-1 ${isPublicView ? 'my-2' : 'my-3'}`} {...props} />,
+                                ol: ({ node, ...props }) => <ol className={`list-decimal pl-5 space-y-1 ${isPublicView ? 'my-2' : 'my-3'}`} {...props} />,
                                 li: ({ node, ...props }) => <li className="text-gray-700 dark:text-slate-300 leading-relaxed" {...props} />,
                                 table: ({ node, ...props }) => (
-                                  <div className="overflow-x-auto my-4 font-sans">
+                                  <div className={`overflow-x-auto font-sans ${isPublicView ? 'my-2' : 'my-4'}`}>
                                     <table className="min-w-full border-collapse rounded-lg overflow-hidden shadow-sm" {...props} />
                                   </div>
                                 ),
                                 thead: ({ node, ...props }) => <thead className="bg-gradient-to-r from-gia-600 to-gia-700" {...props} />,
                                 th: ({ node, children, ...props }) => (
-                                  <th className="px-4 py-3 text-left font-bold text-xs tracking-wide border-r border-gia-500 last:border-r-0 text-white font-sans" {...props}>{children}</th>
+                                  <th className={`text-left font-bold tracking-wide border-r border-gia-500 last:border-r-0 text-white font-sans ${isPublicView ? 'px-2 py-1.5 text-[10px]' : 'px-4 py-3 text-xs'}`} {...props}>{children}</th>
                                 ),
-                                td: ({ node, ...props }) => <td className="px-4 py-3 text-sm text-gray-700 dark:text-slate-300 border-b border-gray-100 dark:border-neutral-700 font-sans" {...props} />,
+                                td: ({ node, ...props }) => <td className={`text-gray-700 dark:text-slate-300 border-b border-gray-100 dark:border-neutral-700 font-sans ${isPublicView ? 'px-2 py-1.5 text-[10px]' : 'px-4 py-3 text-sm'}`} {...props} />,
                                 tbody: ({ node, ...props }) => <tbody className="bg-white dark:bg-neutral-800/50 divide-y divide-gray-100 dark:divide-neutral-700" {...props} />,
                                 code: ({ node, inline, ...props }) => (
                                   inline
-                                    ? <code className="bg-gia-50 dark:bg-gia-950/50 text-gia-700 dark:text-gia-300 px-1.5 py-0.5 rounded text-xs font-mono" {...props} />
-                                    : <code className="block bg-gray-900 dark:bg-neutral-800 text-gray-100 p-4 rounded-lg my-3 overflow-x-auto font-mono text-xs" {...props} />
+                                    ? <code className={`bg-gia-50 dark:bg-gia-950/50 text-gia-700 dark:text-gia-300 rounded font-mono ${isPublicView ? 'px-1 py-0.5 text-[10px]' : 'px-1.5 py-0.5 text-xs'}`} {...props} />
+                                    : <code className={`block bg-gray-900 dark:bg-neutral-800 text-gray-100 rounded overflow-x-auto font-mono ${isPublicView ? 'p-2 my-2 text-[10px]' : 'p-4 my-3 text-xs'}`} {...props} />
                                 ),
-                                blockquote: ({ node, ...props }) => <blockquote className="border-l-4 border-gia-300 dark:border-gia-700 pl-4 py-1 my-3 italic text-gray-500 dark:text-slate-400 bg-gia-50/50 dark:bg-gia-950/30 rounded-r" {...props} />,
-                                hr: ({ node, ...props }) => <hr className="my-4 border-gray-100 dark:border-neutral-700" {...props} />,
+                                blockquote: ({ node, ...props }) => <blockquote className={`border-l-4 border-gia-300 dark:border-gia-700 italic text-gray-500 dark:text-slate-400 bg-gia-50/50 dark:bg-gia-950/30 rounded-r ${isPublicView ? 'pl-2 py-0.5 my-2' : 'pl-4 py-1 my-3'}`} {...props} />,
+                                hr: ({ node, ...props }) => <hr className={`border-gray-100 dark:border-neutral-700 ${isPublicView ? 'my-2' : 'my-4'}`} {...props} />,
                                 a: ({ node, ...props }) => <a className="text-gia-600 dark:text-gia-400 hover:underline font-sans" target="_blank" rel="noreferrer" {...props} />,
                               }}
                             >
@@ -442,8 +516,8 @@ export default function ChatPage({
 
                           {/* Show suggestions on error messages */}
                           {isErrorMessage(msg.content) && (
-                            <div className="mt-2 p-2 bg-gia-50/50 dark:bg-gia-950/20 border border-gia-200/50 dark:border-gia-800/50 rounded-md">
-                              <p className="text-[10px] font-medium text-gia-600 dark:text-gia-400 mb-1.5">
+                            <div className={`bg-gia-50/50 dark:bg-gia-950/20 border border-gia-200/50 dark:border-gia-800/50 rounded-md ${isPublicView ? 'mt-1.5 p-1.5' : 'mt-2 p-2'}`}>
+                              <p className={`font-medium text-gia-600 dark:text-gia-400 ${isPublicView ? 'text-[9px] mb-1' : 'text-[10px] mb-1.5'}`}>
                                 💡 Try:
                               </p>
                               <div className="flex flex-wrap gap-1.5">
@@ -451,7 +525,7 @@ export default function ChatPage({
                                   <button
                                     key={idx}
                                     onClick={() => handleExampleClick(question)}
-                                    className="text-[10px] text-gia-600 dark:text-gia-400 hover:text-gia-700 dark:hover:text-gia-300 hover:underline transition-colors"
+                                    className={`text-gia-600 dark:text-gia-400 hover:text-gia-700 dark:hover:text-gia-300 hover:underline transition-colors ${isPublicView ? 'text-[9px]' : 'text-[10px]'}`}
                                   >
                                     {question}
                                   </button>
@@ -489,10 +563,10 @@ export default function ChatPage({
       )}
 
       {/* ── Input ── */}
-      <div className="px-6 py-4 bg-white dark:bg-neutral-950 shrink-0">
+      <div className={`bg-white dark:bg-neutral-950 shrink-0 ${isPublicView ? 'px-3 py-2' : 'px-6 py-4'}`}>
         <form onSubmit={handleSendMessage}>
           <div className="max-w-3xl mx-auto">
-            <div className="flex items-center gap-3 bg-gray-50 dark:bg-neutral-900 border border-gray-200 dark:border-neutral-700 rounded-2xl px-4 py-3 focus-within:border-neutral-400 dark:focus-within:border-neutral-500 focus-within:ring-2 focus-within:ring-neutral-200 dark:focus-within:ring-neutral-700/50 transition-all">
+            <div className={`flex items-center gap-3 bg-gray-50 dark:bg-neutral-900 border border-gray-200 dark:border-neutral-700 rounded-2xl focus-within:border-neutral-400 dark:focus-within:border-neutral-500 focus-within:ring-2 focus-within:ring-neutral-200 dark:focus-within:ring-neutral-700/50 transition-all ${isPublicView ? 'px-3 py-2' : 'px-4 py-3'}`}>
               <textarea
                 ref={textareaRef}
                 value={inputMessage}
@@ -503,20 +577,22 @@ export default function ChatPage({
                     handleSendMessage(e);
                   }
                 }}
-                placeholder="Ask about enrollment, employees, attendance, events..."
+                placeholder={isPublicView
+                  ? "Ask about enrollment or events..."
+                  : "Ask about enrollment, employees, attendance, events..."}
                 rows={1}
-                className="flex-1 bg-transparent resize-none text-gray-800 dark:text-neutral-200 placeholder-neutral-400 dark:placeholder-neutral-500 focus:outline-none text-sm leading-relaxed"
+                className={`flex-1 bg-transparent resize-none text-gray-800 dark:text-neutral-200 placeholder-neutral-400 dark:placeholder-neutral-500 focus:outline-none leading-relaxed ${isPublicView ? 'text-xs' : 'text-sm'}`}
                 style={{ scrollbarWidth: 'none', maxHeight: '160px' }}
               />
               <button
                 type="submit"
                 disabled={!inputMessage.trim() || isThinking}
-                className="shrink-0 w-8 h-8 bg-gia-600 hover:bg-gia-700 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-xl flex items-center justify-center transition-all duration-200"
+                className={`shrink-0 bg-gia-600 hover:bg-gia-700 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-xl flex items-center justify-center transition-all duration-200 ${isPublicView ? 'w-7 h-7' : 'w-8 h-8'}`}
               >
-                <Send size={13} />
+                <Send size={isPublicView ? 12 : 13} />
               </button>
             </div>
-            <p className="text-[10px] text-neutral-400 dark:text-neutral-600 mt-2 text-center font-sans">
+            <p className={`text-neutral-400 dark:text-neutral-600 text-center font-sans ${isPublicView ? 'text-[9px] mt-1' : 'text-[10px] mt-2'}`}>
               Enter to send · Shift+Enter for new line
             </p>
           </div>
