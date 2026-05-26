@@ -13,7 +13,7 @@ const GROQ_API_KEY = process.env.GROQ_API_KEY;
 const PORT = process.env.PORT || 3001;
 
 const API_URL = 'https://api.groq.com/openai/v1/chat/completions';
-const MODEL = 'llama-3.3-70b-versatile';
+const MODEL = 'llama-3.1-8b-instant';
 
 app.use(cors({
   origin: ['http://localhost:5173', 'http://localhost:5174', 'http://localhost:5175', 'http://localhost:3000', 'http://127.0.0.1:5173'],
@@ -31,6 +31,7 @@ const SYSTEM_PROMPT = existsSync(PROMPT_FILE)
 console.log(existsSync(PROMPT_FILE)
   ? '📄 System prompt loaded from prompt.txt'
   : '⚠️  prompt.txt not found, using fallback prompt');
+console.log(`🤖 Model: ${MODEL}`);
 
 // ─── Retry helper ────────────────────────────────────────────
 const fetchWithRetry = async (url, options, retries = 3, delayMs = 3000) => {

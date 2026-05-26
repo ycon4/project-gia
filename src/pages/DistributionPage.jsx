@@ -30,8 +30,6 @@ const HEADER_LABELS = {
   income_PSA_category: 'Income Category',
   is_first_gen_learner: '1st Gen Learner',
   '_pwd?': 'PWD',
-  '_solo_parent?': 'Has Solo Parent',
-  '_ip_member?': 'IP Member',
   '_working_student?': 'Working Student',
   is_indigenous: 'Indigenous',
   is_child_lgbtq: 'Child of LGBTQ+',
@@ -76,7 +74,7 @@ const SECTORS = {
     headers: [
       'studid', 'studgender', 'stud_college', 'stud_program', 'stud_yrlevel',
       'studethnic', 'studreligion', 'currentadd_prov', 'income_PSA_category',
-      'is_first_gen_learner', '_pwd?', '_solo_parent?', '_ip_member?',
+      'is_first_gen_learner', '_pwd?',
       '_working_student?', 'is_indigenous', 'is_child_lgbtq', 'is_child_pdl',
       'is_child_solo_parent',
     ],
@@ -232,8 +230,6 @@ export default function DistributionPage() {
       currentadd_prov: r.currentadd_prov || r.place_of_origin || 'Not Specified',
       is_first_gen_learner: nb(r.is_first_gen_learner ?? r['_first_generation?']),
       '_pwd?': nb(r['_pwd?'] ?? r.is_pwd),
-      '_solo_parent?': nb(r['_solo_parent?'] ?? r.is_solo_parent),
-      '_ip_member?': nb(r['_ip_member?'] ?? r.is_ip_member),
       '_working_student?': nb(r['_working_student?'] ?? r.is_working_student),
     }));
   }, [allSectorData, activeAY, activeTab]);

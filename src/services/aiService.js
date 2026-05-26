@@ -102,6 +102,8 @@ const FIELD_ALIASES = {
   'senior employee': 'is_emp_senior',
   'senior citizen': 'is_emp_senior',
   'senior staff': 'is_emp_senior',
+  'senior admin': 'is_emp_senior',
+  'senior administrative': 'is_emp_senior',
   'administrative official': 'is_emp_senior',
   'admin official': 'is_emp_senior',
   'employee pwd': 'is_emp_pwd',
@@ -177,19 +179,22 @@ const FIELD_ALIASES = {
   'partners': 'partnerAgencies',
   'gad mandate': 'gadMandate',
   'mandate': 'gadMandate',
-  'has solo parent': 'is_child_solo_parent',
-  'have solo parent': 'is_child_solo_parent',
-  'with solo parent': 'is_child_solo_parent',
-  'ip member': '_ip_member?',
-  'ip': '_ip_member?',
-  'lumad': '_ip_member?',
+  'ip member': 'is_indigenous',
+  'ip': 'is_indigenous',
+  'lumad': 'is_indigenous',
+  'indigenous people': 'is_indigenous',
   'working student': '_working_student?',
   'first generation': 'is_first_gen_learner',
+  'first-generation': 'is_first_gen_learner',
   '1st generation': 'is_first_gen_learner',
+  '1st-generation': 'is_first_gen_learner',
   '1st gen': 'is_first_gen_learner',
+  '1st-gen': 'is_first_gen_learner',
   'firstgen': 'is_first_gen_learner',
   'first gen learner': 'is_first_gen_learner',
+  'first-gen learner': 'is_first_gen_learner',
   '1st gen learner': 'is_first_gen_learner',
+  '1st-gen learner': 'is_first_gen_learner',
   'indigenous': 'is_indigenous',
   'child lgbtq': 'is_child_lgbtq',
   'lgbtq': 'is_child_lgbtq',
@@ -216,7 +221,6 @@ const FIELD_TO_COLLECTION = {
   pwd_aspect: 'student_enrollment',
   is_pwd: 'student_enrollment',
   is_child_solo_parent: 'student_enrollment',
-  '_ip_member?': 'student_enrollment',
   '_working_student?': 'student_enrollment',
   is_first_gen_learner: 'student_enrollment',
   is_indigenous: 'student_enrollment',
@@ -261,7 +265,6 @@ const BOOLEAN_FIELD_LABELS = {
   // Student fields
   'is_pwd': 'PWD',
   'is_child_solo_parent': 'Child of Solo Parent',
-  '_ip_member?': 'IP Member',
   '_working_student?': 'Working Student',
   is_first_gen_learner: 'First-Generation Learner',
   is_indigenous: 'Indigenous',
@@ -283,19 +286,22 @@ const BOOLEAN_FIELD_ALIASES_MAP = {
   'disabled': 'is_pwd',
   'solo parent': 'is_child_solo_parent',
   'single parent': 'is_child_solo_parent',
-  'has solo parent': 'is_child_solo_parent',
-  'have solo parent': 'is_child_solo_parent',
-  'with solo parent': 'is_child_solo_parent',
-  'ip member': '_ip_member?',
-  'ip': '_ip_member?',
-  'lumad': '_ip_member?',
+  'ip member': 'is_indigenous',
+  'ip': 'is_indigenous',
+  'lumad': 'is_indigenous',
+  'indigenous people': 'is_indigenous',
   'working student': '_working_student?',
   'first generation': 'is_first_gen_learner',
+  'first-generation': 'is_first_gen_learner',
   '1st generation': 'is_first_gen_learner',
+  '1st-generation': 'is_first_gen_learner',
   '1st gen': 'is_first_gen_learner',
+  '1st-gen': 'is_first_gen_learner',
   'firstgen': 'is_first_gen_learner',
   'first gen learner': 'is_first_gen_learner',
+  'first-gen learner': 'is_first_gen_learner',
   '1st gen learner': 'is_first_gen_learner',
+  '1st-gen learner': 'is_first_gen_learner',
   'indigenous': 'is_indigenous',
   'child lgbtq': 'is_child_lgbtq',
   'lgbtq': 'is_child_lgbtq',
@@ -310,6 +316,8 @@ const BOOLEAN_FIELD_ALIASES_MAP = {
   'employee disability': 'is_emp_pwd',
   'staff pwd': 'is_emp_pwd',
   'senior employee': 'is_emp_senior',
+  'senior admin': 'is_emp_senior',
+  'senior administrative': 'is_emp_senior',
   'admin official': 'is_emp_senior',
   'administrative official': 'is_emp_senior',
   'senior official': 'is_emp_senior',
@@ -328,6 +336,34 @@ const CONVERSATIONAL_PATTERNS = [
   /^(bye|goodbye|see you|see ya|ciao|take care)\b/i,
   /^(who are you|what are you|what can you do|what is gia|introduce yourself)\b/i,
   /^(help|what can i ask|how do i use|what do you know)\b/i,
+];
+
+// Ultra-vague queries — too ambiguous to compute anything meaningful.
+// Routed as conversational so GIA asks for clarification instead of guessing.
+const VAGUE_QUERY_PATTERNS = [
+  /^how many[?.!]?\s*$/i,
+  /^how much[?.!]?\s*$/i,
+  /^what about[?.!]?\s*$/i,
+  /^what is (the )?(number|count|total)[?.!]?\s*$/i,
+  /^(show|tell) me\.?\s*$/i,
+  /^(show|tell) me (the )?(data|numbers|stats|statistics|breakdown|info|information)[?.!]?\s*$/i,
+  /^(give me )?(the )?(data|numbers|stats|statistics|breakdown|info|information)[?.!]?\s*$/i,
+  /^(how|what|who|where|when)[?.!]?\s*$/i,
+];
+
+// Ambiguous follow-up fragments — queries that name only a filter (college,
+// sex, year, attribute) with no clear question around it. Since GIA is
+// stateless she cannot infer prior context, so she should ask for clarification
+// rather than guess a default breakdown.
+const AMBIGUOUS_FOLLOWUP_PATTERNS = [
+  // "how about X" / "what about X" — filter-only fragments
+  /^(how about|what about|and|how about in|what about in)\s+(the\s+)?(males?|females?|men|women)[?.!]?\s*$/i,
+  /^(how about|what about|and|how about in|what about in)\s+(coe|csm|ccs|chs|cass|ceba|ced|college of [a-z ]+)[?.!]?\s*$/i,
+  /^(how about|what about)\s+\d{4}-\d{4}(\s+\d(st|nd|rd|th)\s+sem\w*)?[?.!]?\s*$/i,
+  /^(how about|what about)\s+(first[- ]gen(eration)?(\s+learners?)?|1st[- ]gen(eration)?(\s+learners?)?|pwd(\s+students?)?|indigenous(\s+students?)?|working\s+students?|solo\s+parents?|lgbtq|pdl|ofw|4ps(\s+beneficiar\w+)?|ip(\s+members?)?)[?.!]?\s*$/i,
+  // bare filter with no verb — "COE?", "2025-2026?", "the males?"
+  /^(the\s+)?(males?|females?)\s*[?.!]?\s*$/i,
+  /^\d{4}-\d{4}(\s+\d(st|nd|rd|th)\s+sem\w*)?[?.!]?\s*$/i,
 ];
 
 // Predictive / out-of-scope patterns — caught before data computation so GIA
@@ -406,8 +442,10 @@ const parseQuery = (message) => {
     andFilters: [],   // multi-condition AND filters [{field, value}, ...]
     academicYears: [],
     wantsSexBreakdown: false,
+    specificSex: null, // 'Female' | 'Male' — set when user asks for one sex only
     wantsAll: false,
     wantsComparison: false,
+    wantsAllYears: false, // true ONLY when "over the years" / "across years" etc. explicitly said
     isConversational: false,
   };
 
@@ -459,9 +497,14 @@ const parseQuery = (message) => {
   }
 
   // ── Comparison intent ──────────────────────────────────────
+  const ALL_YEARS_PATTERN = /\bacross\s+(the\s+)?years?\b|\bover\s+(the\s+)?years?\b|\bthroughout\s+(the\s+)?years?\b|\beach\s+year\b|\bper\s+year\b|\bevery\s+year\b|\byear[- ]by[- ]year\b|\ball\s+(the\s+)?years?\b|\byear[- ]over[- ]year\b|\bhistorical(ly)?\b/i;
   if (intent.academicYears.length > 1 ||
-    /\bcompare\b|\bversus\b|\bvs\b|\bcompared to\b|\bdifference between\b|\bcontrast\b/i.test(lower)) {
+    /\bcompare\b|\bversus\b|\bvs\b|\bcompared to\b|\bdifference between\b|\bcontrast\b/i.test(lower) ||
+    ALL_YEARS_PATTERN.test(lower)) {
     intent.wantsComparison = true;
+  }
+  if (ALL_YEARS_PATTERN.test(lower)) {
+    intent.wantsAllYears = true;
   }
 
   // ── Sex breakdown intent ───────────────────────────────────
@@ -469,6 +512,13 @@ const parseQuery = (message) => {
   if (/\bmale\b|\bfemale\b|\bsex\b|\bgender\b|\bdistribution\b|\bbreakdown\b|\bby sex\b|\bper sex\b/i.test(lower)) {
     intent.wantsSexBreakdown = true;
   }
+
+  // ── Specific sex filter ────────────────────────────────────
+  // Set when user asks for ONE sex only. Cleared if both are mentioned.
+  const hasFemale = /\bfemale(s)?\b|\bwomen\b|\bgirls?\b/i.test(lower);
+  const hasMale   = /\bmale(s)?\b|\bmen\b|\bboys?\b/i.test(lower);
+  if (hasFemale && !hasMale) intent.specificSex = 'Female';
+  else if (hasMale && !hasFemale) intent.specificSex = 'Male';
 
   // ── "All" intent ───────────────────────────────────────────
   if (/\ball college|\beach college|\ball program|\bper college|\bby college|\bby program|\ball year|\bevery college|\bevery program/i.test(lower)) {
@@ -611,16 +661,18 @@ const parseQuery = (message) => {
 
   // Single college → normal filter; also add to andFilters when combined with boolean conditions
   if (intent.filterValues.length === 1) {
+    const collegeField = intent.collection === 'employee_information' ? 'deptcoll' : 'stud_college';
     intent.filterValue = intent.filterValues[0];
-    intent.groupField = intent.groupField || 'stud_college';
+    intent.groupField = intent.groupField || collegeField;
     if (intent.andFilters.length > 0) {
-      intent.andFilters.push({ field: 'stud_college', value: intent.filterValues[0] });
+      intent.andFilters.push({ field: collegeField, value: intent.filterValues[0] });
     }
   }
   // Multiple colleges → comparison mode
   else if (intent.filterValues.length > 1) {
+    const collegeField = intent.collection === 'employee_information' ? 'deptcoll' : 'stud_college';
     intent.wantsComparison = true;
-    intent.groupField = intent.groupField || 'stud_college';
+    intent.groupField = intent.groupField || collegeField;
   }
 
   // ── Default group field for enrollment ────────────────────
@@ -744,7 +796,7 @@ const computeMultiFilter = (docs, andFilters, wantsSexBreakdown, sexField) => {
 
   // Build a human-readable label: abbreviate college, use labels for boolean fields
   const label = andFilters.map(({ field, value }) => {
-    if (field === 'stud_college') {
+    if (field === 'stud_college' || field === 'deptcoll') {
       // Find the shortest alias (abbreviation) for this college
       const abbrev = Object.entries(COLLEGE_ALIASES)
         .find(([a, n]) => n === value && a.length <= 4);
@@ -777,10 +829,18 @@ const computeMultiFilter = (docs, andFilters, wantsSexBreakdown, sexField) => {
 };
 
 const computeAnswer = (intent, dbData) => {
-  const {
-    collection, groupField, filterValue, filterValues,
-    academicYears, wantsSexBreakdown, wantsComparison, wantsAll,
-  } = intent;
+  const collection = intent.collection;
+  // When an employee query arrives with student college field names, remap them.
+  const groupField = (collection === 'employee_information' && intent.groupField === 'stud_college')
+    ? 'deptcoll'
+    : intent.groupField;
+  const filterValue = intent.filterValue;
+  const filterValues = intent.filterValues;
+  const academicYears = intent.academicYears;
+  let wantsSexBreakdown = intent.wantsSexBreakdown;
+  const wantsComparison = intent.wantsComparison;
+  const wantsAll = intent.wantsAll;
+  const wantsAllYears = intent.wantsAllYears || false;
 
   if (!collection || !dbData[collection]) {
     return { error: 'Could not determine which dataset to use for this question.' };
@@ -1080,7 +1140,7 @@ const computeAnswer = (intent, dbData) => {
   const nb = v => (v === 'Yes' || v === true || v === 'yes' || v === 'true' || v === '1' || v === 1) ? 'Yes' : 'No';
 
   // Normalize student_enrollment records so old (pre-2026) and new field names both resolve
-  const allDocs = collection === 'student_enrollment'
+  let allDocs = collection === 'student_enrollment'
     ? rawDocs.map(r => ({
       ...r,
       stud_college: canonicalizeCollege(r.stud_college || r.college),
@@ -1094,7 +1154,6 @@ const computeAnswer = (intent, dbData) => {
       is_first_gen_learner: nb(r.is_first_gen_learner ?? r['_first_generation?']),
       is_pwd: nb(r.is_pwd ?? r['_pwd?']),
       is_child_solo_parent: nb(r.is_child_solo_parent ?? r['_solo_parent?'] ?? r.is_solo_parent),
-      '_ip_member?': nb(r['_ip_member?'] ?? r.is_ip_member),
       '_working_student?': nb(r['_working_student?'] ?? r.is_working_student),
     }))
     : collection === 'employee_information'
@@ -1109,7 +1168,7 @@ const computeAnswer = (intent, dbData) => {
         empreligion: r.empreligion || r.religion || 'Not Specified',
         is_emp_pwd: nb(r.is_emp_pwd ?? r['_pwd?'] ?? r.special_needs),
         is_emp_senior: nb(r.is_emp_senior ?? r.administrative_officials),
-        deptcoll: r.deptcoll || r.department || 'Not Specified',
+        deptcoll: canonicalizeCollege(r.deptcoll || r.department) || 'Not Specified',
         deptcode: r.deptcode || r.department_code || 'Not Specified',
       }))
       : collection === 'events'
@@ -1154,24 +1213,73 @@ const computeAnswer = (intent, dbData) => {
     ? academicYears
     : (latestYear ? [latestYear] : []);
 
+  // ── Requested years not in the database ───────────────────────
+  // If the user explicitly asked for specific years and NONE of them
+  // (or any semester expansion of them) exist in the actual data,
+  // tell GIA so she can inform the user rather than silently falling back.
+  if (academicYears.length > 0) {
+    const hasAnyMatch = academicYears.some(y =>
+      allYears.some(ay => ay === y || ay.startsWith(y.split(' ')[0]))
+    );
+    if (!hasAnyMatch) {
+      return {
+        collection: displayName,
+        noDataForPeriod: true,
+        requestedYears: academicYears,
+        availableYears: allYears,
+      };
+    }
+  }
+
+  // ── Specific sex pre-filter ────────────────────────────────
+  // When the user asks for one sex only (e.g. "female students in CCS"),
+  // narrow allDocs to that sex before any computation so every path
+  // (comparison, multi-filter, single query) naturally shows only that sex.
+  const specificSex = intent.specificSex;
+  if (specificSex && sexField) {
+    allDocs = allDocs.filter(d => (d[sexField] || '').toLowerCase() === specificSex.toLowerCase());
+    wantsSexBreakdown = false; // docs are already one sex — no breakdown columns needed
+  }
+
   // ── Multi-condition AND filter (cross-field intersection) ─────
   // Triggered when the query mentions 2+ conditions simultaneously
   // e.g. "PWD students in CEBA who are also solo parents"
   const { andFilters = [] } = intent;
   if (andFilters.length >= 1) {
     // Year-by-year comparison with multi-filter
-    if (wantsComparison && academicYears.length > 0) {
-      const yearsToUse = academicYears.length === 1
-        ? [...new Set(allDocs.map(d => d.academicYear).filter(Boolean))].sort()
-        : academicYears;
+    if (wantsComparison && (academicYears.length > 0 || allYears.length > 0)) {
+      // Expand bare years (e.g. "2024-2025") to their semester-specific equivalents
+      // so that the filter matches how academicYear is actually stored in the DB.
+      const expandYearsMulti = (years) => {
+        const out = [];
+        for (const y of years) {
+          if (/Semester|Summer/i.test(y)) {
+            out.push(y);
+          } else {
+            const sems = allYears.filter(ay => ay.startsWith(y));
+            sems.length > 0 ? out.push(...sems) : out.push(y);
+          }
+        }
+        return [...new Set(out)];
+      };
+      const yearsToUse = academicYears.length === 0
+        ? allYears
+        : academicYears.length === 1
+          ? [...new Set(allDocs.map(d => d.academicYear).filter(Boolean))].sort()
+          : expandYearsMulti(academicYears);
       const yearResults = {};
+      const allMatchedDocs = [];
       yearsToUse.forEach(year => {
         const yearDocs = allDocs.filter(d => d.academicYear === year);
         if (yearDocs.length > 0) {
           yearResults[year] = computeMultiFilter(yearDocs, andFilters, wantsSexBreakdown, sexField);
+          allMatchedDocs.push(...yearDocs);
         }
       });
-      return { collection: displayName, isComparison: true, isCollegeComparison: false, isMultiFilter: true, andFilters, sexField, yearResults };
+      const overallResult = allMatchedDocs.length > 0
+        ? computeMultiFilter(allMatchedDocs, andFilters, wantsSexBreakdown, sexField)
+        : null;
+      return { collection: displayName, isComparison: true, isCollegeComparison: false, isMultiFilter: true, andFilters, sexField, specificSex, yearResults, overallResult };
     }
 
     // Single period multi-filter
@@ -1222,22 +1330,58 @@ const computeAnswer = (intent, dbData) => {
 
   // ── Multi-college comparison ───────────────────────────────
   if (wantsComparison && filterValues.length > 1) {
-    // Scope docs to the resolved years (one semester, multiple semesters, etc.)
-    // Use includes() so the filter works for any number of resolved years.
+    const collegeFilterField = collection === 'employee_information' ? 'deptcoll' : 'stud_college';
+
+    // Determine which years to compare:
+    // - Specific years in query → expand to their semesters
+    // - "Over the years" explicitly said → all available years
+    // - Plain comparison with no year → latest period only (default)
+    const yearsToCompare = academicYears.length > 0
+      ? [...new Set(academicYears.flatMap(y =>
+          /Semester|Summer/i.test(y) ? [y] : allYears.filter(ay => ay.startsWith(y))
+        ))].sort()
+      : wantsAllYears
+        ? allYears
+        : latestYear ? [latestYear] : allYears;
+
+    if (wantsAllYears || yearsToCompare.length > 1) {
+      // Year-by-year breakdown for each college
+      const yearCollegeResults = {};
+      yearsToCompare.forEach(year => {
+        const yearDocs = allDocs.filter(d => d.academicYear === year);
+        if (yearDocs.length === 0) return;
+        yearCollegeResults[year] = {};
+        filterValues.forEach(collegeName => {
+          const computed = computeForDocs(yearDocs, collegeFilterField, collegeName, wantsSexBreakdown, sexField);
+          if (computed.totalRecords > 0) yearCollegeResults[year][collegeName] = computed;
+        });
+      });
+      return {
+        collection: displayName,
+        isComparison: true,
+        isCollegeComparison: true,
+        isMultiYear: true,
+        filterValues,
+        sexField,
+        yearCollegeResults,
+      };
+    }
+
+    // Single period — original behavior
     let collegeDocs = allDocs;
-    if (resolvedYears.length >= 1) {
-      const filtered = allDocs.filter(d => resolvedYears.includes(d.academicYear));
+    if (yearsToCompare.length >= 1) {
+      const filtered = allDocs.filter(d => yearsToCompare.includes(d.academicYear));
       collegeDocs = filtered.length > 0 ? filtered : allDocs;
     }
     const collegeResults = {};
     filterValues.forEach(collegeName => {
-      const computed = computeForDocs(collegeDocs, 'stud_college', collegeName, wantsSexBreakdown, sexField);
+      const computed = computeForDocs(collegeDocs, collegeFilterField, collegeName, wantsSexBreakdown, sexField);
       collegeResults[collegeName] = computed;
     });
 
     return {
       collection: displayName,
-      academicYear: resolvedYears[0] || 'All Years',
+      academicYear: yearsToCompare[0] || latestYear || 'All Years',
       isComparison: true,
       isCollegeComparison: true,
       groupField,
@@ -1274,20 +1418,25 @@ const computeAnswer = (intent, dbData) => {
         })()
       : expanded;
     const yearResults = {};
+    const allComparedDocs = [];
     yearsToUse.forEach(year => {
       const yearDocs = allDocs.filter(d => d.academicYear === year);
       if (yearDocs.length > 0) {
         yearResults[year] = computeForDocs(yearDocs, groupField, filterValue, wantsSexBreakdown, sexField);
+        allComparedDocs.push(...yearDocs);
       }
     });
-    return { collection: displayName, isComparison: true, isCollegeComparison: false, groupField, filterValue, sexField, yearResults };
+    const overallResult = allComparedDocs.length > 0
+      ? computeForDocs(allComparedDocs, groupField, filterValue, wantsSexBreakdown, sexField)
+      : null;
+    return { collection: displayName, isComparison: true, isCollegeComparison: false, groupField, filterValue, sexField, specificSex, yearResults, overallResult };
   }
 
   // ── Single query ───────────────────────────────────────────
   let docs = allDocs;
   if (resolvedYears.length === 1) {
     const filtered = allDocs.filter(d => d.academicYear === resolvedYears[0]);
-    docs = filtered.length > 0 ? filtered : allDocs;
+    if (filtered.length > 0) docs = filtered;
   }
 
   const computed = computeForDocs(docs, groupField, filterValue, wantsSexBreakdown, sexField);
@@ -1299,6 +1448,7 @@ const computeAnswer = (intent, dbData) => {
     groupField,
     filterValue,
     sexField,
+    specificSex,
     totalRecords: computed.totalRecords,
     data: computed.data,
   };
@@ -1313,6 +1463,9 @@ const formatResultForAI = (result) => {
 
   let text = `=== COMPUTED DATA (100% ACCURATE — DO NOT MODIFY THESE NUMBERS) ===\n\n`;
   text += `Dataset: ${result.collection}\n`;
+  if (result.specificSex) {
+    text += `Sex Filter: ${result.specificSex} only — ALL counts below are ${result.specificSex} students/employees. Do NOT say sex breakdown is unavailable.\n`;
+  }
 
   // Handle nested data (e.g., sector breakdown per event)
   if (result.isNested) {
@@ -1337,6 +1490,15 @@ const formatResultForAI = (result) => {
     return text;
   }
 
+  if (result.noDataForPeriod) {
+    text += `⚠ SYSTEM INSTRUCTION: DO NOT RENDER A TABLE. There is no data to display. Respond in plain sentences only.\n\n`;
+    text += `NO DATA FOR REQUESTED PERIOD\n`;
+    text += `Requested: ${result.requestedYears.join(', ')}\n`;
+    text += `Available academic years in the database: ${result.availableYears.join(', ')}\n`;
+    text += `=== END OF COMPUTED DATA ===\n`;
+    return text;
+  }
+
   if (result.isMultiFilter && result.isGroupedByCollege) {
     const filterLabel = result.andFilters
       .map(({ field }) => BOOLEAN_FIELD_LABELS[field] || field)
@@ -1355,6 +1517,21 @@ const formatResultForAI = (result) => {
           });
         });
       });
+  } else if (result.isComparison && result.isCollegeComparison && result.isMultiYear) {
+    text += `Mode: Multi-College Year-by-Year Comparison\n`;
+    text += `Colleges: ${result.filterValues.join(', ')}\n`;
+    text += `⚠ FORMAT INSTRUCTION: Do NOT add an academic year italic header. Start directly with a comparison table where rows = academic periods, columns = each college (use abbreviations: CSM, COE, CCS, CHS, CASS, CEBA, CED).\n\n`;
+    Object.entries(result.yearCollegeResults).forEach(([year, colleges]) => {
+      text += `--- ${year} ---\n`;
+      Object.entries(colleges).forEach(([college, data]) => {
+        text += `  ${college}: Total=${data.totalRecords}`;
+        const counts = Object.values(data.data)[0] || {};
+        if (counts.Female !== undefined) text += `, Female=${counts.Female} (${counts['Female %']})`;
+        if (counts.Male !== undefined) text += `, Male=${counts.Male} (${counts['Male %']})`;
+        text += `\n`;
+      });
+      text += `\n`;
+    });
   } else if (result.isComparison && result.isCollegeComparison) {
     text += `Mode: College-by-College Comparison\n`;
     text += `Academic Year: ${result.academicYear}\n\n`;
@@ -1384,6 +1561,17 @@ const formatResultForAI = (result) => {
       });
       text += `\n`;
     });
+    if (result.overallResult) {
+      const ov = result.overallResult;
+      text += `⚠ REQUIRED: Add a final "Total (All Semesters)" row to your table using these numbers:\n`;
+      text += `Total Records across all periods: ${ov.totalRecords}\n`;
+      Object.entries(ov.data).forEach(([, counts]) => {
+        Object.entries(counts).forEach(([key, val]) => {
+          text += `  ${key}: ${val}\n`;
+        });
+      });
+      text += `This row MUST appear at the bottom of your comparison table.\n\n`;
+    }
   } else if (result.eventInfo) {
     // Specific event query with unique-attendee deduplication
     const ev = result.eventInfo;
@@ -1523,12 +1711,12 @@ const parseQueryWithLLM = async (message) => {
 
     // Single college → always ensure filterValue and groupField are consistent
     if (intent.filterValues.length === 1) {
+      const collegeField = intent.collection === 'employee_information' ? 'deptcoll' : 'stud_college';
       intent.filterValue = intent.filterValue || intent.filterValues[0];
-      // groupField must be stud_college whenever we're filtering by college
-      // (LLM sometimes returns "studgender" here, which breaks the filter)
-      intent.groupField = 'stud_college';
-      if (intent.andFilters.length > 0 && !intent.andFilters.find(f => f.field === 'stud_college')) {
-        intent.andFilters.push({ field: 'stud_college', value: intent.filterValues[0] });
+      // Enforce the correct college field (LLM sometimes returns wrong groupField like "studgender")
+      intent.groupField = collegeField;
+      if (intent.andFilters.length > 0 && !intent.andFilters.find(f => f.field === collegeField)) {
+        intent.andFilters.push({ field: collegeField, value: intent.filterValues[0] });
       }
     }
 
@@ -1557,6 +1745,34 @@ const parseQueryWithLLM = async (message) => {
     // flags for a simple "by ethnicity" question). The keyword parser only fires
     // when the keyword is literally present in the message.
     intent.andFilters = kwParsed.andFilters;
+    // Carry over specificSex from keyword parser — LLM doesn't produce this field
+    if (kwParsed.specificSex) intent.specificSex = kwParsed.specificSex;
+
+    // Safety net: merge college filterValues from keyword parser.
+    // The keyword parser detects abbreviations (CCS, COE, etc.) by exact alias lookup
+    // and never misses them. Smaller/weaker models sometimes drop one college from a
+    // two-college comparison — this ensures the missing college is always recovered.
+    if (kwParsed.filterValues.length > 0) {
+      for (const v of kwParsed.filterValues) {
+        if (validColleges.has(v) && !intent.filterValues.includes(v)) {
+          intent.filterValues.push(v);
+        }
+      }
+      intent.filterValues = [...new Set(intent.filterValues)];
+      if (intent.filterValues.length > 1) {
+        // Multiple colleges confirmed — enforce comparison mode
+        intent.filterValue = null;
+        intent.wantsComparison = true;
+        if (!intent.groupField || intent.groupField === 'studgender' || intent.groupField === 'empgender') {
+          intent.groupField = intent.collection === 'employee_information' ? 'deptcoll' : 'stud_college';
+        }
+      } else if (intent.filterValues.length === 1 && !intent.filterValue) {
+        // LLM missed the single college entirely — recover filterValue too
+        intent.filterValue = intent.filterValues[0];
+        const collegeField = intent.collection === 'employee_information' ? 'deptcoll' : 'stud_college';
+        intent.groupField = intent.groupField || collegeField;
+      }
+    }
 
     // The LLM sometimes returns collection='attendance' + filterValue='<event name>'
     // for "how many attended [Event]" queries instead of collection='events' + eventTitle.
@@ -1578,8 +1794,14 @@ const parseQueryWithLLM = async (message) => {
       intent.wantsSexBreakdown = true;
     }
 
-    // Multiple academic years always means comparison (mirrors keyword-parser logic)
-    if (intent.academicYears.length > 1) intent.wantsComparison = true;
+    // Multiple academic years OR keyword-detected comparison = comparison
+    if (intent.academicYears.length > 1 || kwParsed.wantsComparison) intent.wantsComparison = true;
+    // "Over the years" / "across years" explicitly said — clear any LLM-injected year
+    // so computeAnswer iterates ALL available years, and mark wantsAllYears.
+    if (kwParsed.wantsAllYears) {
+      intent.academicYears = [];
+      intent.wantsAllYears = true;
+    }
 
     // ── Default group field for events (mirror keyword parser logic) ─────
     if (!intent.groupField && intent.collection === 'events') {
@@ -1646,6 +1868,14 @@ USER QUESTION: ${userMessage}`;
         }
       } catch (_) {}
       return { reply: "That's a bit outside what I cover — I'm focused on GADC data and Gender and Development topics at MSU-IIT. Anything about enrollment, employee info, or GAD programs I can help with?", chartData: null };
+    }
+
+    // ── Ultra-vague or ambiguous follow-up — let LLM ask for clarification ──
+    if (
+      VAGUE_QUERY_PATTERNS.some(p => p.test(userMessage.trim())) ||
+      AMBIGUOUS_FOLLOWUP_PATTERNS.some(p => p.test(userMessage.trim()))
+    ) {
+      intent.isConversational = true;
     }
 
     // ── Conversational — send directly, no data computation ──

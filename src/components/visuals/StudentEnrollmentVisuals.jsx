@@ -93,8 +93,6 @@ const normalizeEnrollmentRecord = (r) => ({
   currentadd_prov: r.currentadd_prov || r.place_of_origin || 'Not Specified',
   is_first_gen_learner: nb(r.is_first_gen_learner ?? r['_first_generation?']),
   '_pwd?': nb(r['_pwd?'] ?? r.is_pwd),
-  '_solo_parent?': nb(r['_solo_parent?'] ?? r.is_solo_parent),
-  '_ip_member?': nb(r['_ip_member?'] ?? r.is_ip_member),
 });
 
 export default function StudentEnrollmentVisuals({ data, recordsCount = 0, academicPeriod = 'Academic Year', isPublic = false }) {
@@ -291,7 +289,7 @@ export default function StudentEnrollmentVisuals({ data, recordsCount = 0, acade
     const indigenousCommunities = (() => {
       const communities = {};
       normalizedData.forEach(d => {
-        const isIP = d['_ip_member?'] === 'Yes' || d.is_indigenous === 'Yes';
+        const isIP = d.is_indigenous === 'Yes';
         if (!isIP) return;
 
         const group = d.indigenous_group || d.studethnic || 'Not Specified';

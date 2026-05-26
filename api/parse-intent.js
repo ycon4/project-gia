@@ -1,6 +1,6 @@
 const GROQ_API_KEY = process.env.GROQ_API_KEY;
 const API_URL = 'https://api.groq.com/openai/v1/chat/completions';
-const MODEL = 'llama-3.3-70b-versatile';
+const MODEL = 'llama-3.1-8b-instant';
 
 const PARSE_INTENT_PROMPT = `You are an intent parser for GIA, a student data assistant for MSU-IIT GADC.
 Read the user's question and return ONLY a single valid JSON object — no markdown, no explanation.
@@ -18,11 +18,9 @@ IMPORTANT: If the query mentions a specific event name (e.g., "Anti-sexual haras
 
 ## Boolean fields (student_enrollment) — always use value "Yes":
 - "_pwd?" — Person with Disability (PWD, disabled)
-- "_solo_parent?" — student has a solo parent
-- "_ip_member?" — Indigenous People member / Lumad / IP
 - "_working_student?" — working student
 - "is_first_gen_learner" — first generation learner (1st gen, first-gen, first generation)
-- "is_indigenous" — indigenous student
+- "is_indigenous" — indigenous student (IP member, lumad, indigenous people)
 - "is_child_lgbtq" — child of LGBTQ+ person
 - "is_child_pdl" — child of Person Deprived of Liberty (PDL)
 - "is_child_solo_parent" — child of a solo parent

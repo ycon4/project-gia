@@ -200,8 +200,6 @@ export default function ExcelUpload({ activeTab, onUploadSuccess, compact = fals
               studid: row.studid || row.student_id || row['Student ID'] || 'N/A',
               income_PSA_category: row.income_PSA_category || row['Income Category'] || 'Not Specified',
               '_pwd?': normalizeBoolean(row['_pwd?'] || row['PWD'] || row['pwd'] || row['Person with Disability'] || row['Disability'] || row['is_pwd']),
-              '_solo_parent?': normalizeBoolean(row['_solo_parent?'] || row['Solo Parent'] || row['solo_parent'] || row['Single Parent'] || row['Has Solo Parent']),
-              '_ip_member?': normalizeBoolean(row['_ip_member?'] || row['IP Member'] || row['IP'] || row['ip_member'] || row['Lumad'] || row['Indigenous People Member'] || row['IP_member'] || row['is_ip_member']),
               '_working_student?': normalizeBoolean(row['_working_student?'] || row['Working Student'] || row['working_student'] || row['Working'] || row['is_working_student']),
               is_first_gen_learner: normalizeBoolean(row.is_first_gen_learner || row['_first_generation?'] || row['First Gen'] || row['1st Gen'] || row['First Generation'] || row['1st Generation'] || row['First Gen Learner'] || row['1st Gen Learner'] || row['First Generation Learner'] || row['1st Generation Learner'] || row['first_gen_learner']),
               is_indigenous: normalizeBoolean(row.is_indigenous || row['Indigenous'] || row['is_indigenous']),

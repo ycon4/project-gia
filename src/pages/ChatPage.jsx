@@ -336,7 +336,10 @@ User question: `
   };
 
   return (
-    <div className="flex flex-col h-full bg-white dark:bg-neutral-950 overflow-hidden">
+    <div className="flex flex-col h-full bg-white dark:bg-neutral-950 overflow-hidden relative">
+      {/* Screenshot reference markers — remove after testing phase */}
+      <span style={{ position: 'fixed', top: 8, left: '33vw', width: 6, height: 6, borderRadius: '50%', background: '#7B1113', zIndex: 9999, pointerEvents: 'none' }} />
+      <span style={{ position: 'fixed', bottom: 120, right: 'calc(20vw + 15px)', width: 6, height: 6, borderRadius: '50%', background: '#7B1113', zIndex: 9999, pointerEvents: 'none' }} />
 
       {/* ── Welcome screen ── */}
       {isWelcomeScreen ? (
