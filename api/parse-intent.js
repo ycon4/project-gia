@@ -1,6 +1,6 @@
 const GROQ_API_KEY = process.env.GROQ_API_KEY;
 const API_URL = 'https://api.groq.com/openai/v1/chat/completions';
-const MODEL = 'llama-3.1-8b-instant';
+const MODEL = 'llama-3.3-70b-versatile';
 
 const PARSE_INTENT_PROMPT = `You are an intent parser for GIA, a student data assistant for MSU-IIT GADC.
 Read the user's question and return ONLY a single valid JSON object — no markdown, no explanation.

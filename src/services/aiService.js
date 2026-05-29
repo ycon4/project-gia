@@ -1534,7 +1534,8 @@ const formatResultForAI = (result) => {
     });
   } else if (result.isComparison && result.isCollegeComparison) {
     text += `Mode: College-by-College Comparison\n`;
-    text += `Academic Year: ${result.academicYear}\n\n`;
+    text += `Academic Year: ${result.academicYear}\n`;
+    text += `⚠ Do NOT add a Total or summary row — this is a side-by-side snapshot, not a timeline.\n\n`;
     Object.entries(result.collegeResults)
       .sort(([, a], [, b]) => b.totalRecords - a.totalRecords)
       .forEach(([college, collegeData]) => {
@@ -1638,6 +1639,10 @@ const stripInterpretiveSentences = (text) => {
   for (const pattern of INTERPRETIVE_PATTERNS) {
     cleaned = cleaned.replace(pattern, '');
   }
+  // Remove misplaced separator rows (|---|---| or |---|) that appear as the LAST row
+  // of a markdown table — i.e., followed by a blank line or end of string.
+  // The legitimate header separator is always followed by a data row, never a blank line.
+  cleaned = cleaned.replace(/\|[ \t]*[-:]+[ \t]*(\|[ \t]*[-:]+[ \t]*)+\|?[ \t]*\n(?=[ \t]*\n|[ \t]*$)/gm, '\n');
   return cleaned.replace(/\n{3,}/g, '\n\n').trim();
 };
 
@@ -1728,6 +1733,22 @@ const parseQueryWithLLM = async (message) => {
     // "1st sem, 2nd sem, and 2025-2026 1st sem" where "2nd sem" inherits the
     // prior year. The keyword parser handles this correctly, so we union both sets.
     const kwParsed = parseQuery(message);
+
+    // Safety guard: if the keyword parser recognises this as a data query,
+    // never let the LLM override it to conversational. The LLM occasionally
+    // misclassifies valid questions like "enrollment breakdown across all colleges"
+    // as conversational, causing GIA to skip computation entirely.
+    // IMPORTANT: also fill in collection from kwParsed — the LLM often returns
+    // collection: null when it (wrongly) thinks the query is conversational, so
+    // forcing isConversational=false without fixing collection causes computeAnswer
+    // to fail with "unable to determine which dataset".
+    if (!kwParsed.isConversational) {
+      intent.isConversational = false;
+      if (!intent.collection && kwParsed.collection) {
+        intent.collection = kwParsed.collection;
+      }
+    }
+
     if (kwParsed.academicYears.length > 0) {
       const merged = [...new Set([...intent.academicYears, ...kwParsed.academicYears])];
       // Drop bare years (e.g. '2025-2026') when a semester-specific entry already

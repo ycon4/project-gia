@@ -13,7 +13,7 @@ const GROQ_API_KEY = process.env.GROQ_API_KEY;
 const PORT = process.env.PORT || 3001;
 
 const API_URL = 'https://api.groq.com/openai/v1/chat/completions';
-const MODEL = 'llama-3.1-8b-instant';
+const MODEL = 'llama-3.3-70b-versatile';
 
 app.use(cors({
   origin: ['http://localhost:5173', 'http://localhost:5174', 'http://localhost:5175', 'http://localhost:3000', 'http://127.0.0.1:5173'],
