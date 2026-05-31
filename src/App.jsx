@@ -295,7 +295,7 @@ function App() {
           ) : (
             <main className="flex-1 overflow-y-auto px-8 py-8">
               <div className="transition-all duration-500 ease-in-out">
-                {activeSection === 'home' && <AboutPage onGoToDashboard={() => setActiveSection('data')} onNewChat={handleNewChat} />}
+                {activeSection === 'home' && <AboutPage onGoToDashboard={() => setActiveSection('data')} onNewChat={handleNewChat} onGoToEvents={() => setActiveSection('event')} />}
                 {activeSection === 'data' && <DistributionPage />}
               </div>
             </main>

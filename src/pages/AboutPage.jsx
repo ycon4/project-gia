@@ -1,4 +1,4 @@
-import { MessageCircle, BarChart3, ShieldCheck, Zap, Info, ArrowRight, CalendarDays } from 'lucide-react';
+import { MessageCircle, BarChart3, ShieldCheck, Info, ArrowRight, CalendarDays } from 'lucide-react';
 import giaLogoColored from '../assets/GIA Logo - Colored.svg';
 
 const LILAC = '#741112';
@@ -8,7 +8,7 @@ const LILAC_BG = '#f9f5fd';
 const LILAC_BORDER = '#dfc2f3';
 const LOGO_GRADIENT = 'linear-gradient(to right, #741112, #DD6E6B, #A5DF6A, #73DAE1)';
 
-export default function AboutPage({ onGoToDashboard, onNewChat }) {
+export default function AboutPage({ onGoToDashboard, onNewChat, onGoToEvents }) {
   return (
     <div className="max-w-5xl mx-auto space-y-12 pb-20 animate-in fade-in duration-700">
 
@@ -23,20 +23,12 @@ export default function AboutPage({ onGoToDashboard, onNewChat }) {
           <div className="flex items-center justify-between gap-8">
             {/* Left: text */}
             <div className="flex-1 min-w-0">
-              <div
-                className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full mb-7 bg-[#faf8fd] dark:bg-[#4f366c]/30 border border-[#e5d8f3] dark:border-[#4f366c]/60"
-                style={{ color: LILAC }}
-              >
-                <Zap size={13} />
-                <span className="text-p4-xs font-black uppercase tracking-widest">GIA · Smart Information Assistant</span>
-              </div>
-
               <h1 className="font-montserrat text-p4-4xl font-bold tracking-tight leading-tight mb-5">
                 <span className="text-neutral-900 dark:text-neutral-100">Gender and<br />
                   Development Center<br /></span>
-                <span style={{ background: LOGO_GRADIENT, WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent' }}>
-                  Information Assistant
-                </span>
+                <span style={{ color: '#7c2529' }}>Information</span>
+                {' '}
+                <span style={{ color: '#d4af37' }}>Assistant</span>
               </h1>
 
               <p className="text-p4-base text-neutral-500 dark:text-neutral-400 max-w-lg font-medium leading-relaxed">
@@ -61,7 +53,7 @@ export default function AboutPage({ onGoToDashboard, onNewChat }) {
                 </span>
               </div>
               <div className="flex items-center gap-2">
-                {['#741112', '#DD6E6B', '#A5DF6A', '#73DAE1'].map(color => (
+                {['#741112', '#d4af37'].map(color => (
                   <div key={color} className="w-3 h-3 rounded-full" style={{ backgroundColor: color }} />
                 ))}
               </div>
@@ -170,18 +162,19 @@ export default function AboutPage({ onGoToDashboard, onNewChat }) {
       {/* ── Capabilities Strip ── */}
       <section className="grid sm:grid-cols-4 gap-4">
         {[
-          { icon: <CalendarDays size={18} color={LILAC} />, label: 'Events & Attendance' },
-          { icon: <BarChart3 size={18} color={LILAC} />, label: 'SDD Analytics' },
-          { icon: <MessageCircle size={18} color={LILAC} />, label: 'AI-Powered Chat' },
-          { icon: <ShieldCheck size={18} color={LILAC} />, label: 'GAD Compliance' },
-        ].map(({ icon, label }) => (
-          <div
+          { icon: <CalendarDays size={18} color={LILAC} />, label: 'Events & Attendance', onClick: onGoToEvents },
+          { icon: <BarChart3 size={18} color={LILAC} />, label: 'SDD Analytics', onClick: onGoToDashboard },
+          { icon: <MessageCircle size={18} color={LILAC} />, label: 'AI-Powered Chat', onClick: onNewChat },
+          { icon: <ShieldCheck size={18} color={LILAC} />, label: 'GAD Events', onClick: onGoToEvents },
+        ].map(({ icon, label, onClick }) => (
+          <button
             key={label}
-            className="flex items-center gap-3 bg-white dark:bg-neutral-900 border border-neutral-100 dark:border-neutral-700/50 rounded-2xl px-5 py-4 shadow-sm"
+            onClick={onClick}
+            className="flex items-center gap-3 bg-white dark:bg-neutral-900 border border-neutral-100 dark:border-neutral-700/50 rounded-2xl px-5 py-4 shadow-sm hover:shadow-md hover:-translate-y-0.5 hover:border-[#741112]/30 transition-all duration-200 text-left w-full cursor-pointer"
           >
             <span className="shrink-0">{icon}</span>
             <span className="text-p4-sm font-semibold text-neutral-700 dark:text-neutral-300">{label}</span>
-          </div>
+          </button>
         ))}
       </section>
     </div>
