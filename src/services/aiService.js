@@ -460,6 +460,9 @@ const parseQuery = (message) => {
   // so "2024-2025 1st semester, 2nd semester, and 2025-2026 1st semester"
   // correctly produces three distinct periods instead of duplicating one.
   const yearRegex = /20\d\d[-–]20\d\d/g;
+  // Bare single-year regex — matches "2024", "2025" etc. NOT already part of a YYYY-YYYY span.
+  // A bare year like "2024" means the academic year starting that year → "2024-2025".
+  const bareYearRegex = /\b(20\d\d)\b(?!\s*[-–]\s*20\d\d)/g;
   const semRegex = /(1st|first|2nd|second)\s*(?:semester|sem)/gi;
 
   const yearPositions = [];
@@ -467,6 +470,19 @@ const parseQuery = (message) => {
   while ((_ym = yearRegex.exec(lower)) !== null) {
     yearPositions.push({ year: _ym[0].replace('–', '-'), pos: _ym.index });
   }
+  // Convert bare years to academic years only when no YYYY-YYYY span was already found at
+  // the same position (avoids double-counting the left half of a full academic year string).
+  const fullYearSpans = yearPositions.map(y => y.pos);
+  let _by;
+  while ((_by = bareYearRegex.exec(lower)) !== null) {
+    const n = parseInt(_by[1], 10);
+    const ayStr = `${n}-${n + 1}`;
+    // Skip if this digit sequence is already the start of a full YYYY-YYYY match
+    if (!fullYearSpans.includes(_by.index)) {
+      yearPositions.push({ year: ayStr, pos: _by.index });
+    }
+  }
+  yearPositions.sort((a, b) => a.pos - b.pos);
 
   const semPositions = [];
   let _sm;
@@ -1768,6 +1784,19 @@ const parseQueryWithLLM = async (message) => {
     intent.andFilters = kwParsed.andFilters;
     // Carry over specificSex from keyword parser — LLM doesn't produce this field
     if (kwParsed.specificSex) intent.specificSex = kwParsed.specificSex;
+
+    // ── FIX: Sex breakdown vs grouping (prevents 100% percentage bug) ───────────
+    // When user mentions BOTH "male" and "female" together, this is a sex breakdown
+    // request, not a grouping request. If LLM set groupField to gender field, correct it.
+    const lowerMessage = message.toLowerCase();
+    const hasBothSexes = /\bmale(s)?\b|\bmen\b|\bboys?\b/i.test(lowerMessage) &&
+                         /\bfemale(s)?\b|\bwomen\b|\bgirls?\b/i.test(lowerMessage);
+    if (hasBothSexes && (intent.groupField === 'studgender' || intent.groupField === 'empgender')) {
+      // This is a sex breakdown, not a grouping. Clear gender groupField.
+      intent.groupField = null;
+      intent.wantsSexBreakdown = true;
+      console.log('🔧 Corrected: Sex breakdown detected (both male & female mentioned) — cleared gender groupField');
+    }
 
     // Safety net: merge college filterValues from keyword parser.
     // The keyword parser detects abbreviations (CCS, COE, etc.) by exact alias lookup

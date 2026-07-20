@@ -17,7 +17,7 @@ async function testGroq() {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'llama-3.3-70b-versatile',
+        model: 'qwen/qwen3-32b',
         messages: [{ role: 'user', content: 'Say hello in one sentence!' }],
         max_tokens: 50,
         temperature: 0.1,

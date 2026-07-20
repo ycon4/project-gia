@@ -13,7 +13,7 @@ const GROQ_API_KEY = process.env.GROQ_API_KEY;
 const PORT = process.env.PORT || 3001;
 
 const API_URL = 'https://api.groq.com/openai/v1/chat/completions';
-const MODEL = 'llama-3.3-70b-versatile';
+const MODEL = 'qwen/qwen3-32b';
 
 app.use(cors({
   origin: ['http://localhost:5173', 'http://localhost:5174', 'http://localhost:5175', 'http://localhost:3000', 'http://127.0.0.1:5173'],
@@ -215,6 +215,11 @@ Read the user's question and return ONLY a single valid JSON object — no markd
 9. wantsComparison = true if: multiple colleges, multiple years, or compare/versus/vs mentioned.
 10. Default collection = "student_enrollment" for student questions.
 11. For general enrollment questions with no specific filter: set wantsAll = true and groupField = "stud_college".
+11b. CRITICAL SEX BREAKDOWN FIX: If the query mentions BOTH "male" AND "female" students (not one exclusively), this is a sex breakdown request, NOT a grouping request:
+   - Set wantsSexBreakdown = true
+   - Set groupField = null (or do NOT set groupField to "studgender"/"empgender")
+   - Example: "male and female students in 2024" → wantsSexBreakdown=true, groupField=null (NOT "studgender")
+   - Exception: Only set groupField="studgender" if user explicitly asks to "group by gender" or "organize by sex" (different phrasing)
 12. Return ONLY valid JSON. No extra text.`;
 
 // ─── Parse-intent endpoint ───────────────────────────────────

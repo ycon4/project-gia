@@ -1,6 +1,6 @@
 const GROQ_API_KEY = process.env.GROQ_API_KEY;
 const API_URL = 'https://api.groq.com/openai/v1/chat/completions';
-const MODEL = 'llama-3.3-70b-versatile';
+const MODEL = 'qwen/qwen3-32b';
 
 const PARSE_INTENT_PROMPT = `You are an intent parser for GIA, a student data assistant for MSU-IIT GADC.
 Read the user's question and return ONLY a single valid JSON object — no markdown, no explanation.
@@ -98,7 +98,7 @@ IMPORTANT: If the query mentions a specific event name (e.g., "Anti-sexual haras
 5. If a specific college is mentioned: add its full name to filterValues AND set filterValue to that same name. ALWAYS set groupField = "stud_college" when a college filter is present — never use "studgender" as groupField when a college is mentioned.
 6. If user asks "from what college", "which college", "by college", "per college" — set groupField = "stud_college".
 7. If user asks for all colleges without naming one — set wantsAll = true and groupField = "stud_college".
-8. Extract academic years into academicYears array. IMPORTANT: always include the semester suffix in each entry (e.g. "2024-2025 1st Semester", "2024-2025 2nd Semester"). If the user says "from 1st to 2nd semester of 2024-2025", extract BOTH as separate entries. If the user says "2024-2025 1st semester, 2nd semester" — the "2nd semester" inherits the last base year mentioned, so add "2024-2025 2nd Semester". Always pair each semester mention with its nearest preceding base year.
+8. Extract academic years into academicYears array. IMPORTANT: always include the semester suffix in each entry (e.g. "2024-2025 1st Semester", "2024-2025 2nd Semester"). If the user says "from 1st to 2nd semester of 2024-2025", extract BOTH as separate entries. If the user says "2024-2025 1st semester, 2nd semester" — the "2nd semester" inherits the last base year mentioned, so add "2024-2025 2nd Semester". Always pair each semester mention with its nearest preceding base year. BARE YEAR RULE: If the user says a single year like "2024" with no semester, it means the academic year STARTING in that calendar year → "2024-2025". "2025" alone → "2025-2026". "2023" alone → "2023-2024". Do NOT map "2025" to "2024-2025".
 9. wantsSexBreakdown = true if: male/female/sex/gender/breakdown/SDD/sex-disaggregated/sector mentioned, OR any boolean filter is present, OR event-specific query.
 10. wantsComparison = true if: multiple colleges, multiple years, or compare/versus/vs mentioned.
 11. Default collection = "student_enrollment" for student questions.
@@ -127,7 +127,10 @@ IMPORTANT: If the query mentions a specific event name (e.g., "Anti-sexual haras
 - "How many senior employees?" → {"collection": "employee_information", "andFilters": [{"field": "is_emp_senior", "value": "Yes"}], "wantsSexBreakdown": true}
 - "Male and female students by ethnicity" → {"collection": "student_enrollment", "groupField": "studethnic", "wantsSexBreakdown": true, "wantsAll": true}
 - "Student religion breakdown" → {"collection": "student_enrollment", "groupField": "studreligion", "wantsSexBreakdown": true, "wantsAll": true}
-- "Show me students by province" → {"collection": "student_enrollment", "groupField": "currentadd_prov", "wantsSexBreakdown": true, "wantsAll": true}`;
+- "Show me students by province" → {"collection": "student_enrollment", "groupField": "currentadd_prov", "wantsSexBreakdown": true, "wantsAll": true}
+- "Male and female students for 2024" → {"collection": "student_enrollment", "academicYears": ["2024-2025"], "wantsSexBreakdown": true, "wantsAll": true}
+- "Male and female students for 2025" → {"collection": "student_enrollment", "academicYears": ["2025-2026"], "wantsSexBreakdown": true, "wantsAll": true}
+- "Students in 2023" → {"collection": "student_enrollment", "academicYears": ["2023-2024"], "wantsSexBreakdown": false, "wantsAll": true}`;
 
 
 const fetchWithRetry = async (url, options, retries = 2, delayMs = 2000) => {

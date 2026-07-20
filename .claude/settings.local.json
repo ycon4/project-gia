@@ -9,7 +9,8 @@
       "Bash(npm run:*)",
       "Bash(dir \"c:/Users/Admin/Documents/Thesis/GIA Project/project-gia\" /b)",
       "WebSearch",
-      "Bash(npm install *)"
+      "Bash(npm install *)",
+      "PowerShell(git -C \"c:\\\\Users\\\\Admin\\\\Documents\\\\Thesis\\\\GIA Project\\\\project-gia\" log --oneline -10)"
     ]
   }
 }
